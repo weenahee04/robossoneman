@@ -3,11 +3,11 @@ import { Car } from 'lucide-react';
 export function MemberBanner() {
   return (
     <div className="px-4 py-4">
-      <div className="bg-gradient-to-r from-app-red-dark via-app-red to-red-500 rounded-2xl p-4 relative overflow-hidden shadow-[0_4px_20px_rgba(220,38,38,0.25)]">
+      <div className="bg-gradient-to-r from-app-red-dark via-app-red to-red-500 rounded-2xl p-4 relative overflow-visible shadow-[0_4px_20px_rgba(220,38,38,0.25)]">
         <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
         <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
 
-        <div className="relative z-10 flex items-center justify-between">
+<div className="relative z-10 flex items-center justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs font-medium text-white/90">

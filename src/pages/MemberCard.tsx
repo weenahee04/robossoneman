@@ -1,5 +1,11 @@
-import React, { Children } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import Lottie from 'lottie-react';
+import fireAnimation from '../Fire.json';
+import { Gift, RotateCcw } from 'lucide-react';
+
+const TOTAL_STAMPS = 10;
+const STORAGE_KEY = 'roboss_stamps';
 interface MemberCardProps {
   onBack: () => void;
 }
@@ -34,6 +40,28 @@ const transactions = [
 }];
 
 export function MemberCard({ onBack }: MemberCardProps) {
+  const [stamps, setStamps] = useState<number>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [animating, setAnimating] = useState<number | null>(null);
+  const [showReward, setShowReward] = useState(false);
+
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, String(stamps));
+    if (stamps === TOTAL_STAMPS) setTimeout(() => setShowReward(true), 400);
+  }, [stamps]);
+
+  const addStamp = () => {
+    if (stamps >= TOTAL_STAMPS) return;
+    const next = stamps + 1;
+    setAnimating(next - 1);
+    setStamps(next);
+    setTimeout(() => setAnimating(null), 800);
+  };
+
+  const reset = () => { setStamps(0); setShowReward(false); };
+
   const containerVariants = {
     hidden: {
       opacity: 0
@@ -83,7 +111,7 @@ export function MemberCard({ onBack }: MemberCardProps) {
         {/* Digital Member Card */}
         <motion.div
           variants={itemVariants}
-          className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-[0_10px_40px_rgba(220,38,38,0.3)] border border-white/10">
+          className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden border border-white/10">
           
           <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-app-black to-app-red-dark"></div>
           <div className="absolute inset-0 bg-gradient-to-tr from-white/5 via-transparent to-white/20 opacity-50"></div>
@@ -162,6 +190,77 @@ export function MemberCard({ onBack }: MemberCardProps) {
               </div>
             </div>
           </div>
+        </motion.div>
+
+        {/* Stamp Collection */}
+        <motion.div variants={itemVariants} className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <div>
+              <h3 className="text-white font-bold text-base">สะสมแสตมป์</h3>
+              <p className="text-[10px] text-gray-400">ล้างรถ {TOTAL_STAMPS} ครั้ง รับฟรี 1 ครั้ง</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-yellow-400">{stamps}/{TOTAL_STAMPS}</span>
+              <button onClick={reset} className="w-7 h-7 rounded-full bg-app-dark flex items-center justify-center text-gray-500">
+                <RotateCcw size={13} />
+              </button>
+            </div>
+          </div>
+
+          {/* Progress bar */}
+          <div className="w-full h-1.5 bg-black rounded-full overflow-hidden">
+            <div className="h-full bg-gradient-to-r from-orange-500 to-yellow-400 rounded-full transition-all duration-500"
+              style={{ width: `${(stamps / TOTAL_STAMPS) * 100}%` }} />
+          </div>
+
+          {/* Stamp grid */}
+          <div className="bg-app-dark rounded-2xl p-4 border border-white/5">
+            <div className="grid grid-cols-5 gap-2">
+              {Array.from({ length: TOTAL_STAMPS }).map((_, i) => {
+                const collected = i < stamps;
+                return (
+                  <div key={i} className={`relative aspect-square rounded-full flex items-center justify-center transition-all duration-300
+                    ${collected
+                      ? 'bg-gradient-to-br from-orange-900/60 to-yellow-900/40 border border-orange-500/40 shadow-[0_0_10px_rgba(234,88,12,0.25)]'
+                      : 'bg-transparent border-2 border-dashed border-white/30'}
+                    ${animating === i ? 'scale-125' : 'scale-100'}`}>
+                    {collected
+                      ? <Lottie animationData={fireAnimation} loop={true} className="w-full h-full p-0.5" />
+                      : <span className="text-base font-black text-white/20">{i + 1}</span>}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Reward row */}
+            <div className="mt-3 flex items-center gap-3 bg-black/30 rounded-xl p-3 border border-yellow-500/20">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500
+                ${stamps === TOTAL_STAMPS ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_14px_rgba(234,179,8,0.5)]' : 'bg-black/40 border border-white/10'}`}>
+                <Gift size={18} className={stamps === TOTAL_STAMPS ? 'text-white' : 'text-white/20'} />
+              </div>
+              <div>
+                <p className={`text-sm font-bold ${stamps === TOTAL_STAMPS ? 'text-yellow-400' : 'text-white/30'}`}>ล้างรถฟรี 1 ครั้ง</p>
+                <p className="text-[10px] text-gray-500">เมื่อสะสมครบ {TOTAL_STAMPS} แสตมป์</p>
+              </div>
+              {stamps === TOTAL_STAMPS && (
+                <button className="ml-auto bg-yellow-400 text-yellow-900 font-bold text-xs px-3 py-1.5 rounded-full">รับเลย</button>
+              )}
+            </div>
+          </div>
+
+          {/* Reward banner */}
+          {showReward && (
+            <div className="bg-gradient-to-r from-orange-600 via-yellow-500 to-orange-500 rounded-2xl p-4 text-center shadow-[0_4px_20px_rgba(234,88,12,0.4)]">
+              <p className="text-white font-black text-base">🎉 ยินดีด้วย! สะสมครบ {TOTAL_STAMPS} แสตมป์แล้ว</p>
+              <p className="text-white/80 text-xs mt-1">กดรับเลยเพื่อใช้สิทธิ์ล้างรถฟรี</p>
+            </div>
+          )}
+
+          {/* Demo button */}
+          <button onClick={addStamp} disabled={stamps >= TOTAL_STAMPS}
+            className="w-full bg-app-dark border border-white/10 text-gray-300 font-medium py-3 rounded-xl text-xs disabled:opacity-40 disabled:cursor-not-allowed active:scale-95 transition-transform">
+            {stamps >= TOTAL_STAMPS ? 'สะสมแสตมป์ครบแล้ว 🎉' : '+ จำลองการล้างรถ (เพิ่มแสตมป์)'}
+          </button>
         </motion.div>
 
         {/* Recent Transaction History */}
