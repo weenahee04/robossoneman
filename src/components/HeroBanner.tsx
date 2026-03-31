@@ -1,14 +1,16 @@
 import React from 'react';
+
 export function HeroBanner() {
   return (
-    <div className="p-4">
-      <div className="relative rounded-2xl overflow-hidden border border-app-red/30 shadow-[0_0_20px_rgba(220,38,38,0.15)] bg-app-dark">
+    <div className="px-4 pt-3 pb-1">
+      <div className="relative rounded-2xl overflow-hidden bg-black border border-white/5">
         <img
           src="/freepik_assistant_1774454922406.png"
           alt="ROBOSS ล้างรถยนต์อัตโนมัติ"
-          className="w-full h-auto object-cover" />
-        
+          className="w-full h-auto object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
       </div>
-    </div>);
-
+    </div>
+  );
 }

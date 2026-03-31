@@ -1,103 +1,61 @@
 import React from 'react';
-const categories = [
-{
-  label: 'ล้างรถอัตโนมัติ',
-  icon: () =>
-  <img src="/icon_3_robot_arm.png" alt="ล้างรถอัตโนมัติ" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'เคลือบแก้ว',
-  icon: () =>
-  <img src="/icon_9_robot_gear.png" alt="เคลือบแก้ว" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'ขัดสี',
-  icon: () =>
-  <img src="/icon_8_chat_robots.png" alt="ขัดสี" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'ดูดฝุ่น ภายใน',
-  icon: () =>
-  <img src="/icon_2_calendar.png" alt="ดูดฝุ่น ภายใน" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'โปรโมชั่น',
-  icon: () =>
-  <img src="/icon_4_gift_robot.png" alt="โปรโมชั่น" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'คูปองส่วนลด',
-  icon: () =>
-  <img src="/icon_6_bell.png" alt="คูปองส่วนลด" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'สาขาใกล้คุณ',
-  icon: () =>
-  <img src="/icon_1_home_robot.png" alt="สาขาใกล้คุณ" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'บัตรสมาชิก',
-  icon: () =>
-  <img src="/icon_5_crown_robot.png" alt="บัตรสมาชิก" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
-{
-  label: 'บทความ',
-  icon: () =>
-  <img src="/icon_7_bell2.png" alt="บทความ" className="w-[72px] h-[72px] object-contain rounded-[22%]" />
-},
+
+const ICONS8_BASE = 'https://img.icons8.com/?format=png&size=';
+
+function CatIcon({ id, size = 22 }: { id: string | number; size?: number }) {
+  return (
+    <img
+      src={`${ICONS8_BASE}${size * 2}&id=${id}`}
+      width={size} height={size} alt=""
+      className="inline-block flex-shrink-0"
+      style={{ filter: 'invert(1) brightness(1.1)' }}
+      loading="lazy"
+    />
+  );
+}
+
+const categories: { label: string; nav: string; iconId: string | number; accent?: boolean }[] = [
+  { label: 'ล้างรถ\nอัตโนมัติ', nav: 'carwash', iconId: 25107, accent: true },
+  { label: 'โปรโมชั่น', nav: 'promotion', iconId: 491 },
+  { label: 'คูปอง\nส่วนลด', nav: 'coupon', iconId: 12394 },
+  { label: 'สาขา\nใกล้คุณ', nav: 'branches', iconId: 345 },
+  { label: 'บัตรสมาชิก', nav: 'member', iconId: 47269 },
+  { label: 'ช่วยเหลือ', nav: 'faq', iconId: 646 },
+  { label: 'ตั้งค่า', nav: 'settings', iconId: 53375 },
 ];
 
 export function CategoryGrid({
   onNavigate,
-  onNavigateCoupon,
-  onNavigateBranches,
-  onNavigateMember,
-  onNavigatePromotion,
-  onNavigateArticle,
-
-
-
-
-
-
-}: {onNavigate?: () => void;onNavigateCoupon?: () => void;onNavigateBranches?: () => void;onNavigateMember?: () => void;onNavigatePromotion?: () => void;onNavigateArticle?: () => void;}) {
+}: {
+  onNavigate?: (view: string) => void;
+  onNavigateCoupon?: () => void;
+  onNavigateBranches?: () => void;
+  onNavigateMember?: () => void;
+  onNavigatePromotion?: () => void;
+  onNavigateArticle?: () => void;
+}) {
   return (
-    <div className="px-4 py-4">
-      <div className="grid grid-cols-4 gap-y-6 gap-x-3">
-        {categories.map((cat, index) => {
-          const Icon = cat.icon;
-          return (
-            <button
-              key={index}
-              onClick={() => {
-                if (index === 0 && onNavigate) {
-                  onNavigate();
-                } else if (index === 4 && onNavigatePromotion) {
-                  onNavigatePromotion();
-                } else if (index === 5 && onNavigateCoupon) {
-                  onNavigateCoupon();
-                } else if (index === 6 && onNavigateBranches) {
-                  onNavigateBranches();
-                } else if (index === 7 && onNavigateMember) {
-                  onNavigateMember();
-                } else if (index === 8 && onNavigateArticle) {
-                  onNavigateArticle();
-                }
-              }}
-              className="flex flex-col items-center gap-2.5 group">
-              
-              <div className="transition-all duration-300 group-hover:scale-105 group-hover:-translate-y-1 drop-shadow-lg overflow-hidden rounded-[22%]" style={{ transform: 'translateZ(0)', willChange: 'transform' }}>
-                <div className="transform group-hover:scale-110 transition-transform duration-300">
-                  <Icon />
-                </div>
-              </div>
-              <span className="text-[11px] text-center text-gray-300 font-medium leading-tight h-8 flex items-start justify-center px-1 group-hover:text-white transition-colors">
-                {cat.label}
-              </span>
-            </button>);
-
-        })}
+    <div className="px-4 py-3">
+      <div className="grid grid-cols-4 gap-3">
+        {categories.map((cat, i) => (
+          <button
+            key={i}
+            onClick={() => onNavigate?.(cat.nav)}
+            className="flex flex-col items-center gap-2 group"
+          >
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-200 group-hover:scale-105 group-active:scale-95 ${
+              cat.accent
+                ? 'bg-app-red/15 border border-app-red/25 shadow-[0_0_12px_rgba(220,38,38,0.15)]'
+                : 'bg-black border border-white/10'
+            }`}>
+              <CatIcon id={cat.iconId} size={cat.accent ? 24 : 22} />
+            </div>
+            <span className="text-[10px] text-center text-white/50 font-medium leading-tight min-h-[24px] flex items-start justify-center whitespace-pre-line group-hover:text-white/80 transition-colors">
+              {cat.label}
+            </span>
+          </button>
+        ))}
       </div>
-    </div>);
-
+    </div>
+  );
 }

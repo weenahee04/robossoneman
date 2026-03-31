@@ -1,42 +1,41 @@
 import React from 'react';
-import { Car } from 'lucide-react';
+
+const ICONS8_BASE = 'https://img.icons8.com/?format=png&size=';
+
 export function MemberBanner() {
   return (
-    <div className="px-4 py-4">
-      <div className="bg-gradient-to-r from-app-red-dark via-app-red to-red-500 rounded-2xl p-4 relative overflow-visible shadow-[0_4px_20px_rgba(220,38,38,0.25)]">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/20 rounded-full -ml-8 -mb-8 blur-xl"></div>
+    <div className="px-4 py-2">
+      <div className="relative rounded-2xl overflow-hidden border border-white/5 bg-black">
+        {/* Subtle red glow */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-app-red/8 rounded-full -mr-16 -mt-16 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-app-red/5 rounded-full -ml-12 -mb-12 blur-2xl" />
 
-<div className="relative z-10 flex items-center justify-between">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium text-white/90">
-                สมัครสมาชิก ROBOSS
-              </span>
-              <div className="bg-app-black/40 p-1 rounded text-white">
-                <Car size={12} />
+        <div className="relative z-10 p-4 flex items-center gap-4">
+          {/* Left — icon + text */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-7 h-7 rounded-lg bg-app-red/15 border border-app-red/20 flex items-center justify-center flex-shrink-0">
+                <img src={`${ICONS8_BASE}28&id=47269`} width={14} height={14} alt="" style={{ filter: 'invert(1) brightness(1.1)' }} />
               </div>
+              <span className="text-[10px] font-medium text-white/40 uppercase tracking-wider">สมัครสมาชิก</span>
             </div>
-            <h3 className="text-2xl font-black text-white leading-none tracking-tight mb-1">
-              NEW MEMBER
-            </h3>
-            <p className="text-[10px] text-white/80">ล้างรถสะอาด ราคาคุ้มค่า</p>
+            <h3 className="text-lg font-black text-white leading-none mb-1">NEW MEMBER</h3>
+            <p className="text-[10px] text-white/30">ล้างรถสะอาด ราคาคุ้มค่า</p>
           </div>
 
-          <div className="text-right flex flex-col items-end">
-            <div className="bg-app-black text-white px-3 py-1 rounded-full text-xs font-bold mb-1 border border-white/20">
-              รับส่วนลดทันที
+          {/* Right — discount */}
+          <div className="flex flex-col items-end flex-shrink-0">
+            <div className="px-2.5 py-0.5 rounded-full bg-app-red/15 border border-app-red/25 mb-1.5">
+              <span className="text-[9px] font-bold text-app-red">รับส่วนลดทันที</span>
             </div>
-            <div className="flex items-baseline text-white">
-              <span className="text-4xl font-black tracking-tighter">50</span>
-              <span className="text-lg font-bold ml-1">%</span>
+            <div className="flex items-baseline">
+              <span className="text-4xl font-black text-white leading-none">50</span>
+              <span className="text-base font-bold text-white/50 ml-0.5">%</span>
             </div>
-            <p className="text-[8px] text-white/70 mt-1 max-w-[120px] text-right">
-              สำหรับการล้างรถครั้งแรก เมื่อสมัครสมาชิกใหม่
-            </p>
+            <p className="text-[8px] text-white/20 mt-1 text-right max-w-[100px]">สำหรับการล้างรถครั้งแรก</p>
           </div>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 }

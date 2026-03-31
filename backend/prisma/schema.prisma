@@ -1,0 +1,401 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Users ─────────────────────────────────────────────────
+
+enum UserTier {
+  bronze
+  silver
+  gold
+  platinum
+}
+
+model User {
+  id           String   @id @default(uuid())
+  lineUserId   String   @unique @map("line_user_id")
+  displayName  String   @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  phone        String?
+  tier         UserTier @default(bronze)
+  totalPoints  Int      @default(0) @map("total_points")
+  totalWashes  Int      @default(0) @map("total_washes")
+  referralCode String?  @unique @map("referral_code")
+  referredBy   String?  @map("referred_by")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  sessions      WashSession[]
+  coupons       UserCoupon[]
+  points        PointsTransaction[]
+  stamps        Stamp[]
+  notifications Notification[]
+  feedback      Feedback[]
+  piggyBank     PiggyBank?
+  vehicles      Vehicle[]
+  referrals     Referral[]      @relation("referrer")
+  referredUsers Referral[]      @relation("referred")
+
+  @@map("users")
+}
+
+// ── Branches ──────────────────────────────────────────────
+
+model Branch {
+  id             String  @id @default(uuid())
+  name           String
+  shortName      String? @map("short_name")
+  address        String
+  area           String
+  type           String  @default("car")
+  lat            Float
+  lng            Float
+  promptPayId    String  @map("promptpay_id")
+  promptPayName  String  @map("promptpay_name")
+  ownerName      String? @map("owner_name")
+  mapsUrl        String? @map("maps_url")
+  hours          String? @default("06:00 - 22:00")
+  operatingHours Json?   @map("operating_hours")
+  isActive       Boolean @default(true) @map("is_active")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  machines Machine[]
+  sessions WashSession[]
+  packages BranchPackageLink[]
+
+  @@map("branches")
+}
+
+// ── Machines ──────────────────────────────────────────────
+
+enum MachineStatus {
+  idle
+  washing
+  maintenance
+  offline
+}
+
+model Machine {
+  id              String        @id @default(uuid())
+  branchId        String        @map("branch_id")
+  espDeviceId     String        @unique @map("esp_device_id")
+  name            String
+  type            String        @default("car")
+  status          MachineStatus @default(idle)
+  lastHeartbeat   DateTime?     @map("last_heartbeat")
+  firmwareVersion String?       @map("firmware_version")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  branch   Branch        @relation(fields: [branchId], references: [id])
+  sessions WashSession[]
+
+  @@map("machines")
+}
+
+// ── Wash Packages ─────────────────────────────────────────
+
+model WashPackage {
+  id              String  @id @default(uuid())
+  name            String
+  description     String?
+  vehicleType     String  @default("car") @map("vehicle_type")
+  priceS          Int     @map("price_s")
+  priceM          Int     @map("price_m")
+  priceL          Int     @map("price_l")
+  steps           Json
+  stepDuration    Int     @default(300) @map("step_duration")
+  features        Json?
+  image           String?
+  sortOrder       Int     @default(0) @map("sort_order")
+  isActive        Boolean @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  branches BranchPackageLink[]
+  sessions WashSession[]
+
+  @@map("wash_packages")
+}
+
+model BranchPackageLink {
+  id             String  @id @default(uuid())
+  branchId       String  @map("branch_id")
+  packageId      String  @map("package_id")
+  priceOverrideS Int?    @map("price_override_s")
+  priceOverrideM Int?    @map("price_override_m")
+  priceOverrideL Int?    @map("price_override_l")
+
+  branch  Branch      @relation(fields: [branchId], references: [id])
+  package WashPackage @relation(fields: [packageId], references: [id])
+
+  @@unique([branchId, packageId])
+  @@map("branch_package_links")
+}
+
+// ── Wash Sessions ─────────────────────────────────────────
+
+enum PaymentStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum WashStatus {
+  waiting
+  washing
+  completed
+  cancelled
+}
+
+model WashSession {
+  id            String        @id @default(uuid())
+  userId        String        @map("user_id")
+  branchId      String        @map("branch_id")
+  machineId     String        @map("machine_id")
+  packageId     String        @map("package_id")
+  carSize       String        @map("car_size")
+  addons        Json          @default("[]")
+  totalPrice    Int           @map("total_price")
+  paymentStatus PaymentStatus @default(pending) @map("payment_status")
+  washStatus    WashStatus    @default(waiting) @map("wash_status")
+  currentStep   Int           @default(0) @map("current_step")
+  totalSteps    Int           @default(0) @map("total_steps")
+  progress      Int           @default(0)
+  pointsEarned  Int           @default(0) @map("points_earned")
+  rating        Int?
+  reviewText    String?       @map("review_text")
+  couponId      String?       @map("coupon_id")
+  startedAt     DateTime?     @map("started_at")
+  completedAt   DateTime?     @map("completed_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  user    User        @relation(fields: [userId], references: [id])
+  branch  Branch      @relation(fields: [branchId], references: [id])
+  machine Machine     @relation(fields: [machineId], references: [id])
+  package WashPackage @relation(fields: [packageId], references: [id])
+  points  PointsTransaction[]
+
+  @@map("wash_sessions")
+}
+
+// ── Coupons ───────────────────────────────────────────────
+
+enum DiscountType {
+  percent
+  fixed
+}
+
+model Coupon {
+  id            String       @id @default(uuid())
+  code          String       @unique
+  title         String
+  description   String?
+  discountType  DiscountType @map("discount_type")
+  discountValue Int          @map("discount_value")
+  minSpend      Int          @default(0) @map("min_spend")
+  maxUses       Int          @default(0) @map("max_uses")
+  usedCount     Int          @default(0) @map("used_count")
+  branchIds     String[]     @default([]) @map("branch_ids")
+  validFrom     DateTime     @map("valid_from")
+  validUntil    DateTime     @map("valid_until")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  users UserCoupon[]
+
+  @@map("coupons")
+}
+
+model UserCoupon {
+  id       String    @id @default(uuid())
+  userId   String    @map("user_id")
+  couponId String    @map("coupon_id")
+  isUsed   Boolean   @default(false) @map("is_used")
+  usedAt   DateTime? @map("used_at")
+
+  user   User   @relation(fields: [userId], references: [id])
+  coupon Coupon @relation(fields: [couponId], references: [id])
+
+  @@unique([userId, couponId])
+  @@map("user_coupons")
+}
+
+// ── Points ────────────────────────────────────────────────
+
+enum PointsType {
+  earn
+  redeem
+  expire
+  bonus
+}
+
+model PointsTransaction {
+  id          String     @id @default(uuid())
+  userId      String     @map("user_id")
+  sessionId   String?    @map("session_id")
+  type        PointsType
+  amount      Int
+  description String
+  createdAt   DateTime   @default(now()) @map("created_at")
+
+  user    User         @relation(fields: [userId], references: [id])
+  session WashSession? @relation(fields: [sessionId], references: [id])
+
+  @@map("points_transactions")
+}
+
+// ── Stamps ────────────────────────────────────────────────
+
+model Stamp {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  currentCount  Int       @default(0) @map("current_count")
+  targetCount   Int       @default(10) @map("target_count")
+  rewardClaimed Boolean   @default(false) @map("reward_claimed")
+  lastStampAt   DateTime? @map("last_stamp_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("stamps")
+}
+
+// ── Notifications ─────────────────────────────────────────
+
+enum NotificationCategory {
+  wash
+  coupon
+  points
+  system
+}
+
+model Notification {
+  id        String               @id @default(uuid())
+  userId    String               @map("user_id")
+  title     String
+  body      String
+  category  NotificationCategory @default(system)
+  isRead    Boolean              @default(false) @map("is_read")
+  createdAt DateTime             @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
+// ── Feedback ──────────────────────────────────────────────
+
+model Feedback {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  type      String
+  message   String
+  status    String   @default("pending")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("feedback")
+}
+
+// ── Piggy Bank ────────────────────────────────────────────
+
+model PiggyBank {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  balance   Int      @default(0)
+  level     Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("piggy_banks")
+}
+
+// ── Vehicles ──────────────────────────────────────────────
+
+model Vehicle {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  brand     String
+  model     String
+  plate     String
+  province  String
+  color     String
+  size      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("vehicles")
+}
+
+// ── Promotions ────────────────────────────────────────────
+
+model Promotion {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  image       String?
+  branchIds   String[] @default([]) @map("branch_ids")
+  gradient    String?
+  conditions  String?
+  validFrom   DateTime @map("valid_from")
+  validUntil  DateTime @map("valid_until")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("promotions")
+}
+
+// ── Referrals ─────────────────────────────────────────────
+
+model Referral {
+  id           String   @id @default(uuid())
+  referrerId   String   @map("referrer_id")
+  referredId   String   @map("referred_id")
+  pointsEarned Int      @default(0) @map("points_earned")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  referrer User @relation("referrer", fields: [referrerId], references: [id])
+  referred User @relation("referred", fields: [referredId], references: [id])
+
+  @@unique([referrerId, referredId])
+  @@map("referrals")
+}
+
+// ── Admin Users ───────────────────────────────────────────
+
+enum AdminRole {
+  hq
+  franchise_owner
+  branch_manager
+}
+
+model AdminUser {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String
+  role         AdminRole @default(branch_manager)
+  branchIds    String[]  @map("branch_ids")
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}

@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useBranch } from '../services/branchContext';
+import { getPromotionsForBranch } from '../services/branchOffers';
+import { usePromotions as useApiPromotions } from '@/hooks/useApi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, XIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { getIconUrl, type IconName } from '../services/icons';
+
+const USE_API = !!import.meta.env.VITE_API_URL;
+
+function I8Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
+  return <img src={getIconUrl(name, size * 2)} alt={name} width={size} height={size} className={`inline-block ${className}`} style={{ filter: 'invert(1) brightness(1.1)' }} />;
+}
 interface PromotionPageProps {
   onBack: () => void;
 }
@@ -16,137 +27,48 @@ interface Promotion {
   patternOpacity: number;
   image?: string;
 }
-const promotions: Promotion[] = [
-{
-  id: 'p0',
-  title: 'ล้างรถยนต์อัตโนมัติ\nเริ่มต้น 99 บาท',
-  subtitle: 'สะดวก ประหยัด สะอาด รวดเร็ว',
-  description:
-  'บริการล้างรถยนต์อัตโนมัติ ROBOSS สะดวก ประหยัด สะอาด รวดเร็ว ด้วยระบบล้างรถอัตโนมัติที่ทันสมัย เริ่มต้นเพียง 99 บาท ใช้ได้ทุกสาขา',
-  discountBadge: 'เริ่ม 99฿',
-  validUntil: '31 ธ.ค. 2024',
-  conditions: [
-  'ราคาเริ่มต้นสำหรับรถขนาด S',
-  'ใช้ได้ทุกสาขาที่ร่วมรายการ',
-  'ราคาอาจแตกต่างตามขนาดรถ'],
-
-  gradient: 'from-app-red via-red-600 to-app-red-dark',
-  patternOpacity: 0,
-  image: "/freepik_assistant_1774454922406.png"
-
-},
-{
-  id: 'p1',
-  title: 'ล้าง 3 ครั้ง\nฟรี 1 ครั้ง!',
-  subtitle: 'สำหรับสมาชิก ROBOSS',
-  description:
-  'สะสมการล้างรถครบ 3 ครั้ง รับสิทธิ์ล้างรถฟรี 1 ครั้งทันที ไม่จำกัดแพ็กเกจ ใช้ได้ทุกสาขาที่ร่วมรายการ',
-  discountBadge: 'ฟรี 1 ครั้ง',
-  validUntil: '30 มิ.ย. 2024',
-  conditions: [
-  'เฉพาะสมาชิก ROBOSS',
-  'สะสมครบ 3 ครั้งภายใน 30 วัน',
-  'ใช้ได้ทุกสาขา',
-  'ไม่สามารถใช้ร่วมกับโปรโมชั่นอื่นได้'],
-
-  gradient: 'from-app-red via-red-600 to-app-red-dark',
-  patternOpacity: 0.1
-},
-{
-  id: 'p2',
-  title: 'SHINE MODE\nลด 20%',
-  subtitle: 'แพ็กเกจเคลือบเงาพิเศษ',
-  description:
-  'ล้างรถพร้อมเคลือบเงาพิเศษ ในราคาที่คุ้มกว่าเดิม ด้วยแพ็กเกจ SHINE MODE ที่ให้ความเงางามยาวนาน',
-  discountBadge: '-20%',
-  validUntil: '15 พ.ค. 2024',
-  conditions: ['ไม่มีขั้นต่ำ', 'ใช้ได้ทุกขนาดรถ', 'ใช้ได้ 1 ครั้ง/บัญชี'],
-  gradient: 'from-blue-600 via-blue-700 to-indigo-800',
-  patternOpacity: 0.08
-},
-{
-  id: 'p3',
-  title: 'เคลือบแก้ว\n999 บาท',
-  subtitle: 'ปกติ 1,500 บาท',
-  description:
-  'ปกป้องสีรถของคุณด้วยน้ำยาเคลือบแก้วคุณภาพสูง ทนทานนานถึง 6 เดือน ช่วยให้รถเงางามและป้องกันรอยขีดข่วน',
-  discountBadge: '999฿',
-  validUntil: '31 พ.ค. 2024',
-  conditions: [
-  'เฉพาะรถขนาด S และ M',
-  'รถขนาด L เพิ่ม 300 บาท',
-  'รับประกันความเงา 6 เดือน'],
-
-  gradient: 'from-amber-500 via-amber-600 to-orange-700',
-  patternOpacity: 0.12
-},
-{
-  id: 'p4',
-  title: 'สมาชิกใหม่\nลด 50%',
-  subtitle: 'ต้อนรับสมาชิกใหม่',
-  description:
-  'สมัครสมาชิก ROBOSS วันนี้ รับส่วนลดทันที 50% สำหรับการล้างรถครั้งแรก ใช้ได้กับทุกแพ็กเกจ',
-  discountBadge: '-50%',
-  validUntil: '31 ธ.ค. 2024',
-  conditions: [
-  'เฉพาะสมาชิกใหม่',
-  'ใช้ได้ครั้งแรกเท่านั้น',
-  'ใช้ได้กับทุกแพ็กเกจ'],
-
-  gradient: 'from-purple-600 via-purple-700 to-violet-800',
-  patternOpacity: 0.1
-},
-{
-  id: 'p5',
-  title: 'QUICK & CLEAN\nเพียง 79฿',
-  subtitle: 'ล้างด่วน สะอาดไว',
-  description:
-  'แพ็กเกจล้างรถด่วน QUICK & CLEAN ในราคาพิเศษเพียง 79 บาท จากปกติ 99 บาท สะอาดไวใน 15 นาที',
-  discountBadge: '79฿',
-  validUntil: '30 เม.ย. 2024',
-  conditions: [
-  'เฉพาะวันจันทร์ - ศุกร์',
-  'เฉพาะรถขนาด S',
-  'ใช้ได้ไม่จำกัดจำนวนครั้ง'],
-
-  gradient: 'from-cyan-600 via-teal-600 to-emerald-700',
-  patternOpacity: 0.08
-},
-{
-  id: 'p6',
-  title: 'ดูดฝุ่นฟรี\nเมื่อล้างครบ 500฿',
-  subtitle: 'บริการเสริมฟรี',
-  description:
-  'รับบริการดูดฝุ่นภายในรถฟรี เมื่อใช้บริการล้างรถครบ 500 บาทขึ้นไป ทำความสะอาดครบจบในที่เดียว',
-  discountBadge: 'ฟรี',
-  validUntil: '30 มิ.ย. 2024',
-  conditions: [
-  'ยอดรวม 500 บาทขึ้นไปต่อครั้ง',
-  'ใช้ได้ทุกสาขา',
-  'ไม่สามารถสะสมยอดข้ามครั้งได้'],
-
-  gradient: 'from-green-600 via-green-700 to-emerald-800',
-  patternOpacity: 0.1
-}];
-
 export function PromotionPage({ onBack }: PromotionPageProps) {
+  const { branch } = useBranch();
+  const { data: apiPromotions } = useApiPromotions(branch.id);
+
+  const promotions: Promotion[] = useMemo(() => {
+    if (USE_API && apiPromotions) {
+      return apiPromotions.map((p) => ({
+        id: p.id,
+        title: p.title,
+        subtitle: '',
+        description: p.description || '',
+        discountBadge: '',
+        validUntil: new Date(p.validUntil).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' }),
+        conditions: p.conditions ? p.conditions.split('\n').filter(Boolean) : [],
+        gradient: p.gradient || 'from-app-red via-red-600 to-app-red-dark',
+        patternOpacity: 0.08,
+        image: p.image,
+      }));
+    }
+    return getPromotionsForBranch(branch.id);
+  }, [apiPromotions, branch.id]);
+
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
   return (
     <div className="flex-1 flex flex-col bg-app-black overflow-hidden relative">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-app-dark bg-app-black/95 sticky top-0 z-50">
-        <button
-          onClick={onBack}
-          className="p-2 -ml-2 text-white hover:bg-white/10 rounded-full transition-colors">
-          
-          <ChevronLeft size={24} />
-        </button>
-        <h1 className="text-white font-bold text-lg">โปรโมชั่น</h1>
+      <div className="flex items-center justify-between px-4 py-4 border-b border-white/5 bg-app-black/95 sticky top-0 z-50">
+        <Button variant="ghost" size="icon" onClick={onBack} className="text-white -ml-2">
+          <I8Icon name="back" size={20} />
+        </Button>
+        <div className="flex flex-col items-center min-w-0 flex-1 mx-2">
+          <h1 className="text-white font-bold text-lg leading-tight">โปรโมชั่น</h1>
+          <p className="text-white/25 text-[9px] truncate w-full text-center mt-0.5">{branch.shortName} · โปรตามแฟรนไชส์สาขา · พ้อยท์รวมทุกสาขา</p>
+        </div>
         <div className="w-10" />
       </div>
 
       {/* Banner List */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-5 space-y-4 pb-10">
+        {promotions.length === 0 && (
+          <div className="text-center py-16 text-white/30 text-sm">ยังไม่มีโปรโมชั่นสำหรับสาขานี้</div>
+        )}
         {promotions.map((promo, index) =>
         <motion.button
           key={promo.id}
@@ -314,12 +236,11 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
                     </div>
                   </>
               }
-                <button
-                onClick={() => setSelectedPromo(null)}
-                className="absolute top-3 right-3 z-20 w-8 h-8 bg-black/30 rounded-full flex items-center justify-center text-white/80 hover:bg-black/50 transition-colors backdrop-blur-sm">
-                
-                  <XIcon size={16} />
-                </button>
+                <Button variant="ghost" size="icon"
+                  onClick={() => setSelectedPromo(null)}
+                  className="absolute top-3 right-3 z-20 w-8 h-8 bg-black/30 backdrop-blur-sm">
+                  <I8Icon name="back" size={14} />
+                </Button>
               </div>
 
               {/* Modal Content */}
@@ -369,9 +290,9 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
 
               {/* Bottom CTA */}
               <div className="p-4 border-t border-white/5">
-                <button className="w-full bg-app-red hover:bg-red-600 text-white font-bold py-4 rounded-xl transition-colors shadow-lg shadow-red-900/50 text-base">
+                <Button className="w-full py-4 text-base" size="lg">
                   ใช้โปรโมชั่น
-                </button>
+                </Button>
               </div>
             </motion.div>
           </motion.div>
