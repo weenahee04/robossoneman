@@ -213,6 +213,13 @@ export async function createWashSession(params: {
           where: { id: params.machineId },
           data: { status: 'idle' },
         });
+        // Release scan token so it can be reused
+        if (refreshed.scanTokenId) {
+          await prisma.machineScanToken.updateMany({
+            where: { id: refreshed.scanTokenId, consumedBySessionId: bs.id },
+            data: { consumedAt: null, consumedBySessionId: null },
+          });
+        }
       }
     }
   }
@@ -859,6 +866,14 @@ export async function cancelWashSession(params: { sessionId: string; userId: str
         data: {
           usedCount: { decrement: 1 },
         },
+      });
+    }
+
+    // Release scan token so it can be reused
+    if (session.scanTokenId) {
+      await tx.machineScanToken.updateMany({
+        where: { id: session.scanTokenId, consumedBySessionId: session.id },
+        data: { consumedAt: null, consumedBySessionId: null },
       });
     }
   });
