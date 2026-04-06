@@ -197,7 +197,7 @@ const realBranches: RealBranch[] = [
 ];
 
 const basePrices = {
-  quick: { S: 99, M: 109, L: 129 },
+  quick: { S: 1, M: 1, L: 1 },
   shine: { S: 139, M: 149, L: 169 },
   special: { S: 339, M: 399, L: 469 },
   vacuum: { S: 70, M: 90, L: 120 },
