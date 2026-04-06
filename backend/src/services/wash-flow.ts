@@ -183,8 +183,8 @@ export async function createWashSession(params: {
   if (!['idle', 'reserved'].includes(machine.status)) {
     throw new Error('Machine is not available');
   }
-
-  const existingSession = await prisma.washSession.findFirst({
+  // Cancel ALL active sessions on this machine (not just expired ones)
+  const allBlockingSessions = await prisma.washSession.findMany({
     where: {
       machineId: params.machineId,
       status: { in: ACTIVE_SESSION_STATUSES },
@@ -193,18 +193,39 @@ export async function createWashSession(params: {
     orderBy: { createdAt: 'desc' },
   });
 
-  if (existingSession) {
-    await expireSessionIfNeeded(existingSession.id);
+  for (const bs of allBlockingSessions) {
+    // Try to expire via payment expiry first
+    await expireSessionIfNeeded(bs.id);
+
+    // If session is still active AND is stale (older than 10 min) or belongs to the same user, force cancel
+    const refreshed = await prisma.washSession.findUnique({ where: { id: bs.id } });
+    if (refreshed && ACTIVE_SESSION_STATUSES.includes(refreshed.status as WashSessionStatus)) {
+      const ageMs = Date.now() - refreshed.createdAt.getTime();
+      const isStale = ageMs > 10 * 60 * 1000; // 10 minutes
+      const isSameUser = refreshed.userId === params.userId;
+
+      if (isStale || isSameUser) {
+        await prisma.washSession.update({
+          where: { id: bs.id },
+          data: { status: 'cancelled' },
+        });
+        await prisma.machine.update({
+          where: { id: params.machineId },
+          data: { status: 'idle' },
+        });
+      }
+    }
   }
 
-  const blockingSession = await prisma.washSession.findFirst({
+  // Final check - if still blocked by another user's recent session, reject
+  const finalBlocker = await prisma.washSession.findFirst({
     where: {
       machineId: params.machineId,
       status: { in: ACTIVE_SESSION_STATUSES },
     },
   });
 
-  if (blockingSession) {
+  if (finalBlocker) {
     throw new Error('Machine is already reserved');
   }
 
