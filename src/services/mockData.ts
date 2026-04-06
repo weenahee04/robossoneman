@@ -204,6 +204,7 @@ const basePrices = {
 };
 
 function roundToNearest(n: number, _nearest: number = 9): number {
+  if (n < 10) return Math.max(1, Math.round(n));
   return Math.round(n / 10) * 10 - 1;
 }
 
