@@ -26,7 +26,10 @@ function normalizeApiBaseUrl(rawBaseUrl?: string) {
     return '/api';
   }
 
-  return rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+  const normalizedBaseUrl = rawBaseUrl.trim();
+  return normalizedBaseUrl.endsWith('/api')
+    ? normalizedBaseUrl
+    : `${normalizedBaseUrl.replace(/\/+$/, '')}/api`;
 }
 
 const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);

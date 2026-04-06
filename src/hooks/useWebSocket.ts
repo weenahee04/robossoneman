@@ -20,12 +20,12 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const resolveWebSocketUrl = useCallback(() => {
     const explicitUrl = import.meta.env.VITE_WS_URL as string | undefined;
     if (explicitUrl) {
-      return explicitUrl;
+      return explicitUrl.trim();
     }
 
     const apiBaseUrl = import.meta.env.VITE_API_URL as string | undefined;
     if (apiBaseUrl) {
-      const normalizedBase = apiBaseUrl.replace(/\/+$/, '');
+      const normalizedBase = apiBaseUrl.trim().replace(/\/+$/, '');
       return normalizedBase.replace(/^http:/i, 'ws:').replace(/^https:/i, 'wss:') + '/ws';
     }
 

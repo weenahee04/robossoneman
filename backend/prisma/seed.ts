@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import { encryptBranchPaymentCredential, maskCredentialValue } from '../src/services/branch-payment-config.js';
 
 const prisma = new PrismaClient();
+const seededPaymentProvider = (process.env.PAYMENT_PROVIDER_NAME || 'mock_promptpay').trim();
 
 type BranchSeed = {
   id: string;
@@ -525,6 +526,12 @@ async function upsertBranchPackageConfigs() {
 }
 
 async function upsertBranchPaymentConfigs() {
+  const branchPaymentProvider = seededPaymentProvider === 'stripe' ? 'stripe' : 'promptpay_manual';
+  const supportsWebhook = branchPaymentProvider === 'stripe';
+  const supportsPolling = branchPaymentProvider === 'stripe';
+  const supportsDynamicQr = branchPaymentProvider === 'stripe';
+  const supportsSliplessConfirmation = branchPaymentProvider === 'stripe';
+
   for (const branch of branches) {
     const mode = branch.ownershipType === 'company_owned' ? 'hq_managed' : 'manual_promptpay';
     const settlementOwnerType = branch.ownershipType === 'company_owned' ? 'hq' : 'franchisee';
@@ -536,9 +543,9 @@ async function upsertBranchPaymentConfigs() {
       update: {
         branchId: branch.id,
         mode,
-        provider: 'promptpay_manual',
+        provider: branchPaymentProvider,
         isActive: true,
-        displayName: `${branch.shortName || branch.name} PromptPay`,
+        displayName: `${branch.shortName || branch.name} ${branchPaymentProvider === 'stripe' ? 'Stripe PromptPay' : 'PromptPay'}`,
         statementName: branch.promptPayName,
         settlementOwnerType,
       },
@@ -546,9 +553,9 @@ async function upsertBranchPaymentConfigs() {
         id: `paycfg_${branch.id}`,
         branchId: branch.id,
         mode,
-        provider: 'promptpay_manual',
+        provider: branchPaymentProvider,
         isActive: true,
-        displayName: `${branch.shortName || branch.name} PromptPay`,
+        displayName: `${branch.shortName || branch.name} ${branchPaymentProvider === 'stripe' ? 'Stripe PromptPay' : 'PromptPay'}`,
         statementName: branch.promptPayName,
         settlementOwnerType,
       },
@@ -595,21 +602,21 @@ async function upsertBranchPaymentConfigs() {
         branchPaymentConfigId: config.id,
       },
       update: {
-        supportsWebhook: false,
-        supportsPolling: false,
-        supportsDynamicQr: false,
+        supportsWebhook,
+        supportsPolling,
+        supportsDynamicQr,
         supportsReferenceBinding: true,
         supportsRefund: false,
-        supportsSliplessConfirmation: false,
+        supportsSliplessConfirmation,
       },
       create: {
         branchPaymentConfigId: config.id,
-        supportsWebhook: false,
-        supportsPolling: false,
-        supportsDynamicQr: false,
+        supportsWebhook,
+        supportsPolling,
+        supportsDynamicQr,
         supportsReferenceBinding: true,
         supportsRefund: false,
-        supportsSliplessConfirmation: false,
+        supportsSliplessConfirmation,
       },
     });
   }

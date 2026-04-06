@@ -1349,27 +1349,34 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
               <>
                 <label className="w-full flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-white/15 bg-app-dark px-4 py-4 text-left text-white transition-colors hover:border-white/30">
                   <div className="min-w-0">
-                    <p className="text-sm font-bold">แนบสลิปการโอนเงิน</p>
+                    <p className="text-sm font-bold">ถ่ายรูปหรือแนบสลิปการโอนเงิน</p>
                     <p className="mt-1 truncate text-xs text-gray-400">
-                      {selectedSlipFile ? selectedSlipFile.name : 'เลือกไฟล์สลิปจากธนาคารเพื่อให้ระบบตรวจสอบอัตโนมัติ'}
+                      {selectedSlipFile ? selectedSlipFile.name : 'กดตรงนี้เพื่อเปิดกล้องมือถือหรือเลือกรูปสลิปจากเครื่อง'}
                     </p>
                   </div>
                   <span className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white">
-                    {selectedSlipFile ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์'}
+                    {selectedSlipFile ? 'เปลี่ยนรูป' : 'ถ่าย/เลือกรูป'}
                   </span>
                   <input
                     type="file"
                     accept="image/*"
+                    capture="environment"
                     className="hidden"
                     onChange={handleSlipFileChange}
                   />
                 </label>
 
+                {!selectedSlipFile ? (
+                  <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+                    ยังไม่ได้เลือกรูปสลิป ระบบนี้เป็นการอัปโหลดรูปสลิป ยังไม่ใช่การสแกนสดผ่านกล้อง
+                  </div>
+                ) : null}
+
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={handleVerifySlipPayment}
-                  disabled={isConfirmingPayment || !session?.payment || !selectedSlipFile}
+                  disabled={isConfirmingPayment || !session?.payment}
                   className="w-full bg-green-600 hover:bg-green-700 disabled:bg-white/20 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 text-lg">
                   <I8Icon name="checkmark" size={22} />
                   {isConfirmingPayment ? 'กำลังตรวจสลิปและยืนยันการชำระเงิน...' : 'ตรวจสลิปและยืนยันการชำระเงิน'}
