@@ -3,23 +3,42 @@ import type {
   User,
   Branch,
   WashSession,
-  Coupon,
   UserCoupon,
+  Coupon,
   PointsTransaction,
   Stamp,
   Notification,
   LoginResponse,
   ApiResponse,
   PaginatedResponse,
+  NotificationsResponse,
   Vehicle,
+  Reward,
   Promotion,
+  Machine,
+  AuthConfig,
+  UserSettings,
+  ResolvedScan,
 } from '@/types';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+function normalizeApiBaseUrl(rawBaseUrl?: string) {
+  if (!rawBaseUrl) {
+    return '/api';
+  }
+
+  return rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+const ACCESS_TOKEN_STORAGE_KEY = 'roboss_token';
+const REFRESH_TOKEN_STORAGE_KEY = 'roboss_refresh_token';
 
 class ApiClient {
   private client: AxiosInstance;
   private accessToken: string | null = null;
+  private refreshToken: string | null = null;
+  private refreshPromise: Promise<void> | null = null;
+  private authFailureHandler: (() => void) | null = null;
 
   constructor() {
     this.client = axios.create({
@@ -29,6 +48,7 @@ class ApiClient {
     });
 
     this.client.interceptors.request.use((config) => {
+      config.headers = config.headers ?? {};
       if (this.accessToken) {
         config.headers.Authorization = `Bearer ${this.accessToken}`;
       }
@@ -38,31 +58,83 @@ class ApiClient {
     this.client.interceptors.response.use(
       (res) => res,
       async (error) => {
-        if (error.response?.status === 401) {
-          this.accessToken = null;
-          localStorage.removeItem('roboss_token');
-          window.location.href = '/';
+        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+        const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh');
+
+        if (
+          error.response?.status === 401 &&
+          !isRefreshRequest &&
+          !originalRequest?._retry &&
+          this.refreshToken
+        ) {
+          originalRequest._retry = true;
+
+          try {
+            await this.refreshAccessToken();
+            originalRequest.headers = {
+              ...(originalRequest.headers ?? {}),
+              Authorization: `Bearer ${this.accessToken}`,
+            };
+            return this.client.request(originalRequest);
+          } catch {
+            this.clearTokens();
+            this.authFailureHandler?.();
+          }
+        } else if (error.response?.status === 401) {
+          this.clearTokens();
+          this.authFailureHandler?.();
         }
+
         return Promise.reject(error);
       }
     );
 
-    const stored = localStorage.getItem('roboss_token');
-    if (stored) this.accessToken = stored;
+    const storedAccessToken = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
+    const storedRefreshToken = localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+
+    if (storedAccessToken) {
+      this.accessToken = storedAccessToken;
+    }
+    if (storedRefreshToken) {
+      this.refreshToken = storedRefreshToken;
+    }
+  }
+
+  private setTokens(accessToken: string, refreshToken?: string) {
+    this.accessToken = accessToken;
+    localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
+
+    if (refreshToken) {
+      this.refreshToken = refreshToken;
+      localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, refreshToken);
+    }
+  }
+
+  private clearTokens() {
+    this.accessToken = null;
+    this.refreshToken = null;
+    localStorage.removeItem(ACCESS_TOKEN_STORAGE_KEY);
+    localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+  }
+
+  setAuthFailureHandler(handler: (() => void) | null) {
+    this.authFailureHandler = handler;
   }
 
   setToken(token: string) {
-    this.accessToken = token;
-    localStorage.setItem('roboss_token', token);
+    this.setTokens(token);
   }
 
   clearToken() {
-    this.accessToken = null;
-    localStorage.removeItem('roboss_token');
+    this.clearTokens();
   }
 
   getToken(): string | null {
     return this.accessToken;
+  }
+
+  getRefreshToken(): string | null {
+    return this.refreshToken;
   }
 
   private async request<T>(config: AxiosRequestConfig): Promise<T> {
@@ -70,14 +142,106 @@ class ApiClient {
     return res.data.data;
   }
 
-  // ── Auth ────────────────────────────────────────────
+  private async refreshAccessToken(): Promise<void> {
+    if (!this.refreshToken) {
+      throw new Error('No refresh token available');
+    }
+
+    if (!this.refreshPromise) {
+      this.refreshPromise = this.client
+        .post<ApiResponse<LoginResponse>>('/auth/refresh', {
+          refreshToken: this.refreshToken,
+        })
+        .then((res) => {
+          const { tokens } = res.data.data;
+          this.setTokens(tokens.accessToken, tokens.refreshToken);
+        })
+        .finally(() => {
+          this.refreshPromise = null;
+        });
+    }
+
+    return this.refreshPromise;
+  }
+
+  async getAuthConfig(): Promise<AuthConfig> {
+    return this.request<AuthConfig>({ method: 'GET', url: '/auth/config' });
+  }
+
+  async exchangeClerkSession(clerkToken: string): Promise<LoginResponse> {
+    try {
+      const res = await this.client.post<ApiResponse<LoginResponse>>('/auth/clerk/exchange', {
+        token: clerkToken,
+      });
+      const { tokens } = res.data.data;
+      this.setTokens(tokens.accessToken, tokens.refreshToken);
+      return res.data.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        const message =
+          (error.response?.data as { message?: string } | undefined)?.message ??
+          error.message;
+        throw new Error(message);
+      }
+
+      throw error;
+    }
+  }
+
+  async getLineLoginUrl(redirectUri: string, state: string): Promise<string> {
+    const res = await this.client.get<ApiResponse<{ url: string }>>('/auth/line/url', {
+      params: { redirectUri, state },
+    });
+    return res.data.data.url;
+  }
+
   async loginWithLine(lineAccessToken: string): Promise<LoginResponse> {
     const res = await this.client.post<ApiResponse<LoginResponse>>('/auth/line', {
       accessToken: lineAccessToken,
     });
     const { tokens } = res.data.data;
-    this.setToken(tokens.accessToken);
+    this.setTokens(tokens.accessToken, tokens.refreshToken);
     return res.data.data;
+  }
+
+  async loginWithLineCallback(code: string, redirectUri: string): Promise<LoginResponse> {
+    const res = await this.client.post<ApiResponse<LoginResponse>>('/auth/line/callback', {
+      code,
+      redirectUri,
+    });
+    const { tokens } = res.data.data;
+    this.setTokens(tokens.accessToken, tokens.refreshToken);
+    return res.data.data;
+  }
+
+  async loginDev(lineUserId = 'dev_user_001'): Promise<LoginResponse> {
+    const res = await this.client.post<ApiResponse<LoginResponse>>('/auth/dev-login', {
+      lineUserId,
+    });
+    const { tokens } = res.data.data;
+    this.setTokens(tokens.accessToken, tokens.refreshToken);
+    return res.data.data;
+  }
+
+  async restoreSession(): Promise<User> {
+    if (this.accessToken) {
+      try {
+        return await this.getMe();
+      } catch {
+        // Fall through to refresh flow.
+      }
+    }
+
+    if (!this.refreshToken) {
+      throw new Error('No session found');
+    }
+
+    const res = await this.client.post<ApiResponse<LoginResponse>>('/auth/refresh', {
+      refreshToken: this.refreshToken,
+    });
+    const { user, tokens } = res.data.data;
+    this.setTokens(tokens.accessToken, tokens.refreshToken);
+    return user;
   }
 
   async getMe(): Promise<User> {
@@ -88,16 +252,30 @@ class ApiClient {
     try {
       await this.client.post('/auth/logout');
     } finally {
-      this.clearToken();
+      this.clearTokens();
     }
   }
 
-  // ── Users ───────────────────────────────────────────
   async updateProfile(data: Partial<User>): Promise<User> {
     return this.request<User>({ method: 'PATCH', url: '/users/me', data });
   }
 
-  // ── Branches ────────────────────────────────────────
+  async getUserSettings(): Promise<UserSettings> {
+    return this.request<UserSettings>({ method: 'GET', url: '/users/me/settings' });
+  }
+
+  async updateUserSettings(data: Partial<UserSettings>): Promise<UserSettings> {
+    return this.request<UserSettings>({ method: 'PATCH', url: '/users/me/settings', data });
+  }
+
+  async runAccountAction(action: 'deactivate' | 'delete'): Promise<{ action: 'deactivate' | 'delete'; completed: boolean }> {
+    return this.request<{ action: 'deactivate' | 'delete'; completed: boolean }>({
+      method: 'POST',
+      url: '/users/me/account-action',
+      data: { action },
+    });
+  }
+
   async getBranches(): Promise<Branch[]> {
     return this.request<Branch[]>({ method: 'GET', url: '/branches' });
   }
@@ -106,11 +284,19 @@ class ApiClient {
     return this.request<Branch>({ method: 'GET', url: `/branches/${id}` });
   }
 
-  // ── Wash Sessions ───────────────────────────────────
+  async resolveScan(qrData: string): Promise<ResolvedScan> {
+    return this.request<ResolvedScan>({
+      method: 'POST',
+      url: '/branches/resolve-scan',
+      data: { qrData },
+    });
+  }
+
   async createSession(data: {
     branchId: string;
     machineId: string;
     packageId: string;
+    scanTokenId: string;
     carSize: 'S' | 'M' | 'L';
     addons: string[];
     totalPrice: number;
@@ -123,6 +309,58 @@ class ApiClient {
     return this.request<WashSession>({
       method: 'POST',
       url: `/sessions/${sessionId}/confirm-payment`,
+    });
+  }
+
+  async createPayment(sessionId: string): Promise<WashSession> {
+    return this.request<WashSession>({
+      method: 'POST',
+      url: '/payments',
+      data: { sessionId },
+    });
+  }
+
+  async confirmPaymentByPaymentId(paymentId: string): Promise<WashSession> {
+    return this.request<WashSession>({
+      method: 'POST',
+      url: `/payments/${paymentId}/confirm`,
+    });
+  }
+
+  async verifyPaymentSlip(paymentId: string, file: File): Promise<WashSession> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await this.client.post<ApiResponse<WashSession>>(
+      `/payments/${paymentId}/slip-verify`,
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      }
+    );
+    return res.data.data;
+  }
+
+  async startWash(sessionId: string): Promise<WashSession> {
+    return this.request<WashSession>({
+      method: 'POST',
+      url: `/sessions/${sessionId}/start`,
+    });
+  }
+
+  async cancelSession(sessionId: string): Promise<WashSession> {
+    return this.request<WashSession>({
+      method: 'POST',
+      url: `/sessions/${sessionId}/cancel`,
+    });
+  }
+
+  async getSession(sessionId: string): Promise<WashSession> {
+    return this.request<WashSession>({
+      method: 'GET',
+      url: `/sessions/${sessionId}`,
     });
   }
 
@@ -141,7 +379,6 @@ class ApiClient {
     return res.data;
   }
 
-  // ── Points ──────────────────────────────────────────
   async getPointsBalance(): Promise<{ balance: number; tier: string }> {
     return this.request<{ balance: number; tier: string }>({
       method: 'GET',
@@ -160,9 +397,28 @@ class ApiClient {
     return this.request<PointsTransaction>({ method: 'POST', url: '/points/redeem', data });
   }
 
-  // ── Coupons ─────────────────────────────────────────
-  async getCoupons(): Promise<UserCoupon[]> {
-    return this.request<UserCoupon[]>({ method: 'GET', url: '/coupons' });
+  async getRewards(branchId?: string): Promise<Reward[]> {
+    return this.request<Reward[]>({
+      method: 'GET',
+      url: '/points/rewards',
+      params: branchId ? { branchId } : undefined,
+    });
+  }
+
+  async getCoupons(branchId?: string): Promise<UserCoupon[]> {
+    return this.request<UserCoupon[]>({
+      method: 'GET',
+      url: '/coupons',
+      params: branchId ? { branchId } : undefined,
+    });
+  }
+
+  async getAvailableCoupons(branchId?: string): Promise<Coupon[]> {
+    return this.request<Coupon[]>({
+      method: 'GET',
+      url: '/coupons/available',
+      params: branchId ? { branchId } : undefined,
+    });
   }
 
   async claimCoupon(code: string): Promise<UserCoupon> {
@@ -177,7 +433,6 @@ class ApiClient {
     });
   }
 
-  // ── Stamps ──────────────────────────────────────────
   async getStamps(): Promise<Stamp> {
     return this.request<Stamp>({ method: 'GET', url: '/stamps' });
   }
@@ -186,9 +441,8 @@ class ApiClient {
     return this.request<Stamp>({ method: 'POST', url: '/stamps/claim-reward' });
   }
 
-  // ── Notifications ───────────────────────────────────
-  async getNotifications(page = 1, limit = 20): Promise<PaginatedResponse<Notification>> {
-    const res = await this.client.get<PaginatedResponse<Notification>>('/notifications', {
+  async getNotifications(page = 1, limit = 20): Promise<NotificationsResponse> {
+    const res = await this.client.get<NotificationsResponse>('/notifications', {
       params: { page, limit },
     });
     return res.data;
@@ -202,20 +456,10 @@ class ApiClient {
     await this.client.patch('/notifications/read-all');
   }
 
-  // ── Feedback ────────────────────────────────────────
   async submitFeedback(data: { type: string; message: string }): Promise<void> {
     await this.client.post('/feedback', data);
   }
 
-  // ── Referrals ───────────────────────────────────────
-  async getReferralInfo(): Promise<{ code: string; count: number; pointsEarned: number }> {
-    return this.request<{ code: string; count: number; pointsEarned: number }>({
-      method: 'GET',
-      url: '/referrals',
-    });
-  }
-
-  // ── Vehicles ──────────────────────────────────────
   async getVehicles(): Promise<Vehicle[]> {
     return this.request<Vehicle[]>({ method: 'GET', url: '/vehicles' });
   }
@@ -228,7 +472,6 @@ class ApiClient {
     await this.client.delete(`/vehicles/${id}`);
   }
 
-  // ── Promotions ────────────────────────────────────
   async getPromotions(branchId?: string): Promise<Promotion[]> {
     return this.request<Promotion[]>({
       method: 'GET',

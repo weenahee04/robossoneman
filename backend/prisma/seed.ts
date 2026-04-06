@@ -1,561 +1,925 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
+import { encryptBranchPaymentCredential, maskCredentialValue } from '../src/services/branch-payment-config.js';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('Seeding database...');
+type BranchSeed = {
+  id: string;
+  code: string;
+  name: string;
+  shortName: string;
+  type: string;
+  ownershipType: 'company_owned' | 'franchise';
+  franchiseCode?: string;
+  address: string;
+  area: string;
+  lat: number;
+  lng: number;
+  hours: string;
+  promptPayId: string;
+  promptPayName: string;
+  ownerName?: string;
+  mapsUrl: string;
+  supportPhone: string;
+  pointsEarnRate?: number;
+};
 
-  // ── Wash Packages ─────────────────────────────────────
-  const quickPkg = await prisma.washPackage.upsert({
-    where: { id: 'pkg_quick' },
-    update: {},
-    create: {
-      id: 'pkg_quick',
-      name: 'QUICK & CLEAN',
-      description: 'ล้างรถเร็ว สะอาด พื้นฐาน',
-      vehicleType: 'car',
-      priceS: 99,
-      priceM: 109,
-      priceL: 129,
-      steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'ขัดล้างอัตโนมัติ', 'เป่าแห้ง'],
-      stepDuration: 300,
-      image: '/freepik_0001.png',
-      sortOrder: 1,
-    },
-  });
+const packages = [
+  {
+    id: 'pkg_quick',
+    code: 'QUICK',
+    name: 'QUICK & CLEAN',
+    description: 'ล้างภายนอกแบบรวดเร็วสำหรับรถยนต์',
+    vehicleType: 'car',
+    priceS: 99,
+    priceM: 109,
+    priceL: 129,
+    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'แปรงอัตโนมัติ', 'เป่าแห้ง'],
+    stepDuration: 300,
+    image: '/freepik_0001.png',
+    sortOrder: 1,
+  },
+  {
+    id: 'pkg_shine',
+    code: 'SHINE',
+    name: 'SHINE MODE',
+    description: 'ล้างพร้อมเคลือบเงา',
+    vehicleType: 'car',
+    priceS: 139,
+    priceM: 149,
+    priceL: 169,
+    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'แปรงอัตโนมัติ', 'เป่าแห้ง', 'เคลือบเงา'],
+    stepDuration: 300,
+    image: '/freepik_0001_(1).png',
+    sortOrder: 2,
+  },
+  {
+    id: 'pkg_special',
+    code: 'SPECIAL',
+    name: 'SPECIAL MODE',
+    description: 'แพ็กเกจดูแลรถแบบลึกและเคลือบเงา',
+    vehicleType: 'car',
+    priceS: 339,
+    priceM: 399,
+    priceL: 469,
+    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'แปรงอัตโนมัติ', 'เป่าแห้ง', 'เคลือบเงาพิเศษ'],
+    stepDuration: 300,
+    image: '/freepik_0001_(2).png',
+    sortOrder: 3,
+  },
+  {
+    id: 'pkg_vacuum',
+    code: 'VACUUM',
+    name: 'ดูดฝุ่นภายใน',
+    description: 'บริการดูดฝุ่นภายในรถยนต์',
+    vehicleType: 'car',
+    priceS: 70,
+    priceM: 90,
+    priceL: 120,
+    steps: ['ดูดฝุ่นภายใน'],
+    stepDuration: 300,
+    image: '/freepik_0001_(3).png',
+    sortOrder: 4,
+  },
+  {
+    id: 'pkg_moto_quick',
+    code: 'MOTO_CLEAN',
+    name: 'MOTO CLEAN',
+    description: 'ล้างมอเตอร์ไซค์แบบพื้นฐาน',
+    vehicleType: 'motorcycle',
+    priceS: 49,
+    priceM: 59,
+    priceL: 69,
+    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'เป่าแห้ง'],
+    stepDuration: 180,
+    sortOrder: 5,
+  },
+  {
+    id: 'pkg_moto_shine',
+    code: 'MOTO_SHINE',
+    name: 'MOTO SHINE',
+    description: 'ล้างมอเตอร์ไซค์พร้อมเคลือบเงา',
+    vehicleType: 'motorcycle',
+    priceS: 79,
+    priceM: 89,
+    priceL: 99,
+    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'เป่าแห้ง', 'เคลือบเงา'],
+    stepDuration: 180,
+    sortOrder: 6,
+  },
+];
 
-  const shinePkg = await prisma.washPackage.upsert({
-    where: { id: 'pkg_shine' },
-    update: {},
-    create: {
-      id: 'pkg_shine',
-      name: 'SHINE MODE',
-      description: 'ล้าง + เคลือบเงา',
-      vehicleType: 'car',
-      priceS: 139,
-      priceM: 149,
-      priceL: 169,
-      steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'ขัดล้างอัตโนมัติ', 'เป่าแห้ง', 'เคลือบเงา'],
-      stepDuration: 300,
-      image: '/freepik_0001_(1).png',
-      sortOrder: 2,
-    },
-  });
+const branches: BranchSeed[] = [
+  {
+    id: 'branch_c01',
+    code: 'RAMA109',
+    name: 'ROBOSS รามอินทรา 109',
+    shortName: 'รามอินทรา 109',
+    type: 'car',
+    ownershipType: 'company_owned',
+    address: '99/9 ถ.รามอินทรา แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร',
+    area: 'กรุงเทพมหานคร',
+    lat: 13.8682,
+    lng: 100.6378,
+    hours: '06:00 - 22:00',
+    promptPayId: '0891234567',
+    promptPayName: 'ROBOSS รามอินทรา 109',
+    ownerName: 'ROBOSS HQ',
+    mapsUrl: 'https://maps.app.goo.gl/ut1MVhuveKSvmiS27',
+    supportPhone: '02-000-0109',
+    pointsEarnRate: 10,
+  },
+  {
+    id: 'branch_c02',
+    code: 'RAMA9',
+    name: 'ROBOSS พระราม 9',
+    shortName: 'พระราม 9',
+    type: 'car',
+    ownershipType: 'company_owned',
+    address: '1 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร',
+    area: 'กรุงเทพมหานคร',
+    lat: 13.7489,
+    lng: 100.5714,
+    hours: '06:00 - 22:00',
+    promptPayId: '0892345678',
+    promptPayName: 'ROBOSS พระราม 9',
+    ownerName: 'ROBOSS HQ',
+    mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
+    supportPhone: '02-000-0009',
+    pointsEarnRate: 10,
+  },
+  {
+    id: 'branch_c04',
+    code: 'CHONBURI',
+    name: 'ROBOSS ชลบุรี',
+    shortName: 'ชลบุรี',
+    type: 'car',
+    ownershipType: 'franchise',
+    franchiseCode: 'F-CHON-01',
+    address: '99 ถ.สุขุมวิท ต.บ้านสวน อ.เมืองชลบุรี จ.ชลบุรี',
+    area: 'ชลบุรี',
+    lat: 13.3611,
+    lng: 100.9847,
+    hours: '07:00 - 21:00',
+    promptPayId: '0894567890',
+    promptPayName: 'ROBOSS ชลบุรี',
+    ownerName: 'Chonburi Franchise Co., Ltd.',
+    mapsUrl: 'https://maps.app.goo.gl/H1xqWbL8BETheHpc6',
+    supportPhone: '038-555-010',
+    pointsEarnRate: 12,
+  },
+  {
+    id: 'branch_b01',
+    code: 'MOTO_RAMA9',
+    name: 'ROBOSS มอเตอร์ไซค์ พระราม 9',
+    shortName: 'มอไซค์ พระราม 9',
+    type: 'bike',
+    ownershipType: 'franchise',
+    franchiseCode: 'F-MOTO-01',
+    address: '1/2 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร',
+    area: 'กรุงเทพมหานคร',
+    lat: 13.7485,
+    lng: 100.572,
+    hours: '06:00 - 22:00',
+    promptPayId: '0898901234',
+    promptPayName: 'ROBOSS มอเตอร์ไซค์ พระราม 9',
+    ownerName: 'Moto Franchise Co., Ltd.',
+    mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
+    supportPhone: '02-111-0009',
+    pointsEarnRate: 10,
+  },
+];
 
-  const specialPkg = await prisma.washPackage.upsert({
-    where: { id: 'pkg_special' },
-    update: {},
-    create: {
-      id: 'pkg_special',
-      name: 'SPECIAL MODE',
-      description: 'ล้าง + เคลือบเงา แบบพิเศษ',
-      vehicleType: 'car',
-      priceS: 339,
-      priceM: 399,
-      priceL: 469,
-      steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'ขัดล้างอัตโนมัติ', 'เป่าแห้ง', 'เคลือบเงา'],
-      stepDuration: 300,
-      image: '/freepik_0001_(2).png',
-      sortOrder: 3,
-    },
-  });
+const branchPackageOverrides: Record<string, Partial<Record<string, { S?: number; M?: number; L?: number; isVisible?: boolean }>>> = {
+  branch_c01: {
+    pkg_special: { S: 329, M: 389, L: 459 },
+  },
+  branch_c02: {
+    pkg_quick: { S: 109, M: 119, L: 139 },
+  },
+  branch_c04: {
+    pkg_shine: { S: 149, M: 159, L: 179 },
+    pkg_special: { S: 359, M: 419, L: 489 },
+  },
+  branch_b01: {
+    pkg_moto_quick: { S: 39, M: 49, L: 59 },
+  },
+};
 
-  await prisma.washPackage.upsert({
-    where: { id: 'pkg_vacuum' },
-    update: {},
-    create: {
-      id: 'pkg_vacuum',
-      name: 'ดูดฝุ่นภายใน',
-      description: 'ดูดฝุ่นภายในรถ',
-      vehicleType: 'car',
-      priceS: 70,
-      priceM: 90,
-      priceL: 120,
-      steps: ['ดูดฝุ่น'],
-      stepDuration: 300,
-      image: '/freepik_0001_(3).png',
-      sortOrder: 4,
-    },
-  });
+const coupons = [
+  {
+    id: 'coupon_welcome_all',
+    code: 'WELCOME50',
+    title: 'สมาชิกใหม่ลด 50%',
+    description: 'ใช้ได้ครั้งแรกทุกสาขา',
+    scope: 'all_branches' as const,
+    discountType: 'percent' as const,
+    discountValue: 50,
+    minSpend: 0,
+    maxUses: 1000,
+    maxUsesPerUser: 1,
+    packageIds: [] as string[],
+    branchIds: [] as string[],
+    validFrom: new Date('2025-01-01'),
+    validUntil: new Date('2026-12-31'),
+  },
+  {
+    id: 'coupon_ram109_local',
+    code: 'RAM109NEW',
+    title: 'รามอินทรา 109 ลด 40%',
+    description: 'เฉพาะสาขารามอินทรา 109',
+    scope: 'branch_only' as const,
+    discountType: 'percent' as const,
+    discountValue: 40,
+    minSpend: 150,
+    maxUses: 300,
+    maxUsesPerUser: 1,
+    packageIds: ['pkg_quick', 'pkg_shine'],
+    branchIds: ['branch_c01'],
+    validFrom: new Date('2025-06-01'),
+    validUntil: new Date('2026-12-31'),
+  },
+  {
+    id: 'coupon_east_combo',
+    code: 'EAST30',
+    title: 'ฝั่งตะวันออกลด 30 บาท',
+    description: 'ใช้ได้เฉพาะชลบุรีและสาขาที่เลือก',
+    scope: 'selected_branches' as const,
+    discountType: 'fixed' as const,
+    discountValue: 30,
+    minSpend: 99,
+    maxUses: 500,
+    maxUsesPerUser: 2,
+    packageIds: [],
+    branchIds: ['branch_c04', 'branch_b01'],
+    validFrom: new Date('2025-06-01'),
+    validUntil: new Date('2026-12-31'),
+  },
+];
 
-  const motoQuickPkg = await prisma.washPackage.upsert({
-    where: { id: 'pkg_moto_quick' },
-    update: {},
-    create: {
-      id: 'pkg_moto_quick',
-      name: 'MOTO CLEAN',
-      description: 'ล้างมอเตอร์ไซค์ พื้นฐาน',
-      vehicleType: 'motorcycle',
-      priceS: 49,
-      priceM: 59,
-      priceL: 69,
-      steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟม', 'เป่าแห้ง'],
-      stepDuration: 180,
-      sortOrder: 5,
-    },
-  });
+const promotions = [
+  {
+    id: 'promo_summer',
+    title: 'โปรหน้าร้อน ลด 20%',
+    description: 'ล้างรถทุกสาขาลด 20%',
+    branchIds: [],
+    gradient: 'from-red-600 to-orange-500',
+    conditions: 'จำกัด 1 ครั้งต่อคน',
+    validFrom: new Date('2026-03-01'),
+    validUntil: new Date('2026-06-30'),
+  },
+  {
+    id: 'promo_rama9_open',
+    title: 'เปิดสาขาพระราม 9',
+    description: 'ฉลองเปิดสาขาใหม่',
+    branchIds: ['branch_c02', 'branch_b01'],
+    gradient: 'from-blue-600 to-cyan-500',
+    conditions: 'เฉพาะ 100 สิทธิ์แรก',
+    validFrom: new Date('2026-01-01'),
+    validUntil: new Date('2026-12-31'),
+  },
+];
 
-  const motoShinePkg = await prisma.washPackage.upsert({
-    where: { id: 'pkg_moto_shine' },
-    update: {},
-    create: {
-      id: 'pkg_moto_shine',
-      name: 'MOTO SHINE',
-      description: 'ล้างมอเตอร์ไซค์ + เคลือบเงา',
-      vehicleType: 'motorcycle',
-      priceS: 79,
-      priceM: 89,
-      priceL: 99,
-      steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟม', 'เป่าแห้ง', 'เคลือบเงา'],
-      stepDuration: 180,
-      sortOrder: 6,
-    },
-  });
+const rewards = [
+  {
+    id: 'reward_discount_30',
+    code: 'DISC30',
+    name: 'เธชเนเธงเธเธฅเธ” 30 เธเธฒเธ—',
+    description: 'เนเธเนเนเธ”เนเธเธฑเธเธ—เธธเธเนเธเนเธเน€เธเธ',
+    pointsCost: 300,
+    category: 'discount',
+    icon: 'tag',
+    iconBg: 'bg-orange-500/20',
+    sortOrder: 1,
+    branchIds: [],
+  },
+  {
+    id: 'reward_discount_50',
+    code: 'DISC50',
+    name: 'เธชเนเธงเธเธฅเธ” 50 เธเธฒเธ—',
+    description: 'เนเธเนเนเธ”เนเธเธฑเธเธ—เธธเธเนเธเนเธเน€เธเธ',
+    pointsCost: 500,
+    category: 'discount',
+    icon: 'tag',
+    iconBg: 'bg-orange-500/20',
+    sortOrder: 2,
+    branchIds: [],
+  },
+  {
+    id: 'reward_special_100',
+    code: 'DISC100',
+    name: 'เธชเนเธงเธเธฅเธ” 100 เธเธฒเธ—',
+    description: 'เนเธเนเนเธ”เนเธเธฑเธเนเธเนเธ SPECIAL MODE',
+    pointsCost: 800,
+    category: 'discount',
+    tag: 'HOT',
+    icon: 'tag',
+    iconBg: 'bg-red-500/20',
+    sortOrder: 3,
+    branchIds: [],
+  },
+  {
+    id: 'reward_vacuum',
+    code: 'VACFREE',
+    name: 'เธ”เธนเธ”เธเธธเนเธเธเธฃเธต',
+    description: 'เธเธฃเธดเธเธฒเธฃเธ”เธนเธ”เธเธธเนเธเธ เธฒเธขเนเธเธเธฃเธต 1 เธเธฃเธฑเนเธ',
+    pointsCost: 500,
+    category: 'service',
+    icon: 'wind',
+    iconBg: 'bg-blue-500/20',
+    sortOrder: 4,
+    branchIds: ['branch_c01', 'branch_c02', 'branch_c04'],
+  },
+  {
+    id: 'reward_free_wash',
+    code: 'FREEWASH',
+    name: 'เธฅเนเธฒเธเธฃเธ–เธเธฃเธต 1 เธเธฃเธฑเนเธ',
+    description: 'QUICK & CLEAN เนเธเธชเน S-M',
+    pointsCost: 2000,
+    category: 'service',
+    tag: 'BEST',
+    icon: 'car',
+    iconBg: 'bg-green-500/20',
+    sortOrder: 5,
+    branchIds: [],
+  },
+];
 
-  const carPackages = [quickPkg, shinePkg, specialPkg];
-  const motoPackages = [motoQuickPkg, motoShinePkg];
+const testUsers = [
+  {
+    id: 'user_demo_001',
+    lineUserId: 'dev_user_001',
+    displayName: 'Demo User',
+    tier: 'gold' as const,
+    totalPoints: 1250,
+    totalWashes: 14,
+    phone: '0811111111',
+  },
+  {
+    id: 'user_demo_002',
+    lineUserId: 'dev_user_002',
+    displayName: 'Branch Loyal Customer',
+    tier: 'silver' as const,
+    totalPoints: 620,
+    totalWashes: 8,
+    phone: '0822222222',
+  },
+];
 
-  // ── Car Wash Branches ───────────────────────────────
-  const carBranches = [
-    {
-      id: 'branch_c01',
-      name: 'ROBOSS รามอินทรา 109',
-      shortName: 'รามอินทรา 109',
-      type: 'car',
-      address: '99/9 ถ.รามอินทรา กม.9 แขวงคันนายาว เขตคันนายาว กรุงเทพฯ',
-      area: 'กรุงเทพฯ (คันนายาว)',
-      lat: 13.8682,
-      lng: 100.6378,
-      hours: '06:00 - 22:00',
-      promptPayId: '0891234567',
-      promptPayName: 'ROBOSS รามอินทรา 109',
-      mapsUrl: 'https://maps.app.goo.gl/ut1MVhuveKSvmiS27',
-    },
-    {
-      id: 'branch_c02',
-      name: 'ROBOSS พระราม 9',
-      shortName: 'พระราม 9',
-      type: 'car',
-      address: '1 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพฯ',
-      area: 'กรุงเทพฯ (ห้วยขวาง)',
-      lat: 13.7489,
-      lng: 100.5714,
-      hours: '06:00 - 22:00',
-      promptPayId: '0892345678',
-      promptPayName: 'ROBOSS พระราม 9',
-      mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
-    },
-    {
-      id: 'branch_c03',
-      name: 'ROBOSS ท่าพระ',
-      shortName: 'ท่าพระ',
-      type: 'car',
-      address: '8/1 ถ.ท่าพระ แขวงบางยี่เรือ เขตธนบุรี กรุงเทพฯ',
-      area: 'กรุงเทพฯ (ธนบุรี)',
-      lat: 13.726,
-      lng: 100.4785,
-      hours: '06:00 - 22:00',
-      promptPayId: '0893456789',
-      promptPayName: 'ROBOSS ท่าพระ',
-      mapsUrl: 'https://maps.app.goo.gl/SC7SsTxuR1bpcpnq9',
-    },
-    {
-      id: 'branch_c04',
-      name: 'ROBOSS ชลบุรี',
-      shortName: 'ชลบุรี',
-      type: 'car',
-      address: '99 ถ.สุขุมวิท ต.บ้านสวน อ.เมือง จ.ชลบุรี',
-      area: 'ชลบุรี',
-      lat: 13.3611,
-      lng: 100.9847,
-      hours: '07:00 - 21:00',
-      promptPayId: '0894567890',
-      promptPayName: 'ROBOSS ชลบุรี',
-      mapsUrl: 'https://maps.app.goo.gl/H1xqWbL8BETheHpc6',
-    },
-    {
-      id: 'branch_c05',
-      name: 'ROBOSS สตูล',
-      shortName: 'สตูล',
-      type: 'car',
-      address: '15 ถ.สตูลธานี ต.พิมาน อ.เมือง จ.สตูล',
-      area: 'สตูล',
-      lat: 6.6238,
-      lng: 100.0674,
-      hours: '07:00 - 20:00',
-      promptPayId: '0895678901',
-      promptPayName: 'ROBOSS สตูล',
-      mapsUrl: 'https://maps.app.goo.gl/tQLW2vdJ1bHygoBF7',
-    },
-    {
-      id: 'branch_c06',
-      name: 'ROBOSS นครศรีธรรมราช',
-      shortName: 'นครศรีธรรมราช',
-      type: 'car',
-      address: '55 ถ.ราชดำเนิน ต.ในเมือง อ.เมือง จ.นครศรีธรรมราช',
-      area: 'นครศรีธรรมราช',
-      lat: 8.4327,
-      lng: 99.9638,
-      hours: '07:00 - 21:00',
-      promptPayId: '0896789012',
-      promptPayName: 'ROBOSS นครศรีธรรมราช',
-      mapsUrl: 'https://maps.app.goo.gl/qdMDCMGr6LfagE2N8',
-    },
-    {
-      id: 'branch_c07',
-      name: 'ROBOSS อุทัยธานี',
-      shortName: 'อุทัยธานี',
-      type: 'car',
-      address: '123 ถ.ศรีอุทัย ต.อุทัยใหม่ อ.เมือง จ.อุทัยธานี',
-      area: 'อุทัยธานี',
-      lat: 15.3833,
-      lng: 100.0247,
-      hours: '07:00 - 20:00',
-      promptPayId: '0897890123',
-      promptPayName: 'ROBOSS อุทัยธานี',
-      mapsUrl: 'https://maps.app.goo.gl/8dn8U7UiKFwY3dST7',
-    },
-  ];
-
-  // ── Motorcycle Wash Branches ────────────────────────
-  const motoBranches = [
-    {
-      id: 'branch_b01',
-      name: 'ROBOSS มอเตอร์ไซค์ พระราม 9',
-      shortName: 'มอไซค์ พระราม 9',
-      type: 'bike',
-      address: '1/2 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพฯ',
-      area: 'กรุงเทพฯ (ห้วยขวาง)',
-      lat: 13.7485,
-      lng: 100.5720,
-      hours: '06:00 - 22:00',
-      promptPayId: '0898901234',
-      promptPayName: 'ROBOSS มอเตอร์ไซค์ พระราม 9',
-      mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
-    },
-    {
-      id: 'branch_b02',
-      name: 'ROBOSS มอเตอร์ไซค์ พระราม 4',
-      shortName: 'มอไซค์ พระราม 4',
-      type: 'bike',
-      address: '10 ถ.พระราม 4 แขวงคลองเตย เขตคลองเตย กรุงเทพฯ',
-      area: 'กรุงเทพฯ (คลองเตย)',
-      lat: 13.7220,
-      lng: 100.5530,
-      hours: '06:00 - 22:00',
-      promptPayId: '0899012345',
-      promptPayName: 'ROBOSS มอเตอร์ไซค์ พระราม 4',
-      mapsUrl: 'https://maps.app.goo.gl/WhtiRPuwrRzrwgHF7',
-    },
-    {
-      id: 'branch_b03',
-      name: 'ROBOSS มอเตอร์ไซค์ ท่าพระ',
-      shortName: 'มอไซค์ ท่าพระ',
-      type: 'bike',
-      address: '8/2 ถ.ท่าพระ แขวงบางยี่เรือ เขตธนบุรี กรุงเทพฯ',
-      area: 'กรุงเทพฯ (ธนบุรี)',
-      lat: 13.7265,
-      lng: 100.4790,
-      hours: '06:00 - 22:00',
-      promptPayId: '0890123456',
-      promptPayName: 'ROBOSS มอเตอร์ไซค์ ท่าพระ',
-      mapsUrl: 'https://maps.app.goo.gl/F5GfLG99U1SDzy28A',
-    },
-    {
-      id: 'branch_b04',
-      name: 'ROBOSS มอเตอร์ไซค์ ชลบุรี',
-      shortName: 'มอไซค์ ชลบุรี',
-      type: 'bike',
-      address: '100 ถ.สุขุมวิท ต.บ้านสวน อ.เมือง จ.ชลบุรี',
-      area: 'ชลบุรี',
-      lat: 13.3615,
-      lng: 100.9850,
-      hours: '07:00 - 21:00',
-      promptPayId: '0891234568',
-      promptPayName: 'ROBOSS มอเตอร์ไซค์ ชลบุรี',
-      mapsUrl: 'https://maps.app.goo.gl/6FdX7LG31ozszmc29',
-    },
-    {
-      id: 'branch_b05',
-      name: 'ROBOSS มอเตอร์ไซค์ ภูเก็ต',
-      shortName: 'มอไซค์ ภูเก็ต',
-      type: 'bike',
-      address: '22 ถ.ทวีวงศ์ ต.ป่าตอง อ.กะทู้ จ.ภูเก็ต',
-      area: 'ภูเก็ต',
-      lat: 7.8900,
-      lng: 98.2950,
-      hours: '07:00 - 21:00',
-      promptPayId: '0892345679',
-      promptPayName: 'ROBOSS มอเตอร์ไซค์ ภูเก็ต',
-      mapsUrl: 'https://maps.app.goo.gl/oazz3WiRR5ghx8SAA',
-    },
-    {
-      id: 'branch_b06',
-      name: 'ROBOSS มอเตอร์ไซค์ แม่สอด',
-      shortName: 'มอไซค์ แม่สอด',
-      type: 'bike',
-      address: '33 ถ.ประสาทวิถี ต.แม่สอด อ.แม่สอด จ.ตาก',
-      area: 'ตาก (แม่สอด)',
-      lat: 16.7130,
-      lng: 98.5730,
-      hours: '07:00 - 20:00',
-      promptPayId: '0893456780',
-      promptPayName: 'ROBOSS มอเตอร์ไซค์ แม่สอด',
-      mapsUrl: 'https://maps.app.goo.gl/BbHegYXa99rbBCGC9',
-    },
-  ];
-
-  const allBranches = [...carBranches, ...motoBranches];
-
-  for (const bd of allBranches) {
-    const branch = await prisma.branch.upsert({
-      where: { id: bd.id },
-      update: { shortName: bd.shortName, type: bd.type, hours: bd.hours },
-      create: bd,
-    });
-
-    const isBike = bd.type === 'bike';
-    const machineConfigs = isBike
-      ? [
-          { suffix: 'moto_01', name: 'ตู้ล้างมอเตอร์ไซค์ B1', type: 'motorcycle', espPrefix: 'MOTO01' },
-          { suffix: 'moto_02', name: 'ตู้ล้างมอเตอร์ไซค์ B2', type: 'motorcycle', espPrefix: 'MOTO02' },
-        ]
-      : [
-          { suffix: 'car_01', name: 'ตู้ล้างรถ A1', type: 'car', espPrefix: 'CAR01' },
-          { suffix: 'car_02', name: 'ตู้ล้างรถ A2', type: 'car', espPrefix: 'CAR02' },
-          { suffix: 'moto_01', name: 'ตู้ล้างมอเตอร์ไซค์ B1', type: 'motorcycle', espPrefix: 'MOTO01' },
-        ];
-
-    for (const mc of machineConfigs) {
-      await prisma.machine.upsert({
-        where: { espDeviceId: `ESP32-${bd.id}-${mc.espPrefix}` },
-        update: {},
-        create: {
-          id: `${bd.id}_${mc.suffix}`,
-          branchId: branch.id,
-          name: mc.name,
-          type: mc.type,
-          espDeviceId: `ESP32-${bd.id}-${mc.espPrefix}`,
-          status: 'idle',
-        },
-      });
-    }
-
-    const pkgsToLink = isBike ? motoPackages : carPackages;
-    for (const pkg of pkgsToLink) {
-      await prisma.branchPackageLink.upsert({
-        where: {
-          branchId_packageId: { branchId: branch.id, packageId: pkg.id },
-        },
-        update: {},
-        create: { branchId: branch.id, packageId: pkg.id },
-      });
-    }
-
-    if (!isBike) {
-      await prisma.branchPackageLink.upsert({
-        where: {
-          branchId_packageId: { branchId: branch.id, packageId: 'pkg_vacuum' },
-        },
-        update: {},
-        create: { branchId: branch.id, packageId: 'pkg_vacuum' },
-      });
-    }
-  }
-
-  // ── Coupons (branch-specific) ───────────────────────
-  const coupons = [
-    {
-      id: 'coupon_welcome',
-      code: 'WELCOME50',
-      title: 'สมาชิกใหม่ ลด 50%',
-      description: 'ส่วนลด 50% สำหรับสมาชิกใหม่',
-      discountType: 'percent' as const,
-      discountValue: 50,
-      minSpend: 0,
-      maxUses: 1000,
-      branchIds: [],
-      validFrom: new Date('2025-01-01'),
-      validUntil: new Date('2026-12-31'),
-    },
-    {
-      id: 'coupon_30off',
-      code: 'ROBOSS30',
-      title: 'ลด 30 บาท',
-      description: 'ส่วนลด 30 บาท สำหรับทุกแพ็กเกจ',
-      discountType: 'fixed' as const,
-      discountValue: 30,
-      minSpend: 99,
-      maxUses: 500,
-      branchIds: [],
-      validFrom: new Date('2025-01-01'),
-      validUntil: new Date('2026-12-31'),
-    },
-    {
-      id: 'coupon_ram109',
-      code: 'RAM109NEW',
-      title: 'สาขารามอินทรา 109 — สมาชิกใหม่',
-      description: 'ลด 40% เฉพาะสาขารามอินทรา 109',
-      discountType: 'percent' as const,
-      discountValue: 40,
-      minSpend: 150,
-      maxUses: 200,
-      branchIds: ['branch_c01'],
-      validFrom: new Date('2025-06-01'),
-      validUntil: new Date('2026-12-31'),
-    },
-    {
-      id: 'coupon_rama9',
-      code: 'RAMA9VIP',
-      title: 'สาขาพระราม 9 VIP',
-      description: 'ลด 50 บาท สำหรับ VIP สาขาพระราม 9',
-      discountType: 'fixed' as const,
-      discountValue: 50,
-      minSpend: 139,
-      maxUses: 300,
-      branchIds: ['branch_c02', 'branch_b01'],
-      validFrom: new Date('2025-06-01'),
-      validUntil: new Date('2026-12-31'),
-    },
-    {
-      id: 'coupon_chonburi',
-      code: 'CHON20',
-      title: 'สาขาชลบุรี ลด 20%',
-      description: 'ลด 20% เฉพาะสาขาชลบุรี',
-      discountType: 'percent' as const,
-      discountValue: 20,
-      minSpend: 99,
-      maxUses: 100,
-      branchIds: ['branch_c04', 'branch_b04'],
-      validFrom: new Date('2025-06-01'),
-      validUntil: new Date('2026-12-31'),
-    },
-  ];
-
-  for (const cp of coupons) {
-    await prisma.coupon.upsert({
-      where: { id: cp.id },
-      update: { branchIds: cp.branchIds },
-      create: cp,
+async function upsertPackages() {
+  for (const pkg of packages) {
+    await prisma.washPackage.upsert({
+      where: { id: pkg.id },
+      update: {
+        code: pkg.code,
+        name: pkg.name,
+        description: pkg.description,
+        vehicleType: pkg.vehicleType,
+        priceS: pkg.priceS,
+        priceM: pkg.priceM,
+        priceL: pkg.priceL,
+        steps: pkg.steps,
+        stepDuration: pkg.stepDuration,
+        image: pkg.image ?? null,
+        sortOrder: pkg.sortOrder,
+        isActive: true,
+      },
+      create: pkg,
     });
   }
+}
 
-  // ── Promotions (branch-specific) ────────────────────
-  const promotions = [
-    {
-      id: 'promo_summer',
-      title: 'โปรหน้าร้อน — ลด 20% ทุกแพ็ก',
-      description: 'ฉลองหน้าร้อน ล้างรถลด 20% ทุกแพ็กเกจ ทุกสาขา',
-      branchIds: [],
-      gradient: 'from-red-600 to-orange-500',
-      conditions: 'ใช้ได้ 1 ครั้ง/ท่าน',
-      validFrom: new Date('2026-03-01'),
-      validUntil: new Date('2026-06-30'),
-    },
-    {
-      id: 'promo_rama9_open',
-      title: 'เปิดสาขาใหม่ พระราม 9',
-      description: 'ฉลองเปิดสาขาพระราม 9 ล้างฟรี 1 ครั้ง!',
-      branchIds: ['branch_c02'],
-      gradient: 'from-blue-600 to-cyan-500',
-      conditions: 'สำหรับ 100 คนแรก',
-      validFrom: new Date('2026-01-01'),
-      validUntil: new Date('2026-12-31'),
-    },
-    {
-      id: 'promo_chonburi_special',
-      title: 'ชลบุรี SPECIAL — ลด 30%',
-      description: 'SPECIAL MODE ลด 30% เฉพาะสาขาชลบุรี',
-      branchIds: ['branch_c04'],
-      gradient: 'from-purple-600 to-pink-500',
-      conditions: 'เฉพาะ SPECIAL MODE',
-      validFrom: new Date('2026-03-01'),
-      validUntil: new Date('2026-09-30'),
-    },
-    {
-      id: 'promo_bike_launch',
-      title: 'เปิดตัวล้างมอเตอร์ไซค์!',
-      description: 'บริการล้างมอเตอร์ไซค์ใหม่ — MOTO CLEAN 29 บาท',
-      branchIds: ['branch_b01', 'branch_b02', 'branch_b03', 'branch_b04', 'branch_b05', 'branch_b06'],
-      gradient: 'from-orange-500 to-amber-400',
-      conditions: 'ราคาพิเศษ 1 เดือนแรก',
-      validFrom: new Date('2026-03-01'),
-      validUntil: new Date('2026-06-30'),
-    },
-    {
-      id: 'promo_satun_nst',
-      title: 'ภาคใต้สุดคุ้ม',
-      description: 'สาขาสตูล + นครศรีธรรมราช SHINE MODE ลด 25%',
-      branchIds: ['branch_c05', 'branch_c06'],
-      gradient: 'from-emerald-600 to-teal-500',
-      conditions: 'SHINE MODE ขึ้นไป',
-      validFrom: new Date('2026-04-01'),
-      validUntil: new Date('2026-09-30'),
-    },
-  ];
-
-  for (const p of promotions) {
-    await prisma.promotion.upsert({
-      where: { id: p.id },
-      update: {},
+async function upsertBranches() {
+  for (const branch of branches) {
+    await prisma.branch.upsert({
+      where: { id: branch.id },
+      update: {
+        code: branch.code,
+        name: branch.name,
+        shortName: branch.shortName,
+        address: branch.address,
+        area: branch.area,
+        type: branch.type,
+        ownershipType: branch.ownershipType,
+        franchiseCode: branch.franchiseCode ?? null,
+        lat: branch.lat,
+        lng: branch.lng,
+        hours: branch.hours,
+        promptPayId: branch.promptPayId,
+        promptPayName: branch.promptPayName,
+        ownerName: branch.ownerName ?? null,
+        mapsUrl: branch.mapsUrl,
+        isActive: true,
+      },
       create: {
-        ...p,
-        validFrom: p.validFrom,
-        validUntil: p.validUntil,
+        id: branch.id,
+        code: branch.code,
+        name: branch.name,
+        shortName: branch.shortName,
+        address: branch.address,
+        area: branch.area,
+        type: branch.type,
+        ownershipType: branch.ownershipType,
+        franchiseCode: branch.franchiseCode ?? null,
+        lat: branch.lat,
+        lng: branch.lng,
+        hours: branch.hours,
+        promptPayId: branch.promptPayId,
+        promptPayName: branch.promptPayName,
+        ownerName: branch.ownerName ?? null,
+        mapsUrl: branch.mapsUrl,
+        isActive: true,
+      },
+    });
+
+    await prisma.branchSettings.upsert({
+      where: { branchId: branch.id },
+      update: {
+        supportPhone: branch.supportPhone,
+        pointsEarnRate: branch.pointsEarnRate ?? 10,
+        allowsPointRedemption: true,
+      },
+      create: {
+        branchId: branch.id,
+        supportPhone: branch.supportPhone,
+        pointsEarnRate: branch.pointsEarnRate ?? 10,
       },
     });
   }
+}
 
-  // ── Admin Users ───────────────────────────────────────
+async function upsertMachines() {
+  for (const branch of branches) {
+    const isBikeBranch = branch.type === 'bike';
+    const configs = isBikeBranch
+      ? [
+          { id: `${branch.id}_moto_01`, code: 'B1', name: 'ตู้ล้างมอเตอร์ไซค์ B1', type: 'motorcycle', espDeviceId: `ESP32-${branch.code}-B1`, sortOrder: 1 },
+          { id: `${branch.id}_moto_02`, code: 'B2', name: 'ตู้ล้างมอเตอร์ไซค์ B2', type: 'motorcycle', espDeviceId: `ESP32-${branch.code}-B2`, sortOrder: 2 },
+        ]
+      : [
+          { id: `${branch.id}_car_01`, code: 'A1', name: 'ตู้ล้างรถ A1', type: 'car', espDeviceId: `ESP32-${branch.code}-A1`, sortOrder: 1 },
+          { id: `${branch.id}_car_02`, code: 'A2', name: 'ตู้ล้างรถ A2', type: 'car', espDeviceId: `ESP32-${branch.code}-A2`, sortOrder: 2 },
+          { id: `${branch.id}_moto_01`, code: 'B1', name: 'ตู้ล้างมอเตอร์ไซค์ B1', type: 'motorcycle', espDeviceId: `ESP32-${branch.code}-B1`, sortOrder: 3 },
+        ];
+
+    for (const machine of configs) {
+      await prisma.machine.upsert({
+        where: { id: machine.id },
+        update: {
+          branchId: branch.id,
+          code: machine.code,
+          name: machine.name,
+          type: machine.type,
+          espDeviceId: machine.espDeviceId,
+          status: 'idle',
+          isEnabled: true,
+          sortOrder: machine.sortOrder,
+        },
+        create: {
+          ...machine,
+          branchId: branch.id,
+          status: 'idle',
+          isEnabled: true,
+        },
+      });
+    }
+  }
+}
+
+async function upsertBranchPackageConfigs() {
+  for (const branch of branches) {
+    const allowedPackageIds =
+      branch.type === 'bike'
+        ? ['pkg_moto_quick', 'pkg_moto_shine']
+        : ['pkg_quick', 'pkg_shine', 'pkg_special', 'pkg_vacuum'];
+
+    for (const packageId of allowedPackageIds) {
+      const override = branchPackageOverrides[branch.id]?.[packageId];
+      await prisma.branchPackageConfig.upsert({
+        where: {
+          branchId_packageId: {
+            branchId: branch.id,
+            packageId,
+          },
+        },
+        update: {
+          isActive: true,
+          isVisible: override?.isVisible ?? true,
+          priceOverrideS: override?.S ?? null,
+          priceOverrideM: override?.M ?? null,
+          priceOverrideL: override?.L ?? null,
+        },
+        create: {
+          branchId: branch.id,
+          packageId,
+          isActive: true,
+          isVisible: override?.isVisible ?? true,
+          priceOverrideS: override?.S ?? null,
+          priceOverrideM: override?.M ?? null,
+          priceOverrideL: override?.L ?? null,
+        },
+      });
+    }
+  }
+}
+
+async function upsertBranchPaymentConfigs() {
+  for (const branch of branches) {
+    const mode = branch.ownershipType === 'company_owned' ? 'hq_managed' : 'manual_promptpay';
+    const settlementOwnerType = branch.ownershipType === 'company_owned' ? 'hq' : 'franchisee';
+
+    const config = await prisma.branchPaymentConfig.upsert({
+      where: {
+        id: `paycfg_${branch.id}`,
+      },
+      update: {
+        branchId: branch.id,
+        mode,
+        provider: 'promptpay_manual',
+        isActive: true,
+        displayName: `${branch.shortName || branch.name} PromptPay`,
+        statementName: branch.promptPayName,
+        settlementOwnerType,
+      },
+      create: {
+        id: `paycfg_${branch.id}`,
+        branchId: branch.id,
+        mode,
+        provider: 'promptpay_manual',
+        isActive: true,
+        displayName: `${branch.shortName || branch.name} PromptPay`,
+        statementName: branch.promptPayName,
+        settlementOwnerType,
+      },
+    });
+
+    const credentials = [
+      {
+        key: 'promptpay_id',
+        value: branch.promptPayId,
+        isSecret: false,
+      },
+      {
+        key: 'promptpay_name',
+        value: branch.promptPayName,
+        isSecret: false,
+      },
+    ];
+
+    for (const credential of credentials) {
+      await prisma.branchPaymentCredential.upsert({
+        where: {
+          branchPaymentConfigId_key: {
+            branchPaymentConfigId: config.id,
+            key: credential.key,
+          },
+        },
+        update: {
+          valueEncrypted: encryptBranchPaymentCredential(credential.value),
+          maskedValue: maskCredentialValue(credential.value, credential.isSecret),
+          isSecret: credential.isSecret,
+        },
+        create: {
+          branchPaymentConfigId: config.id,
+          key: credential.key,
+          valueEncrypted: encryptBranchPaymentCredential(credential.value),
+          maskedValue: maskCredentialValue(credential.value, credential.isSecret),
+          isSecret: credential.isSecret,
+        },
+      });
+    }
+
+    await prisma.branchPaymentCapability.upsert({
+      where: {
+        branchPaymentConfigId: config.id,
+      },
+      update: {
+        supportsWebhook: false,
+        supportsPolling: false,
+        supportsDynamicQr: false,
+        supportsReferenceBinding: true,
+        supportsRefund: false,
+        supportsSliplessConfirmation: false,
+      },
+      create: {
+        branchPaymentConfigId: config.id,
+        supportsWebhook: false,
+        supportsPolling: false,
+        supportsDynamicQr: false,
+        supportsReferenceBinding: true,
+        supportsRefund: false,
+        supportsSliplessConfirmation: false,
+      },
+    });
+  }
+}
+
+async function upsertCoupons() {
+  for (const coupon of coupons) {
+    await prisma.coupon.upsert({
+      where: { id: coupon.id },
+      update: {
+        code: coupon.code,
+        title: coupon.title,
+        description: coupon.description,
+        scope: coupon.scope,
+        status: 'active',
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        minSpend: coupon.minSpend,
+        maxUses: coupon.maxUses,
+        maxUsesPerUser: coupon.maxUsesPerUser,
+        packageIds: coupon.packageIds,
+        validFrom: coupon.validFrom,
+        validUntil: coupon.validUntil,
+      },
+      create: {
+        id: coupon.id,
+        code: coupon.code,
+        title: coupon.title,
+        description: coupon.description,
+        scope: coupon.scope,
+        status: 'active',
+        discountType: coupon.discountType,
+        discountValue: coupon.discountValue,
+        minSpend: coupon.minSpend,
+        maxUses: coupon.maxUses,
+        maxUsesPerUser: coupon.maxUsesPerUser,
+        packageIds: coupon.packageIds,
+        validFrom: coupon.validFrom,
+        validUntil: coupon.validUntil,
+      },
+    });
+
+    for (const branchId of coupon.branchIds) {
+      await prisma.couponBranchLink.upsert({
+        where: {
+          couponId_branchId: {
+            couponId: coupon.id,
+            branchId,
+          },
+        },
+        update: {},
+        create: {
+          couponId: coupon.id,
+          branchId,
+        },
+      });
+    }
+  }
+}
+
+async function upsertPromotions() {
+  for (const promotion of promotions) {
+    await prisma.promotion.upsert({
+      where: { id: promotion.id },
+      update: promotion,
+      create: promotion,
+    });
+  }
+}
+
+async function upsertRewards() {
+  for (const reward of rewards) {
+    await prisma.rewardCatalog.upsert({
+      where: { id: reward.id },
+      update: reward,
+      create: reward,
+    });
+  }
+}
+
+async function upsertUsersAndWallets() {
+  for (const user of testUsers) {
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {
+        lineUserId: user.lineUserId,
+        displayName: user.displayName,
+        phone: user.phone,
+        tier: user.tier,
+        totalPoints: user.totalPoints,
+        totalWashes: user.totalWashes,
+      },
+      create: {
+        ...user,
+      },
+    });
+
+    const wallet = await prisma.pointWallet.upsert({
+      where: { userId: user.id },
+      update: {
+        balance: user.totalPoints,
+        lifetimeEarned: user.totalPoints,
+        lifetimeRedeemed: 0,
+      },
+      create: {
+        userId: user.id,
+        balance: user.totalPoints,
+        lifetimeEarned: user.totalPoints,
+        lifetimeRedeemed: 0,
+      },
+    });
+
+    await prisma.pointsTransaction.upsert({
+      where: { id: `pt_init_${user.id}` },
+      update: {
+        walletId: wallet.id,
+        amount: user.totalPoints,
+        balanceAfter: user.totalPoints,
+        description: 'Initial seed balance',
+      },
+      create: {
+        id: `pt_init_${user.id}`,
+        walletId: wallet.id,
+        userId: user.id,
+        type: 'adjust',
+        amount: user.totalPoints,
+        balanceAfter: user.totalPoints,
+        description: 'Initial seed balance',
+      },
+    });
+
+    await prisma.stamp.upsert({
+      where: { id: `stamp_${user.id}` },
+      update: {
+        userId: user.id,
+        currentCount: Math.min(user.totalWashes, 10),
+        targetCount: 10,
+        rewardClaimed: false,
+      },
+      create: {
+        id: `stamp_${user.id}`,
+        userId: user.id,
+        currentCount: Math.min(user.totalWashes, 10),
+        targetCount: 10,
+      },
+    });
+
+    await prisma.piggyBank.upsert({
+      where: { userId: user.id },
+      update: {},
+      create: { userId: user.id },
+    });
+  }
+
+  await prisma.userCoupon.upsert({
+    where: { userId_couponId: { userId: 'user_demo_001', couponId: 'coupon_welcome_all' } },
+    update: { status: 'claimed' },
+    create: {
+      userId: 'user_demo_001',
+      couponId: 'coupon_welcome_all',
+      status: 'claimed',
+    },
+  });
+
+  await prisma.feedback.upsert({
+    where: { id: 'feedback_seed_001' },
+    update: {
+      userId: 'user_demo_001',
+      branchId: 'branch_c01',
+      type: 'service',
+      message: 'Need help checking a recent wash and points posting.',
+      status: 'pending',
+      adminNotes: null,
+      resolvedAt: null,
+    },
+    create: {
+      id: 'feedback_seed_001',
+      userId: 'user_demo_001',
+      branchId: 'branch_c01',
+      type: 'service',
+      message: 'Need help checking a recent wash and points posting.',
+      status: 'pending',
+    },
+  });
+}
+
+async function upsertAdmins() {
   const hqPassword = await bcrypt.hash('admin123', 12);
-  const managerPassword = await bcrypt.hash('manager123', 12);
-  const franchisePassword = await bcrypt.hash('franchise123', 12);
+  const branchPassword = await bcrypt.hash('manager123', 12);
+  const eastPassword = await bcrypt.hash('branch123', 12);
 
-  await prisma.adminUser.upsert({
+  const hqAdmin = await prisma.adminUser.upsert({
     where: { email: 'admin@roboss.co.th' },
-    update: {},
+    update: {
+      name: 'ROBOSS HQ Admin',
+      role: 'hq_admin',
+      isActive: true,
+    },
     create: {
       email: 'admin@roboss.co.th',
       passwordHash: hqPassword,
-      name: 'ROBOSS Admin (HQ)',
-      role: 'hq',
-      branchIds: [],
+      name: 'ROBOSS HQ Admin',
+      role: 'hq_admin',
     },
   });
 
-  await prisma.adminUser.upsert({
-    where: { email: 'manager@roboss.co.th' },
-    update: {},
+  const ramaAdmin = await prisma.adminUser.upsert({
+    where: { email: 'rama.manager@roboss.co.th' },
+    update: {
+      name: 'Bangkok Branch Admin',
+      role: 'branch_admin',
+      isActive: true,
+    },
     create: {
-      email: 'manager@roboss.co.th',
-      passwordHash: managerPassword,
-      name: 'Branch Manager',
-      role: 'branch_manager',
-      branchIds: ['branch_c01', 'branch_c02'],
+      email: 'rama.manager@roboss.co.th',
+      passwordHash: branchPassword,
+      name: 'Bangkok Branch Admin',
+      role: 'branch_admin',
     },
   });
 
-  await prisma.adminUser.upsert({
-    where: { email: 'franchise@roboss.co.th' },
-    update: {},
+  const eastAdmin = await prisma.adminUser.upsert({
+    where: { email: 'east.manager@roboss.co.th' },
+    update: {
+      name: 'East Zone Branch Admin',
+      role: 'branch_admin',
+      isActive: true,
+    },
     create: {
-      email: 'franchise@roboss.co.th',
-      passwordHash: franchisePassword,
-      name: 'Franchise Owner (ภาคใต้)',
-      role: 'franchise_owner',
-      branchIds: ['branch_c04', 'branch_c05', 'branch_c06', 'branch_b04', 'branch_b05'],
+      email: 'east.manager@roboss.co.th',
+      passwordHash: eastPassword,
+      name: 'East Zone Branch Admin',
+      role: 'branch_admin',
     },
   });
 
-  console.log('Seed completed!');
-  console.log(`  ${allBranches.length} branches (${carBranches.length} car + ${motoBranches.length} bike)`);
-  console.log(`  ${carPackages.length + motoPackages.length + 1} packages`);
-  console.log(`  ${coupons.length} coupons`);
-  console.log(`  ${promotions.length} promotions`);
-  console.log('  3 admin users');
+  const scopes = [
+    { adminUserId: ramaAdmin.id, branchId: 'branch_c01' },
+    { adminUserId: ramaAdmin.id, branchId: 'branch_c02' },
+    { adminUserId: eastAdmin.id, branchId: 'branch_c04' },
+    { adminUserId: eastAdmin.id, branchId: 'branch_b01' },
+  ];
+
+  for (const scope of scopes) {
+    await prisma.adminBranchScope.upsert({
+      where: {
+        adminUserId_branchId: {
+          adminUserId: scope.adminUserId,
+          branchId: scope.branchId,
+        },
+      },
+      update: {
+        canManageCoupons: true,
+        canManageMachines: true,
+        canViewRevenue: true,
+      },
+      create: scope,
+    });
+  }
+
+  await prisma.auditLog.upsert({
+    where: { id: 'audit_seed_hq_admin' },
+    update: {
+      actorType: 'admin',
+      adminUserId: hqAdmin.id,
+      action: 'seed.bootstrap',
+      entityType: 'system',
+      entityId: 'seed',
+    },
+    create: {
+      id: 'audit_seed_hq_admin',
+      actorType: 'admin',
+      adminUserId: hqAdmin.id,
+      action: 'seed.bootstrap',
+      entityType: 'system',
+      entityId: 'seed',
+      metadata: { source: 'prisma.seed.ts' },
+    },
+  });
+}
+
+async function main() {
+  console.log('Seeding ROBOSS Sprint 1 foundation...');
+
+  await upsertPackages();
+  await upsertBranches();
+  await upsertMachines();
+  await upsertBranchPackageConfigs();
+  await upsertBranchPaymentConfigs();
+  await upsertCoupons();
+  await upsertPromotions();
+  await upsertRewards();
+  await upsertUsersAndWallets();
+  await upsertAdmins();
+
+  console.log(`Seed completed:
+  branches: ${branches.length}
+  packages: ${packages.length}
+  coupons: ${coupons.length}
+  promotions: ${promotions.length}
+  rewards: ${rewards.length}
+  test users: ${testUsers.length}
+  admins: 3`);
 }
 
 main()
-  .catch(console.error)
-  .finally(() => prisma.$disconnect());
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });

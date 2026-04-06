@@ -1,12 +1,14 @@
+import type { Prisma } from '@prisma/client';
 import mqtt from 'mqtt';
-import { prisma } from '../lib/prisma.js';
+import { handleMachineEvent, markStaleMachinesOffline, type MachineEventInput, type MachineEventType } from './machine-events.js';
 
 let client: mqtt.MqttClient | null = null;
+const MQTT_TOPIC_PREFIX = (process.env.MQTT_TOPIC_PREFIX || 'roboss').replace(/^\/+|\/+$/g, '');
 
 type WashCommandType = 'start' | 'stop' | 'pause' | 'resume';
 type MachineCommandType = 'restart' | 'maintenance_on' | 'maintenance_off';
 
-interface MachineStatusPayload {
+interface LegacyStatusPayload {
   espDeviceId: string;
   status: 'idle' | 'washing' | 'maintenance' | 'offline';
   currentStep?: number;
@@ -15,63 +17,68 @@ interface MachineStatusPayload {
   firmwareVersion?: string;
 }
 
-const sessionProgressListeners = new Map<string, Set<(data: unknown) => void>>();
+function mapLegacyStatusPayload(payload: LegacyStatusPayload): MachineEventInput {
+  const statusToEvent: Record<LegacyStatusPayload['status'], MachineEventType> = {
+    idle: payload.progress !== undefined && payload.progress >= 100 ? 'completed' : 'heartbeat',
+    washing: payload.progress !== undefined || payload.currentStep !== undefined ? 'progress_updated' : 'washing_started',
+    maintenance: 'maintenance',
+    offline: 'offline',
+  };
 
-export function onSessionProgress(sessionId: string, callback: (data: unknown) => void) {
-  if (!sessionProgressListeners.has(sessionId)) {
-    sessionProgressListeners.set(sessionId, new Set());
-  }
-  sessionProgressListeners.get(sessionId)!.add(callback);
-
-  return () => {
-    sessionProgressListeners.get(sessionId)?.delete(callback);
-    if (sessionProgressListeners.get(sessionId)?.size === 0) {
-      sessionProgressListeners.delete(sessionId);
-    }
+  return {
+    type: statusToEvent[payload.status],
+    espDeviceId: payload.espDeviceId,
+    sessionId: payload.sessionId,
+    machineStatus: payload.status,
+    currentStep: payload.currentStep,
+    progress: payload.progress,
+    firmwareVersion: payload.firmwareVersion,
+    rawPayload: payload as unknown as Prisma.InputJsonValue,
   };
 }
 
-function notifyProgressListeners(sessionId: string, data: unknown) {
-  sessionProgressListeners.get(sessionId)?.forEach((cb) => cb(data));
+function mapPayloadToMachineEvent(payload: Record<string, unknown>) {
+  if (typeof payload.type === 'string') {
+    return {
+      type: payload.type as MachineEventType,
+      machineId: typeof payload.machineId === 'string' ? payload.machineId : undefined,
+      branchId: typeof payload.branchId === 'string' ? payload.branchId : undefined,
+      espDeviceId: typeof payload.espDeviceId === 'string' ? payload.espDeviceId : undefined,
+      sessionId: typeof payload.sessionId === 'string' ? payload.sessionId : undefined,
+      paymentId: typeof payload.paymentId === 'string' ? payload.paymentId : undefined,
+      paymentReference: typeof payload.reference === 'string' ? payload.reference : undefined,
+      scanTokenId: typeof payload.scanTokenId === 'string' ? payload.scanTokenId : undefined,
+      machineStatus: typeof payload.machineStatus === 'string' ? (payload.machineStatus as MachineEventInput['machineStatus']) : undefined,
+      currentStep: typeof payload.currentStep === 'number' ? payload.currentStep : undefined,
+      progress: typeof payload.progress === 'number' ? payload.progress : undefined,
+      firmwareVersion: typeof payload.firmwareVersion === 'string' ? payload.firmwareVersion : undefined,
+      reason: typeof payload.reason === 'string' ? payload.reason : undefined,
+      errorCode: typeof payload.errorCode === 'string' ? payload.errorCode : undefined,
+      occurredAt: typeof payload.occurredAt === 'string' ? payload.occurredAt : undefined,
+      rawPayload: payload as unknown as Prisma.InputJsonValue,
+    } satisfies MachineEventInput;
+  }
+
+  return mapLegacyStatusPayload(payload as unknown as LegacyStatusPayload);
 }
 
-async function handleMachineStatus(topic: string, payload: MachineStatusPayload) {
-  const { espDeviceId, status, currentStep, progress, sessionId, firmwareVersion } = payload;
+async function handleIncomingMessage(topic: string, payload: Record<string, unknown>) {
+  const escapedPrefix = MQTT_TOPIC_PREFIX.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const branchMatch = topic.match(new RegExp(`^${escapedPrefix}/([^/]+)/([^/]+)/(status|events)$`));
+  const mapped = mapPayloadToMachineEvent(payload);
 
-  // Update machine status in DB
-  await prisma.machine.updateMany({
-    where: { espDeviceId },
-    data: {
-      status,
-      lastHeartbeat: new Date(),
-      ...(firmwareVersion && { firmwareVersion }),
-    },
-  });
-
-  // If there's an active session, update its progress
-  if (sessionId && (currentStep !== undefined || progress !== undefined)) {
-    const updateData: Record<string, unknown> = {};
-    if (currentStep !== undefined) updateData.currentStep = currentStep;
-    if (progress !== undefined) updateData.progress = progress;
-
-    if (status === 'idle' && progress === 100) {
-      updateData.washStatus = 'completed';
-      updateData.completedAt = new Date();
-    }
-
-    await prisma.washSession.update({
-      where: { id: sessionId },
-      data: updateData,
-    });
-
-    notifyProgressListeners(sessionId, { currentStep, progress, status });
+  if (branchMatch) {
+    mapped.branchId = mapped.branchId ?? branchMatch[1];
+    mapped.espDeviceId = mapped.espDeviceId ?? branchMatch[2];
   }
+
+  await handleMachineEvent(mapped, 'mqtt');
 }
 
 export function initMqtt() {
   const brokerUrl = process.env.MQTT_BROKER_URL;
   if (!brokerUrl) {
-    console.log('MQTT_BROKER_URL not set — MQTT disabled');
+    console.log('MQTT_BROKER_URL not set - MQTT disabled');
     return;
   }
 
@@ -83,39 +90,29 @@ export function initMqtt() {
 
   client.on('connect', () => {
     console.log('MQTT connected');
-    // Subscribe to all machine status topics
-    client!.subscribe('roboss/+/+/status', (err) => {
-      if (err) console.error('MQTT subscribe error:', err);
-      else console.log('Subscribed to roboss/+/+/status');
-    });
+    client!.subscribe(
+      [`${MQTT_TOPIC_PREFIX}/+/+/status`, `${MQTT_TOPIC_PREFIX}/+/+/events`],
+      (err) => {
+        if (err) console.error('MQTT subscribe error:', err);
+        else console.log(`Subscribed to ${MQTT_TOPIC_PREFIX}/+/+/(status|events)`);
+      }
+    );
   });
 
   client.on('message', async (topic, message) => {
     try {
-      const payload = JSON.parse(message.toString());
-
-      // Topic format: roboss/{branchId}/{machineId}/status
-      if (topic.endsWith('/status')) {
-        await handleMachineStatus(topic, payload);
-      }
-    } catch (err) {
-      console.error('MQTT message error:', err);
+      const payload = JSON.parse(message.toString()) as Record<string, unknown>;
+      await handleIncomingMessage(topic, payload);
+    } catch (error) {
+      console.error('MQTT message error:', error);
     }
   });
 
   client.on('error', (err) => console.error('MQTT error:', err));
   client.on('close', () => console.log('MQTT disconnected'));
 
-  // Heartbeat checker — mark machines offline if no heartbeat for 2 minutes
   setInterval(async () => {
-    const threshold = new Date(Date.now() - 2 * 60 * 1000);
-    await prisma.machine.updateMany({
-      where: {
-        status: { not: 'offline' },
-        lastHeartbeat: { lt: threshold },
-      },
-      data: { status: 'offline' },
-    });
+    await markStaleMachinesOffline();
   }, 60_000);
 }
 
@@ -126,12 +123,12 @@ export function publishWashCommand(
   payload: Record<string, unknown> = {}
 ) {
   if (!client?.connected) {
-    console.warn('MQTT not connected — command not sent');
+    console.warn('MQTT not connected - command not sent');
     return false;
   }
 
-  const topic = `roboss/${branchId}/${machineEspId}/command`;
-  client.publish(topic, JSON.stringify({ command, ...payload, timestamp: Date.now() }));
+  const normalizedTopic = `${MQTT_TOPIC_PREFIX}/${branchId}/${machineEspId}/command`;
+  client.publish(normalizedTopic, JSON.stringify({ command, ...payload, timestamp: Date.now() }));
   return true;
 }
 
@@ -142,11 +139,19 @@ export function publishMachineCommand(
 ) {
   if (!client?.connected) return false;
 
-  const topic = `roboss/${branchId}/${machineEspId}/manage`;
+  const topic = `${MQTT_TOPIC_PREFIX}/${branchId}/${machineEspId}/manage`;
   client.publish(topic, JSON.stringify({ command, timestamp: Date.now() }));
   return true;
 }
 
+export function isMqttReady() {
+  return Boolean(client?.connected);
+}
+
 export function getMqttClient() {
   return client;
+}
+
+export function getMqttTopicPrefix() {
+  return MQTT_TOPIC_PREFIX;
 }

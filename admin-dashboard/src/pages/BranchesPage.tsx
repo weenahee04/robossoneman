@@ -1,247 +1,500 @@
-import React, { useState, useEffect } from 'react';
-import {
-  Building2, MapPin, Clock, Star, MoreVertical, Plus,
-  Search, ExternalLink, Activity, TrendingUp,
-} from 'lucide-react';
-import { MOCK_BRANCHES, MOCK_MACHINES, MOCK_SESSIONS, type Branch, type Machine } from '@/services/mockData';
-import api, { USE_API } from '@/services/api';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { Building2, MapPin, Plus, Save } from 'lucide-react';
+import api, { type AdminUser, type BranchOption, type BranchSettings, type BranchSummary } from '@/services/api';
 
-export function BranchesPage() {
-  const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState<'all' | 'active' | 'inactive'>('all');
-  const [areaFilter, setAreaFilter] = useState('all');
-  const [branchesData, setBranchesData] = useState(MOCK_BRANCHES);
-  const [machinesData, setMachinesData] = useState<Machine[]>(MOCK_MACHINES);
+interface BranchesPageProps {
+  admin: AdminUser;
+  branchId: string | null;
+  branches: BranchOption[];
+  onBranchesChanged: () => Promise<void>;
+}
+
+type Branchฉบับร่าง = {
+  id?: string;
+  code: string;
+  name: string;
+  shortName: string;
+  address: string;
+  area: string;
+  type: string;
+  ownershipType: 'company_owned' | 'franchise';
+  franchiseCode: string;
+  lat: number;
+  lng: number;
+  mapsUrl: string;
+  promptPayId: string;
+  promptPayName: string;
+  ownerName: string;
+  hours: string;
+  isActive: boolean;
+  settings: BranchSettings;
+};
+
+function getBranchStatusLabel(active: boolean) {
+  return active ? 'เปิดใช้งาน' : 'ปิดใช้งาน';
+}
+
+const defaultSettings: BranchSettings = {
+  timezone: 'Asia/Bangkok',
+  currency: 'THB',
+  locale: 'th-TH',
+  pointsEarnRate: 10,
+  pointsMinSpend: 1,
+  allowsPointRedemption: true,
+  receiptFooter: '',
+  supportPhone: '',
+  maxConcurrentSessions: 2,
+  washStartGraceMinutes: 15,
+};
+
+function createEmptyฉบับร่าง(): Branchฉบับร่าง {
+  return {
+    code: '',
+    name: '',
+    shortName: '',
+    address: '',
+    area: '',
+    type: 'car',
+    ownershipType: 'franchise',
+    franchiseCode: '',
+    lat: 13.7563,
+    lng: 100.5018,
+    mapsUrl: '',
+    promptPayId: '',
+    promptPayName: '',
+    ownerName: '',
+    hours: '06:00 - 22:00',
+    isActive: true,
+    settings: { ...defaultSettings },
+  };
+}
+
+function toฉบับร่าง(branch: BranchSummary): Branchฉบับร่าง {
+  return {
+    id: branch.id,
+    code: branch.code,
+    name: branch.name,
+    shortName: branch.shortName ?? '',
+    address: branch.address,
+    area: branch.area,
+    type: branch.type,
+    ownershipType: branch.ownershipType,
+    franchiseCode: branch.franchiseCode ?? '',
+    lat: branch.lat,
+    lng: branch.lng,
+    mapsUrl: branch.mapsUrl ?? '',
+    promptPayId: branch.promptPayId,
+    promptPayName: branch.promptPayName,
+    ownerName: branch.ownerName ?? '',
+    hours: branch.hours ?? '',
+    isActive: branch.isActive,
+    settings: {
+      ...defaultSettings,
+      ...branch.settings,
+      receiptFooter: branch.settings?.receiptFooter ?? '',
+      supportPhone: branch.settings?.supportPhone ?? '',
+    },
+  };
+}
+
+export function BranchesPage({ admin, branchId, onBranchesChanged }: BranchesPageProps) {
+  const [items, setItems] = useState<BranchSummary[]>([]);
+  const [selectedId, setSelectedId] = useState<string | 'new' | null>(null);
+  const [draft, setฉบับร่าง] = useState<Branchฉบับร่าง>(createEmptyฉบับร่าง());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!USE_API) return;
     let cancelled = false;
+    setLoading(true);
+
     (async () => {
       try {
-        const [b, m] = await Promise.all([api.fetchBranches(), api.fetchMachines()]);
-        if (!cancelled) { setBranchesData(b); setMachinesData(m); }
-      } catch { /* keep mock data */ }
+        const response = await api.fetchBranches(branchId);
+        if (cancelled) {
+          return;
+        }
+
+        setItems(response);
+        setError(null);
+        if (response.length === 0) {
+          setSelectedId(admin.role === 'hq_admin' ? 'new' : null);
+          setฉบับร่าง(createEmptyฉบับร่าง());
+          return;
+        }
+
+        const preferredBranch =
+          (branchId ? response.find((branch) => branch.id === branchId) : undefined) ??
+          (selectedId && selectedId !== 'new' ? response.find((branch) => branch.id === selectedId) : undefined) ??
+          response[0];
+
+        setSelectedId(preferredBranch.id);
+        setฉบับร่าง(toฉบับร่าง(preferredBranch));
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || 'โหลดข้อมูลสาขาไม่สำเร็จ');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     })();
-    return () => { cancelled = true; };
-  }, []);
 
-  const areas = ['all', ...Array.from(new Set(branchesData.map(b => b.area)))];
+    return () => {
+      cancelled = true;
+    };
+  }, [admin.role, branchId]);
 
-  const filtered = branchesData.filter(b => {
-    const matchSearch =
-      b.name.toLowerCase().includes(search.toLowerCase()) ||
-      b.area.toLowerCase().includes(search.toLowerCase()) ||
-      b.address.toLowerCase().includes(search.toLowerCase());
-    const matchFilter = filter === 'all' || (filter === 'active' ? b.isActive : !b.isActive);
-    const matchArea = areaFilter === 'all' || b.area === areaFilter;
-    return matchSearch && matchFilter && matchArea;
-  });
+  const scopedสาขา = useMemo(() => {
+    if (admin.role === 'hq_admin') {
+      return items;
+    }
 
-  const totalRevenue = branchesData.reduce((s, b) => s + b.todayRevenue, 0);
-  const totalSessions = branchesData.reduce((s, b) => s + b.todaySessions, 0);
-  const activeBranches = branchesData.filter(b => b.isActive).length;
+    return items.filter((branch) => admin.branchIds.includes(branch.id));
+  }, [admin, items]);
+
+  const selectedBranch = selectedId && selectedId !== 'new' ? items.find((branch) => branch.id === selectedId) ?? null : null;
+
+  async function saveBranch() {
+    setSaving(true);
+    setError(null);
+
+    const payload = {
+      code: draft.code,
+      name: draft.name,
+      shortName: draft.shortName || null,
+      address: draft.address,
+      area: draft.area,
+      type: draft.type,
+      ownershipType: draft.ownershipType,
+      franchiseCode: draft.franchiseCode || null,
+      lat: Number(draft.lat),
+      lng: Number(draft.lng),
+      mapsUrl: draft.mapsUrl || null,
+      promptPayId: draft.promptPayId,
+      promptPayName: draft.promptPayName,
+      ownerName: draft.ownerName || null,
+      hours: draft.hours || null,
+      isActive: draft.isActive,
+      settings: {
+        ...draft.settings,
+        receiptFooter: draft.settings.receiptFooter || null,
+        supportPhone: draft.settings.supportPhone || null,
+      },
+    };
+
+    try {
+      if (selectedId === 'new' || !draft.id) {
+        await api.createBranch(payload as any);
+      } else {
+        await api.updateBranch(draft.id, payload as any);
+      }
+
+      await onBranchesChanged();
+      const response = await api.fetchBranches(branchId);
+      setItems(response);
+      const persisted = response.find((branch) => branch.code === draft.code) ?? response.find((branch) => branch.id === draft.id) ?? response[0];
+      if (persisted) {
+        setSelectedId(persisted.id);
+        setฉบับร่าง(toฉบับร่าง(persisted));
+      }
+    } catch (err: any) {
+      setError(err.message || 'บันทึกข้อมูลสาขาไม่สำเร็จ');
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="max-w-[1500px] space-y-6">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">จัดการสาขา</h2>
-          <p className="text-gray-500 text-sm mt-0.5">
-            {activeBranches} จาก {branchesData.length} สาขาเปิดให้บริการ
+          <h2 className="text-2xl font-bold text-white">{admin.role === 'hq_admin' ? 'จัดการสาขา' : 'ข้อมูลและการตั้งค่าสาขา'}</h2>
+          <p className="mt-1 text-sm text-gray-500">
+            {admin.role === 'hq_admin'
+              ? 'จัดการข้อมูลสาขา การชำระเงิน รูปแบบการถือครอง และการตั้งค่าการปฏิบัติงานจากฝั่ง HQ'
+              : 'ตรวจสอบและอัปเดตรายละเอียดสาขาในขอบเขตที่ได้รับมอบหมาย'}
           </p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-medium text-sm hover:from-red-600 hover:to-red-700 transition-all shadow-lg shadow-red-500/20">
-          <Plus className="w-4 h-4" /> เพิ่มสาขาใหม่
-        </button>
+
+        {admin.role === 'hq_admin' && (
+          <button
+            onClick={() => {
+              setSelectedId('new');
+              setฉบับร่าง(createEmptyฉบับร่าง());
+            }}
+            className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
+          >
+            <Plus className="h-4 w-4" />
+            สาขาใหม่
+          </button>
+        )}
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="gradient-card rounded-2xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-            <Building2 className="w-5 h-5 text-green-400" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-white">{activeBranches}</p>
-            <p className="text-xs text-gray-500">สาขาเปิดบริการ</p>
-          </div>
-        </div>
-        <div className="gradient-card rounded-2xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
-            <Activity className="w-5 h-5 text-blue-400" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-white">{totalSessions}</p>
-            <p className="text-xs text-gray-500">Session วันนี้</p>
-          </div>
-        </div>
-        <div className="gradient-card rounded-2xl p-4 flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-red-400" />
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-white">
-              ฿{(totalRevenue / 1000).toFixed(1)}k
-            </p>
-            <p className="text-xs text-gray-500">รายได้วันนี้</p>
-          </div>
-        </div>
-      </div>
+      {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>}
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="ค้นหาสาขา, ที่อยู่, จังหวัด..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2.5 bg-gray-800/50 border border-gray-700/50 rounded-xl text-sm text-gray-300 placeholder-gray-500 focus:outline-none focus:border-red-500/50 transition-all"
-          />
-        </div>
-        <div className="flex gap-1">
-          {['all', 'active', 'inactive'].map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f as any)}
-              className={`px-4 py-2 rounded-xl text-xs font-medium transition-colors ${
-                filter === f ? 'bg-red-500/20 text-red-400' : 'text-gray-500 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              {f === 'all' ? 'ทั้งหมด' : f === 'active' ? 'เปิดให้บริการ' : 'ปิดปรับปรุง'}
-            </button>
-          ))}
-        </div>
-        <select
-          value={areaFilter}
-          onChange={e => setAreaFilter(e.target.value)}
-          className="px-3 py-2 bg-gray-800/50 border border-gray-700/50 rounded-xl text-xs text-gray-300 focus:outline-none focus:border-red-500/50"
-        >
-          {areas.map(a => (
-            <option key={a} value={a} className="bg-gray-900">
-              {a === 'all' ? 'ทุกจังหวัด' : a}
-            </option>
-          ))}
-        </select>
-      </div>
+      <div className="grid gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-4">
+          {loading && <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-6 text-sm text-gray-400">กำลังโหลดสาขา...</div>}
 
-      {/* Branch Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-        {filtered.map(branch => {
-          const branchMachines = machinesData.filter(m => m.branchId === branch.id);
-          const busyCount = branchMachines.filter(m => m.status === 'busy').length;
-          const offlineCount = branchMachines.filter(m => m.status === 'offline' || m.status === 'maintenance').length;
-
-          return (
-            <div
-              key={branch.id}
-              className="gradient-card rounded-2xl p-5 hover:border-gray-700/80 transition-all group cursor-pointer"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${
-                    branch.isActive ? 'bg-green-500/10' : 'bg-red-500/10'
-                  }`}>
-                    <Building2 className={`w-5 h-5 ${branch.isActive ? 'text-green-400' : 'text-red-400'}`} />
+          {!loading &&
+            scopedสาขา.map((branch) => (
+              <button
+                key={branch.id}
+                onClick={() => {
+                  setSelectedId(branch.id);
+                  setฉบับร่าง(toฉบับร่าง(branch));
+                }}
+                className={`w-full rounded-2xl border p-5 text-left transition-all ${
+                  selectedId === branch.id ? 'border-red-500/30 bg-red-500/10' : 'border-white/5 bg-white/[0.03] hover:bg-white/[0.05]'
+                }`}
+              >
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/5">
+                      <Building2 className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white">{branch.name}</h3>
+                      <p className="text-xs text-gray-500">{branch.code}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-white font-semibold text-sm leading-tight">{branch.name}</h3>
-                    <span className={`inline-block mt-1 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                      branch.isActive ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
-                    }`}>
-                      {branch.isActive ? '● เปิดบริการ' : '● ปิดปรับปรุง'}
-                    </span>
-                  </div>
-                </div>
-                <button className="p-1 rounded-lg text-gray-500 hover:text-white hover:bg-white/5 opacity-0 group-hover:opacity-100 transition-all">
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Address */}
-              <div className="mb-3">
-                <p className="text-xs text-gray-400 leading-relaxed">{branch.address}</p>
-                <div className="flex items-center justify-between mt-1.5">
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    <span>{branch.operatingHours.open} – {branch.operatingHours.close}</span>
-                    <span className="text-gray-600">•</span>
-                    <Star className="w-3 h-3 text-yellow-400" />
-                    <span className="text-yellow-400 font-medium">{branch.avgRating}</span>
-                  </div>
-                  {branch.mapsUrl && (
-                    <a
-                      href={branch.mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={e => e.stopPropagation()}
-                      className="flex items-center gap-1 text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
-                    >
-                      <MapPin className="w-3 h-3" />
-                      Google Maps
-                      <ExternalLink className="w-2.5 h-2.5" />
-                    </a>
-                  )}
-                </div>
-                <p className="text-[10px] text-gray-600 mt-0.5">
-                  {branch.location.lat.toFixed(4)}, {branch.location.lng.toFixed(4)}
-                </p>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.04] text-center">
-                  <p className="text-base font-bold text-white">{branch.machineCount}</p>
-                  <p className="text-[10px] text-gray-500">เครื่อง</p>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.04] text-center">
-                  <p className="text-base font-bold text-blue-400">{branch.todaySessions}</p>
-                  <p className="text-[10px] text-gray-500">session</p>
-                </div>
-                <div className="p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.04] text-center">
-                  <p className="text-base font-bold text-green-400">
-                    {(branch.todayRevenue / 1000).toFixed(1)}k
-                  </p>
-                  <p className="text-[10px] text-gray-500">รายได้</p>
-                </div>
-              </div>
-
-              {/* Machine Status Bar */}
-              {branchMachines.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden flex gap-0.5">
-                    {branchMachines.map(m => (
-                      <div
-                        key={m.id}
-                        className={`flex-1 h-full rounded-full ${
-                          m.status === 'busy' ? 'bg-blue-500' :
-                          m.status === 'idle' ? 'bg-green-500' :
-                          m.status === 'maintenance' ? 'bg-yellow-500' : 'bg-red-500'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-[10px] text-gray-500">
-                    {busyCount > 0 && <span className="text-blue-400">{busyCount} กำลังใช้</span>}
-                    {offlineCount > 0 && <span className="text-red-400 ml-1">{offlineCount} ออฟไลน์</span>}
-                    {busyCount === 0 && offlineCount === 0 && <span className="text-green-400">พร้อมใช้</span>}
+                  <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] tracking-wide text-gray-200">
+                    {getBranchStatusLabel(branch.isActive)}
                   </span>
                 </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-20 text-gray-500">
-          <Building2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>ไม่พบสาขาที่ค้นหา</p>
+                <div className="space-y-2 text-sm text-gray-400">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="mt-0.5 h-4 w-4 text-gray-500" />
+                    <div>
+                      <p>{branch.address}</p>
+                      <p className="text-xs text-gray-500">{branch.area}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-2 text-center">
+                    <div className="rounded-xl bg-black/20 px-3 py-2">
+                      <p className="text-lg font-bold text-white">{branch.machineCount}</p>
+                      <p className="text-[11px] text-gray-500">เครื่อง</p>
+                    </div>
+                    <div className="rounded-xl bg-black/20 px-3 py-2">
+                      <p className="text-lg font-bold text-white">{branch.todaySessions}</p>
+                      <p className="text-[11px] text-gray-500">รอบวันนี้</p>
+                    </div>
+                    <div className="rounded-xl bg-black/20 px-3 py-2">
+                      <p className="text-lg font-bold text-white">{branch.todayRevenue.toLocaleString()}</p>
+                      <p className="text-[11px] text-gray-500">บาทวันนี้</p>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
         </div>
-      )}
+
+        <div className="gradient-card rounded-[28px] p-6">
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.24em] text-gray-500">
+                {selectedId === 'new' ? 'สร้างสาขา' : 'ตั้งค่าสาขา'}
+              </p>
+              <h3 className="text-xl font-bold text-white">
+                {selectedId === 'new' ? 'ตั้งค่าสาขาใหม่' : selectedBranch?.name ?? 'แบบฟอร์มสาขา'}
+              </h3>
+            </div>
+            {(admin.role === 'hq_admin' || selectedBranch) && (
+              <button
+                onClick={() => void saveBranch()}
+                disabled={saving}
+                className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {saving ? 'กำลังบันทึก...' : selectedId === 'new' ? 'สร้างสาขา' : 'บันทึกการเปลี่ยนแปลง'}
+              </button>
+            )}
+          </div>
+
+          <div className="grid gap-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              <Field label="ชื่อสาขา" value={draft.name} onChange={(value) => setฉบับร่าง((current) => ({ ...current, name: value }))} />
+              <Field label="ชื่อย่อ" value={draft.shortName} onChange={(value) => setฉบับร่าง((current) => ({ ...current, shortName: value }))} />
+              <Field label="รหัส" value={draft.code} onChange={(value) => setฉบับร่าง((current) => ({ ...current, code: value.toUpperCase() }))} />
+              <Field label="พื้นที่" value={draft.area} onChange={(value) => setฉบับร่าง((current) => ({ ...current, area: value }))} />
+              <Field label="ที่อยู่" value={draft.address} onChange={(value) => setฉบับร่าง((current) => ({ ...current, address: value }))} className="md:col-span-2" />
+              <Field label="ประเภท" value={draft.type} onChange={(value) => setฉบับร่าง((current) => ({ ...current, type: value }))} />
+              <SelectField
+                label="รูปแบบการถือครอง"
+                value={draft.ownershipType}
+                onChange={(value) => setฉบับร่าง((current) => ({ ...current, ownershipType: value as 'company_owned' | 'franchise' }))}
+                options={[
+                  ['company_owned', 'บริษัทเป็นเจ้าของ'],
+                  ['franchise', 'แฟรนไชส์'],
+                ]}
+              />
+              <Field label="รหัสแฟรนไชส์" value={draft.franchiseCode} onChange={(value) => setฉบับร่าง((current) => ({ ...current, franchiseCode: value }))} />
+              <Field label="เวลาทำการ" value={draft.hours} onChange={(value) => setฉบับร่าง((current) => ({ ...current, hours: value }))} />
+              <Field label="ละติจูด" type="number" value={String(draft.lat)} onChange={(value) => setฉบับร่าง((current) => ({ ...current, lat: Number(value) }))} />
+              <Field label="ลองจิจูด" type="number" value={String(draft.lng)} onChange={(value) => setฉบับร่าง((current) => ({ ...current, lng: Number(value) }))} />
+              <Field label="ลิงก์แผนที่" value={draft.mapsUrl} onChange={(value) => setฉบับร่าง((current) => ({ ...current, mapsUrl: value }))} className="md:col-span-2" />
+              <Field label="รหัส PromptPay" value={draft.promptPayId} onChange={(value) => setฉบับร่าง((current) => ({ ...current, promptPayId: value }))} />
+              <Field label="ชื่อ PromptPay" value={draft.promptPayName} onChange={(value) => setฉบับร่าง((current) => ({ ...current, promptPayName: value }))} />
+              <Field label="ชื่อเจ้าของ" value={draft.ownerName} onChange={(value) => setฉบับร่าง((current) => ({ ...current, ownerName: value }))} />
+              <ToggleField
+                label="สาขาเปิดใช้งาน"
+                checked={draft.isActive}
+                onChange={(checked) => setฉบับร่าง((current) => ({ ...current, isActive: checked }))}
+              />
+            </div>
+
+            <div className="rounded-2xl border border-white/5 bg-black/20 p-5">
+              <h4 className="font-semibold text-white">การตั้งค่าการปฏิบัติงาน</h4>
+              <p className="mt-1 text-sm text-gray-500">การตั้งค่าเหล่านี้ส่งผลต่อราคา แต้ม และการควบคุมรอบล้างแบบเรียลไทม์</p>
+
+              <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <Field
+                  label="เบอร์ซัพพอร์ต"
+                  value={draft.settings.supportPhone ?? ''}
+                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, supportPhone: value } }))}
+                />
+                <Field
+                  label="ข้อความท้ายใบเสร็จ"
+                  value={draft.settings.receiptFooter ?? ''}
+                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, receiptFooter: value } }))}
+                />
+                <Field
+                  label="อัตราแต้มสะสม"
+                  type="number"
+                  value={String(draft.settings.pointsEarnRate)}
+                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, pointsEarnRate: Number(value) } }))}
+                />
+                <Field
+                  label="ยอดขั้นต่ำสำหรับแต้ม"
+                  type="number"
+                  value={String(draft.settings.pointsMinSpend)}
+                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, pointsMinSpend: Number(value) } }))}
+                />
+                <Field
+                  label="จำนวนรอบพร้อมกันสูงสุด"
+                  type="number"
+                  value={String(draft.settings.maxConcurrentSessions)}
+                  onChange={(value) =>
+                    setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, maxConcurrentSessions: Number(value) } }))
+                  }
+                />
+                <Field
+                  label="เวลาผ่อนผันเริ่มล้าง"
+                  type="number"
+                  value={String(draft.settings.washStartGraceMinutes)}
+                  onChange={(value) =>
+                    setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, washStartGraceMinutes: Number(value) } }))
+                  }
+                />
+                <Field
+                  label="เขตเวลา"
+                  value={draft.settings.timezone}
+                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, timezone: value } }))}
+                />
+                <Field
+                  label="ภาษา"
+                  value={draft.settings.locale}
+                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, locale: value } }))}
+                />
+                <ToggleField
+                  label="อนุญาตใช้แต้ม"
+                  checked={draft.settings.allowsPointRedemption}
+                  onChange={(checked) =>
+                    setฉบับร่าง((current) => ({ ...current, settings: { ...current.settings, allowsPointRedemption: checked } }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
+
+function Field({
+  label,
+  value,
+  onChange,
+  type = 'text',
+  className,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: string;
+  className?: string;
+}) {
+  return (
+    <label className={`block ${className ?? ''}`}>
+      <span className="mb-1.5 block text-xs font-medium text-gray-400">{label}</span>
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 text-sm text-white placeholder-gray-500 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+      />
+    </label>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  options: Array<[string, string]>;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-medium text-gray-400">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 text-sm text-white focus:border-red-500/50 focus:outline-none"
+      >
+        {options.map(([optionValue, labelValue]) => (
+          <option key={optionValue} value={optionValue}>
+            {labelValue}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function ToggleField({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between rounded-xl border border-gray-700/50 bg-gray-800/40 px-4 py-3">
+      <span className="text-sm text-gray-300">{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={`inline-flex h-7 w-12 items-center rounded-full p-1 transition-colors ${
+          checked ? 'bg-red-500' : 'bg-gray-700'
+        }`}
+      >
+        <span className={`h-5 w-5 rounded-full bg-white transition-transform ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+      </button>
+    </label>
+  );
+}
+
+
+

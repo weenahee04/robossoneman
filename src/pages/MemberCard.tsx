@@ -11,9 +11,8 @@ import { getIconUrl, type IconName } from '../services/icons';
 import { listenToUser, formatPoints } from '../services/points';
 import type { User as MockUser } from '../services/mockData';
 import { useAuth } from '@/contexts/AuthContext';
-import { useStamps, usePointsBalance } from '@/hooks/useApi';
-
-const USE_API = !!import.meta.env.VITE_API_URL;
+import { useSessionHistory, useStamps, usePointsBalance } from '@/hooks/useApi';
+import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 
 const ICONS8_BASE = 'https://img.icons8.com/?format=png&size=';
 
@@ -50,7 +49,7 @@ const benefits = [
   { icon: 25107, title: 'ล้างรถฟรี', sub: 'สะสมครบ 10 แสตมป์' },
 ];
 
-const transactions = [
+const fallbackTransactions = [
   { id: 1, service: 'SHINE MODE', branch: 'สาขาลาดพร้าว', date: '28 มี.ค.', points: '+1,490', iconId: 25107 },
   { id: 2, service: 'SPECIAL MODE', branch: 'สาขาสุขุมวิท', date: '15 มี.ค.', points: '+3,990', iconId: 25107 },
   { id: 3, service: 'QUICK & CLEAN', branch: 'สาขาบางนา', date: '10 มี.ค.', points: '+990', iconId: 25107 },
@@ -58,6 +57,7 @@ const transactions = [
 
 export function MemberCard({ onBack }: { onBack: () => void }) {
   const { user: authUser } = useAuth();
+  const sessionHistoryQuery = useSessionHistory();
   const { data: apiStamps } = useStamps();
   const { data: apiPoints } = usePointsBalance();
   const [mockUser, setMockUser] = useState<MockUser | null>(null);
@@ -70,17 +70,17 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
   const [showReward, setShowReward] = useState(false);
 
   useEffect(() => {
-    if (!USE_API) {
+    if (USE_LOCAL_DEV_FALLBACK) {
       const unsub = listenToUser(setMockUser);
       return unsub;
     }
   }, []);
 
   const user = useMemo(() => {
-    if (USE_API && authUser) {
+    if (HAS_API_BASE_URL && authUser) {
       return {
         displayName: authUser.displayName,
-        pictureUrl: authUser.pictureUrl,
+        avatarUrl: authUser.avatarUrl,
         points: apiPoints?.balance ?? authUser.totalPoints,
         totalWashes: authUser.totalWashes,
         memberSince: new Date(authUser.memberSince),
@@ -90,24 +90,52 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
   }, [authUser, mockUser, apiPoints]);
 
   useEffect(() => {
-    if (USE_API && apiStamps) {
+    if (HAS_API_BASE_URL && apiStamps) {
       setStamps(apiStamps.currentCount);
     }
   }, [apiStamps]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, String(stamps));
+    if (USE_LOCAL_DEV_FALLBACK) {
+      localStorage.setItem(STORAGE_KEY, String(stamps));
+    }
     if (stamps === TOTAL_STAMPS) setTimeout(() => setShowReward(true), 400);
   }, [stamps]);
 
   const addStamp = () => {
+    if (!USE_LOCAL_DEV_FALLBACK) return;
     if (stamps >= TOTAL_STAMPS) return;
     const next = stamps + 1;
     setAnimating(next - 1);
     setStamps(next);
     setTimeout(() => setAnimating(null), 800);
   };
-  const reset = () => { setStamps(0); setShowReward(false); };
+  const reset = () => {
+    if (!USE_LOCAL_DEV_FALLBACK) return;
+    setStamps(0);
+    setShowReward(false);
+  };
+
+  const transactions = useMemo(() => {
+    if (HAS_API_BASE_URL && sessionHistoryQuery.data?.data) {
+      return sessionHistoryQuery.data.data
+        .filter((session) => session.status === 'completed')
+        .slice(0, 3)
+        .map((session) => ({
+          id: session.id,
+          service: session.package?.name || session.packageId,
+          branch: session.branch?.name || session.branchId,
+          date: new Date(session.completedAt || session.createdAt).toLocaleDateString('th-TH', {
+            day: 'numeric',
+            month: 'short',
+          }),
+          points: `+${formatPoints(session.pointsEarned)}`,
+          iconId: 25107,
+        }));
+    }
+
+    return USE_LOCAL_DEV_FALLBACK ? fallbackTransactions : [];
+  }, [sessionHistoryQuery.data]);
 
   const currentTier = memberTiers.find(t => (user?.points || 0) >= t.min && (user?.points || 0) < t.max) || memberTiers[0];
   const nextTier = memberTiers[memberTiers.indexOf(currentTier) + 1];
@@ -323,7 +351,7 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
                 )}
               </div>
 
-              <Button variant="secondary" onClick={addStamp} disabled={stamps >= TOTAL_STAMPS} className="w-full mt-3 text-xs h-9">
+              <Button variant="secondary" onClick={addStamp} disabled={!USE_LOCAL_DEV_FALLBACK || stamps >= TOTAL_STAMPS} className="w-full mt-3 text-xs h-9">
                 {stamps >= TOTAL_STAMPS ? 'สะสมแสตมป์ครบแล้ว' : '+ จำลองเพิ่มแสตมป์'}
               </Button>
             </Card>

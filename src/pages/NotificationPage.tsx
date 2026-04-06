@@ -5,9 +5,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useNavigate } from 'react-router-dom';
 import { getIconUrl, type IconName } from '../services/icons';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks/useApi';
 import type { Notification as ApiNotification } from '@/types';
+import { USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 
 const USE_API = !!import.meta.env.VITE_API_URL;
 
@@ -71,6 +73,13 @@ interface Notification {
   iconId: number | string;
 }
 
+const NOTIFICATION_ACTIONS: Record<Notification['type'], { label: string; path: string }> = {
+  wash: { label: 'ดูประวัติ', path: '/history' },
+  coupon: { label: 'ดูคูปอง', path: '/coupon' },
+  promo: { label: 'ดูโปรโมชัน', path: '/promotion' },
+  points: { label: 'ดูแต้ม', path: '/pointsshop' },
+};
+
 const mockNotifications: Notification[] = [
   { id: '1', type: 'wash', title: 'ล้างรถเสร็จแล้ว!', message: 'SHINE MODE ที่สาขาลาดพร้าว เสร็จเรียบร้อย รับ 1,490 คะแนน', time: '5 นาทีก่อน', read: false, iconId: 11695 },
   { id: '2', type: 'coupon', title: 'คูปองใหม่! ส่วนลด 30%', message: 'คูปองส่วนลด 30% สำหรับแพ็ก SPECIAL MODE หมดอายุ 15 เม.ย.', time: '1 ชม.ที่แล้ว', read: false, iconId: 2983 },
@@ -93,19 +102,22 @@ export function NotificationPage({ onBack }: { onBack: () => void }) {
   const [localNotifications, setLocalNotifications] = useState(mockNotifications);
   const [filter, setFilter] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const apiQuery = useNotifications();
   const markReadMutation = useMarkNotificationRead();
   const markAllReadMutation = useMarkAllNotificationsRead();
 
   const notifications = useMemo<Notification[]>(() => {
-    if (USE_API && apiQuery.data?.data?.length) {
-      return apiQuery.data.data.map(mapApiNotification);
+    if (USE_API) {
+      return apiQuery.data?.data?.map(mapApiNotification) ?? [];
     }
-    return localNotifications;
+    return USE_LOCAL_DEV_FALLBACK ? localNotifications : [];
   }, [apiQuery.data, localNotifications]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = USE_API
+    ? (apiQuery.data?.unreadCount ?? notifications.filter(n => !n.read).length)
+    : notifications.filter(n => !n.read).length;
   const filtered = filter === 'all' ? notifications : notifications.filter(n => n.type === filter);
 
   const markAllRead = useCallback(() => {
@@ -122,6 +134,13 @@ export function NotificationPage({ onBack }: { onBack: () => void }) {
     setLocalNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     setExpandedId(prev => prev === id ? null : id);
   }, [markReadMutation]);
+
+  const openNotificationAction = useCallback((notif: Notification) => {
+    const action = NOTIFICATION_ACTIONS[notif.type];
+    if (!action) return;
+    markRead(notif.id);
+    navigate(action.path);
+  }, [markRead, navigate]);
 
   const containerVariants = { hidden: { opacity: 0 }, show: { opacity: 1, transition: { staggerChildren: 0.04 } } };
   const itemVariants = { hidden: { opacity: 0, y: 8 }, show: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 400, damping: 28 } } };
@@ -201,17 +220,33 @@ export function NotificationPage({ onBack }: { onBack: () => void }) {
                     {/* Unread indicator bar */}
                     <div className="h-[2px] bg-white" />
                     <div className="p-3.5">
-                      <div className="flex items-start gap-3">
-                        <IconBox id={notif.iconId} size={16} boxSize="w-10 h-10" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-bold line-clamp-1">{notif.title}</p>
-                          <p className="text-white/50 text-[11px] line-clamp-2 mt-0.5 leading-relaxed">{notif.message}</p>
-                          <p className="text-white/25 text-[10px] mt-1.5">{notif.time}</p>
+                        <div className="flex items-start gap-3">
+                          <IconBox id={notif.iconId} size={16} boxSize="w-10 h-10" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-bold line-clamp-1">{notif.title}</p>
+                            <p className="text-white/50 text-[11px] line-clamp-2 mt-0.5 leading-relaxed">{notif.message}</p>
+                            <p className="text-white/25 text-[10px] mt-1.5">{notif.time}</p>
+                            {NOTIFICATION_ACTIONS[notif.type] && (
+                              <div className="mt-2">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-8 text-[11px] px-3"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openNotificationAction(notif);
+                                  }}
+                                >
+                                  {NOTIFICATION_ACTIONS[notif.type].label}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </Card>
-                </motion.div>
+                    </Card>
+                  </motion.div>
               ))}
             </>
           )}
@@ -236,11 +271,11 @@ export function NotificationPage({ onBack }: { onBack: () => void }) {
                         <div className="flex items-start gap-3">
                           <IconBox id={notif.iconId} size={14} boxSize="w-9 h-9" />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-white/60 text-[13px] font-semibold line-clamp-1 flex-1">{notif.title}</p>
-                              <span className="text-white/15 text-[10px] flex-shrink-0">{notif.time}</span>
-                            </div>
-                            <AnimatePresence>
+                              <div className="flex items-center gap-2">
+                                <p className="text-white/60 text-[13px] font-semibold line-clamp-1 flex-1">{notif.title}</p>
+                                <span className="text-white/15 text-[10px] flex-shrink-0">{notif.time}</span>
+                              </div>
+                              <AnimatePresence>
                               {isExpanded ? (
                                 <motion.p
                                   initial={{ height: 0, opacity: 0 }}
@@ -254,6 +289,22 @@ export function NotificationPage({ onBack }: { onBack: () => void }) {
                                 <p className="text-white/25 text-[11px] mt-0.5 line-clamp-1">{notif.message}</p>
                               )}
                             </AnimatePresence>
+                            {NOTIFICATION_ACTIONS[notif.type] && (
+                              <div className="mt-2">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-8 text-[11px] px-3"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openNotificationAction(notif);
+                                  }}
+                                >
+                                  {NOTIFICATION_ACTIONS[notif.type].label}
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

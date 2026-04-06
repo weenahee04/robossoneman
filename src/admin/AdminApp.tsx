@@ -38,7 +38,8 @@ function roleMeta(role: AdminRole) {
 function statusBadge(status: string) {
   switch (status) {
     case 'idle':        return <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">ว่าง</Badge>;
-    case 'busy':        return <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">ใช้งาน</Badge>;
+    case 'reserved':    return <Badge className="bg-violet-50 text-violet-700 border-violet-200 hover:bg-violet-50">รอเริ่มล้าง</Badge>;
+    case 'washing':     return <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">กำลังล้าง</Badge>;
     case 'maintenance': return <Badge className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-50">ซ่อม</Badge>;
     case 'offline':     return <Badge className="bg-red-50 text-red-700 border-red-200 hover:bg-red-50">Offline</Badge>;
     case 'in_progress': return <Badge className="bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-50">กำลังล้าง</Badge>;
@@ -384,7 +385,7 @@ function DashboardPage() {
           <CardContent>
             <div className="grid grid-cols-3 gap-3 mb-4">
               {[{ n: myMachines.filter(m => m.status === 'idle').length, l: 'ว่าง', c: 'bg-emerald-50 text-emerald-700' },
-                { n: myMachines.filter(m => m.status === 'busy').length, l: 'ใช้งาน', c: 'bg-blue-50 text-blue-700' },
+                { n: myMachines.filter(m => m.status === 'washing' || m.status === 'reserved').length, l: 'ใช้งาน', c: 'bg-blue-50 text-blue-700' },
                 { n: myMachines.filter(m => ['maintenance','offline'].includes(m.status)).length, l: 'ซ่อม', c: 'bg-gray-100 text-gray-700' }
               ].map((s, i) => (
                 <div key={i} className={`text-center p-3 rounded-xl ${s.c}`}>
@@ -397,7 +398,7 @@ function DashboardPage() {
               {myMachines.map(m => (
                 <div key={m.id} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
                   <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${m.status === 'busy' ? 'bg-blue-500 animate-pulse' : m.status === 'idle' ? 'bg-emerald-500' : m.status === 'maintenance' ? 'bg-amber-500' : 'bg-red-500'}`} />
+                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${m.status === 'washing' ? 'bg-blue-500 animate-pulse' : m.status === 'reserved' ? 'bg-violet-500' : m.status === 'idle' ? 'bg-emerald-500' : m.status === 'maintenance' ? 'bg-amber-500' : 'bg-red-500'}`} />
                     <span className="text-sm font-medium text-gray-800">{m.name}</span>
                     {isHQ && <span className="text-xs text-gray-400">({m.branchName.replace('ROBOSS ', '')})</span>}
                   </div>
@@ -546,7 +547,7 @@ function MachinesPage() {
   const [filter, setFilter] = useState('all');
   const allMachines = branchIds.length ? MOCK_MACHINES.filter(m => branchIds.includes(m.branchId)) : MOCK_MACHINES;
   const filtered = filter === 'all' ? allMachines : allMachines.filter(m => m.status === filter);
-  const cnt = { all: allMachines.length, idle: allMachines.filter(m => m.status === 'idle').length, busy: allMachines.filter(m => m.status === 'busy').length, maintenance: allMachines.filter(m => m.status === 'maintenance').length, offline: allMachines.filter(m => m.status === 'offline').length };
+  const cnt = { all: allMachines.length, idle: allMachines.filter(m => m.status === 'idle').length, active: allMachines.filter(m => m.status === 'washing' || m.status === 'reserved').length, maintenance: allMachines.filter(m => m.status === 'maintenance').length, offline: allMachines.filter(m => m.status === 'offline').length };
 
   return (
     <div className="space-y-6">
@@ -556,7 +557,7 @@ function MachinesPage() {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {Object.entries({ all: `ทั้งหมด (${cnt.all})`, idle: `ว่าง (${cnt.idle})`, busy: `ใช้งาน (${cnt.busy})`, maintenance: `ซ่อม (${cnt.maintenance})`, offline: `Offline (${cnt.offline})` }).map(([k, l]) => (
+        {Object.entries({ all: `ทั้งหมด (${cnt.all})`, idle: `ว่าง (${cnt.idle})`, active: `ใช้งาน (${cnt.active})`, maintenance: `ซ่อม (${cnt.maintenance})`, offline: `Offline (${cnt.offline})` }).map(([k, l]) => (
           <Button key={k} variant={filter === k ? 'default' : 'outline'} size="sm" onClick={() => setFilter(k)}
             className={filter === k ? 'bg-gray-900 hover:bg-gray-800 text-white border-0' : 'text-gray-600'}>{l}</Button>
         ))}
@@ -571,7 +572,7 @@ function MachinesPage() {
               <CardContent className="p-5">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${m.status === 'idle' ? 'bg-emerald-50' : m.status === 'busy' ? 'bg-blue-50' : m.status === 'maintenance' ? 'bg-amber-50' : 'bg-gray-100'}`}>
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${m.status === 'idle' ? 'bg-emerald-50' : m.status === 'washing' ? 'bg-blue-50' : m.status === 'reserved' ? 'bg-violet-50' : m.status === 'maintenance' ? 'bg-amber-50' : 'bg-gray-100'}`}>
                       <I8 name="processor" size={20} className="opacity-60" />
                     </div>
                     <div>

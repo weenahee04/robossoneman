@@ -5,18 +5,31 @@ import { listenToUser, formatPoints } from '../services/points';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { useBranch, type BranchInfo } from '../services/branchContext';
 import type { User } from '../services/mockData';
+import { useAuth } from '@/contexts/AuthContext';
+import { usePointsBalance } from '@/hooks/useApi';
+import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const { user: authUser } = useAuth();
+  const { data: pointsBalance } = usePointsBalance();
   const { branch, allBranches, setBranch } = useBranch();
   const [showPicker, setShowPicker] = useState(false);
   const [typeFilter, setTypeFilter] = useState<'all' | 'car' | 'bike'>('all');
 
   useEffect(() => {
-    const unsub = listenToUser(setUser);
-    return unsub;
+    if (USE_LOCAL_DEV_FALLBACK) {
+      const unsub = listenToUser(setUser);
+      return unsub;
+    }
   }, []);
+
+  const displayName = HAS_API_BASE_URL ? authUser?.displayName : user?.displayName;
+  const avatarUrl = HAS_API_BASE_URL ? authUser?.avatarUrl : user?.avatarUrl;
+  const points = HAS_API_BASE_URL
+    ? (pointsBalance?.balance ?? authUser?.totalPoints ?? 0)
+    : (user?.points ?? 0);
 
   const filteredBranches = typeFilter === 'all' ? allBranches : allBranches.filter(b => b.type === typeFilter);
 
@@ -33,17 +46,17 @@ export function Header() {
                 <Lottie animationData={fireAnimation} loop className="w-full h-full" />
               </div>
               <span className="text-[11px] font-black text-white leading-none whitespace-nowrap">
-                {user ? formatPoints(user.points) : '---'}
+                {formatPoints(points)}
               </span>
               <span className="text-[9px] text-white/30 leading-none">pt</span>
             </div>
 
             <Avatar className="w-9 h-9 border-2 border-white/10">
               <AvatarImage
-                src={user?.pictureUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100'}
+                src={avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100'}
                 alt="User"
               />
-              <AvatarFallback className="bg-black text-white text-xs">W</AvatarFallback>
+              <AvatarFallback className="bg-black text-white text-xs">{displayName?.[0] || 'W'}</AvatarFallback>
             </Avatar>
           </div>
         </div>

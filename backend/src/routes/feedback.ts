@@ -17,9 +17,22 @@ feedbackRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const body = await c.req.json();
   const data = feedbackSchema.parse(body);
+  const latestSession = await prisma.washSession.findFirst({
+    where: { userId },
+    orderBy: [{ completedAt: 'desc' }, { createdAt: 'desc' }],
+    select: {
+      id: true,
+      branchId: true,
+    },
+  });
 
   const feedback = await prisma.feedback.create({
-    data: { userId, ...data },
+    data: {
+      userId,
+      branchId: latestSession?.branchId ?? null,
+      sessionId: latestSession?.id ?? null,
+      ...data,
+    },
   });
 
   return c.json({ data: feedback }, 201);

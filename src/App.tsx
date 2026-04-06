@@ -18,12 +18,19 @@ import { NotificationPage } from './pages/NotificationPage';
 import { PointsShopPage } from './pages/PointsShopPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { FeedbackPage } from './pages/FeedbackPage';
-import { ReferralPage } from './pages/ReferralPage';
 import { FAQPage } from './pages/FAQPage';
 import { AddVehiclePage } from './pages/AddVehiclePage';
+import { LegalPage } from './pages/LegalPage';
+import { ClerkSignInPage } from './pages/ClerkSignInPage';
+import { ClerkSignUpPage } from './pages/ClerkSignUpPage';
 import { LoadingScreen } from './components/LoadingScreen';
+import { CustomerAuthGate } from './components/CustomerAuthGate';
+import { useAuth } from './contexts/AuthContext';
+import { useNotifications } from './hooks/useApi';
 
 const BOTTOM_NAV_PATHS = ['/', '/carwash', '/notification', '/history', '/profile'];
+const PUBLIC_AUTH_PATHS = ['/sign-in', '/sign-up'];
+const USE_CLERK_AUTH = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 
 function HomePage() {
   const navigate = useNavigate();
@@ -41,7 +48,15 @@ function HomePage() {
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const goHome = () => navigate('/');
+  const returnPath =
+    typeof location.state === 'object' &&
+    location.state &&
+    'from' in location.state &&
+    typeof (location.state as { from?: unknown }).from === 'string'
+      ? ((location.state as { from: string }).from || '/profile')
+      : '/profile';
 
   return (
     <Routes>
@@ -60,12 +75,25 @@ function AppRoutes() {
       <Route path="/pointsshop" element={<PointsShopPage onBack={goHome} />} />
       <Route path="/settings" element={<SettingsPage onBack={goHome} />} />
       <Route path="/feedback" element={<FeedbackPage onBack={goHome} />} />
-      <Route path="/referral" element={<ReferralPage onBack={goHome} />} />
-      <Route path="/add-vehicle" element={<AddVehiclePage onBack={() => navigate('/profile')} />} />
+      <Route
+        path="/add-vehicle"
+        element={
+          <AddVehiclePage
+            onBack={() => navigate(returnPath)}
+            onSaved={() => navigate(returnPath, { replace: true })}
+          />
+        }
+      />
       <Route
         path="/faq"
         element={<FAQPage onBack={goHome} onNavigateFeedback={() => navigate('/feedback')} />}
       />
+      <Route
+        path="/legal/:document"
+        element={<LegalPage onBack={() => navigate(-1)} />}
+      />
+      {USE_CLERK_AUTH ? <Route path="/sign-in" element={<ClerkSignInPage />} /> : null}
+      {USE_CLERK_AUTH ? <Route path="/sign-up" element={<ClerkSignUpPage />} /> : null}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
@@ -74,6 +102,15 @@ function AppRoutes() {
 export function App() {
   const [loading, setLoading] = useState(true);
   const location = useLocation();
+  const { isAuthenticated, isLoading } = useAuth();
+  const usesBackendAuth = Boolean(import.meta.env.VITE_API_URL);
+  const isPublicAuthPath = PUBLIC_AUTH_PATHS.includes(location.pathname);
+  const notificationQuery = useNotifications(1, usesBackendAuth && isAuthenticated);
+  const shouldGateAuth =
+    usesBackendAuth &&
+    !isLoading &&
+    !isAuthenticated &&
+    !isPublicAuthPath;
 
   useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 2500);
@@ -91,14 +128,29 @@ export function App() {
   const activeNavTab = BOTTOM_NAV_PATHS.includes(location.pathname)
     ? location.pathname
     : '/';
+  const shouldHideBottomNav = isPublicAuthPath;
+
+  if (usesBackendAuth && isLoading && !isPublicAuthPath) {
+    return (
+      <div className="app-shell">
+        <LoadingScreen />
+      </div>
+    );
+  }
 
   return (
-    <div className="app-shell">
-      {loading && <LoadingScreen />}
-      <div className="app-container safe-top">
-        <AppRoutes />
-        <BottomNavBar active={activeNavTab} notificationCount={3} />
+    shouldGateAuth ? (
+      <CustomerAuthGate />
+    ) : (
+      <div className="app-shell">
+        {loading && !isPublicAuthPath ? <LoadingScreen /> : null}
+        <div className="app-container safe-top">
+          <AppRoutes />
+          {shouldHideBottomNav ? null : (
+            <BottomNavBar active={activeNavTab} notificationCount={notificationQuery.data?.unreadCount ?? 0} />
+          )}
+        </div>
       </div>
-    </div>
+    )
   );
 }

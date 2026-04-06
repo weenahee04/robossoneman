@@ -1,129 +1,138 @@
 import React, { useState } from 'react';
-import { Droplets, Eye, EyeOff } from 'lucide-react';
-import api, { USE_API } from '@/services/api';
-import { MOCK_ADMIN, type AdminUser } from '@/services/mockData';
+import { Droplets, Eye, EyeOff, Moon, ShieldCheck, Sun } from 'lucide-react';
+import type { ThemeMode } from '@/App';
+import api from '@/services/api';
 
 interface LoginPageProps {
-  onLogin: (user: AdminUser) => void;
+  theme: ThemeMode;
+  onToggleTheme: () => void;
+  onLogin: () => void | Promise<void>;
 }
 
-export function LoginPage({ onLogin }: LoginPageProps) {
+export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
   const [email, setEmail] = useState('admin@roboss.co.th');
-  const [password, setPassword] = useState('admin1234');
+  const [password, setPassword] = useState('admin123');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLoading(true);
     setError(null);
 
-    if (USE_API) {
-      try {
-        const user = await api.login(email, password);
-        onLogin(user);
-      } catch (err: any) {
-        setError(err.message || 'เข้าสู่ระบบไม่สำเร็จ');
-        setLoading(false);
-      }
-    } else {
-      setTimeout(() => {
-        setLoading(false);
-        onLogin(MOCK_ADMIN);
-      }, 1200);
+    try {
+      await api.login(email, password);
+      await onLogin();
+    } catch (err: any) {
+      setError(err.message || 'ไม่สามารถเข้าสู่ระบบได้');
+      setLoading(false);
+      return;
     }
+
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-950 relative overflow-hidden">
-      {/* Background glow */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-red-500/5 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] rounded-full bg-blue-500/3 blur-[100px] pointer-events-none" />
-      
-      <div className="relative w-full max-w-md mx-4">
-        {/* Logo & Title */}
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-red-500/20">
-            <Droplets className="w-8 h-8 text-white" />
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(153,27,27,0.18),transparent_28%),linear-gradient(180deg,#050505_0%,#140808_100%)]">
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="absolute right-4 top-4 z-10 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-200 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
+        aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+      >
+        {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        <span>{theme === 'dark' ? 'โหมดขาว' : 'โหมดมืด'}</span>
+      </button>
+
+      <div className="pointer-events-none absolute left-[15%] top-[10%] h-[420px] w-[420px] rounded-full bg-red-500/10 blur-[120px]" />
+      <div className="pointer-events-none absolute bottom-[-5%] right-[10%] h-[480px] w-[480px] rounded-full bg-red-700/10 blur-[140px]" />
+
+      <div className="relative mx-4 grid w-full max-w-5xl gap-8 lg:grid-cols-[1.15fr_0.85fr]">
+        <div className="hidden rounded-[32px] border border-white/5 bg-white/[0.03] p-10 lg:block">
+          <div className="mb-10 flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 shadow-lg shadow-red-500/20">
+              <Droplets className="h-7 w-7 text-white" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-black tracking-tight text-white">ROBOSS หลังบ้าน</h1>
+              <p className="text-sm text-gray-400">ศูนย์ควบคุมสาขา ผู้ดูแลระบบ และนโยบายการปฏิบัติการทั้งหมด</p>
+            </div>
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tight">ROBOSS</h1>
-          <p className="text-gray-500 text-sm mt-1">Franchise Management System</p>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ['ภาพรวมระบบ', 'ติดตามรายการใช้งาน รายได้ สุขภาพเครื่อง และการเติบโตของทุกสาขาในจุดเดียว'],
+              ['ควบคุมสาขา', 'สร้าง แก้ไข เปิดใช้งาน และปรับตั้งค่าการปฏิบัติการของแต่ละสาขาได้จริง'],
+              ['สิทธิ์ผู้ดูแล', 'จัดการผู้ดูแล HQ และสาขาพร้อมกำหนดสิทธิ์ตามขอบเขตการเข้าถึง'],
+            ].map(([title, description]) => (
+              <div key={title} className="rounded-2xl border border-white/5 bg-black/20 p-5">
+                <ShieldCheck className="mb-4 h-5 w-5 text-red-300" />
+                <h2 className="font-semibold text-white">{title}</h2>
+                <p className="mt-2 text-sm leading-6 text-gray-400">{description}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Login Card */}
-        <div className="gradient-card rounded-2xl p-8">
-          <h2 className="text-xl font-bold text-white mb-1">เข้าสู่ระบบ</h2>
-          <p className="text-gray-500 text-sm mb-6">กรุณาใส่อีเมลและรหัสผ่านของคุณ</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">อีเมล</label>
-              <input
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-all text-sm"
-                placeholder="your@email.com"
-                required
-              />
+        <div className="relative mx-auto w-full max-w-md">
+          <div className="gradient-card rounded-[28px] p-8">
+            <div className="mb-8 text-center">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 shadow-lg shadow-red-500/20">
+                <Droplets className="h-8 w-8 text-white" />
+              </div>
+              <h2 className="text-2xl font-black tracking-tight text-white">เข้าสู่ระบบหลังบ้าน</h2>
+              <p className="mt-2 text-sm text-gray-400">ใช้บัญชีผู้ดูแล HQ หรือผู้ดูแลสาขาเพื่อเข้าสู่ระบบ</p>
             </div>
-            <div>
-              <label className="text-xs font-medium text-gray-400 block mb-1.5">รหัสผ่าน</label>
-              <div className="relative">
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-400">อีเมล</label>
                 <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 pr-12 bg-gray-800/50 border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/20 transition-all text-sm"
-                  placeholder="********"
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 text-sm text-white placeholder-gray-500 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                  placeholder="name@example.com"
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
-            </div>
-
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 text-gray-400 cursor-pointer">
-                <input type="checkbox" className="rounded border-gray-600 bg-gray-800" defaultChecked />
-                จดจำฉัน
-              </label>
-              <button type="button" className="text-red-400 hover:text-red-300 text-xs">ลืมรหัสผ่าน?</button>
-            </div>
-
-            {error && (
-              <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs">
-                {error}
+              <div>
+                <label className="mb-1.5 block text-xs font-medium text-gray-400">รหัสผ่าน</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 pr-12 text-sm text-white placeholder-gray-500 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                    placeholder="********"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((value) => !value)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
-            )}
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-red-500 to-red-600 text-white font-semibold text-sm hover:from-red-600 hover:to-red-700 transition-all shadow-lg shadow-red-500/20 disabled:opacity-60"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-25" />
-                    <path d="M12 2a10 10 0 0 1 10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" className="opacity-75" />
-                  </svg>
-                  กำลังเข้าสู่ระบบ...
-                </span>
-              ) : 'เข้าสู่ระบบ'}
-            </button>
-          </form>
+              {error && <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-400">{error}</div>}
 
-          <div className="mt-6 pt-4 border-t border-gray-800/50 text-center">
-            <p className="text-[11px] text-gray-600">
-              Demo: admin@roboss.co.th / admin1234
-            </p>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full rounded-xl bg-gradient-to-r from-red-500 to-red-600 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/20 transition-all hover:from-red-600 hover:to-red-700 disabled:opacity-60"
+              >
+                {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบหลังบ้าน'}
+              </button>
+            </form>
+
+            <div className="mt-6 grid gap-2 rounded-2xl border border-white/5 bg-black/20 p-4 text-[11px] text-gray-500">
+              <p>เดโม HQ: `admin@roboss.co.th` / `admin123`</p>
+              <p>เดโมสาขา: `rama.manager@roboss.co.th` / `manager123`</p>
+            </div>
           </div>
         </div>
       </div>

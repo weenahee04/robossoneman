@@ -7,8 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { getIconUrl, type IconName } from '../services/icons';
 import { useStamps, useClaimStampReward } from '@/hooks/useApi';
-
-const USE_API = !!import.meta.env.VITE_API_URL;
+import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 
 function I8Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
   return <img src={getIconUrl(name, size * 2)} alt={name} width={size} height={size} className={`inline-block ${className}`} style={{ filter: 'invert(1) brightness(1.1)' }} />;
@@ -29,30 +28,34 @@ export function StampPage({ onBack }: { onBack: () => void }) {
   const claimRewardMutation = useClaimStampReward();
 
   const stamps = useMemo(() => {
-    if (USE_API && stampsQuery.data?.currentCount != null) return stampsQuery.data.currentCount;
+    if (HAS_API_BASE_URL && stampsQuery.data?.currentCount != null) return stampsQuery.data.currentCount;
     return localStamps;
   }, [stampsQuery.data, localStamps]);
 
   const totalTarget = useMemo(() => {
-    if (USE_API && stampsQuery.data?.targetCount) return stampsQuery.data.targetCount;
+    if (HAS_API_BASE_URL && stampsQuery.data?.targetCount) return stampsQuery.data.targetCount;
     return TOTAL_STAMPS;
   }, [stampsQuery.data]);
 
   const rewardClaimed = useMemo(() => {
-    if (USE_API && stampsQuery.data) return stampsQuery.data.rewardClaimed;
+    if (HAS_API_BASE_URL && stampsQuery.data) return stampsQuery.data.rewardClaimed;
     return false;
   }, [stampsQuery.data]);
 
   useEffect(() => {
-    if (!USE_API) {
+    if (USE_LOCAL_DEV_FALLBACK) {
       localStorage.setItem(STORAGE_KEY, String(localStamps));
     }
-    if (stamps === totalTarget && !rewardClaimed) {
+    if (stamps >= totalTarget && !rewardClaimed) {
       setTimeout(() => setShowReward(true), 400);
     }
   }, [stamps, localStamps, totalTarget, rewardClaimed]);
 
+  const progressPercent = Math.min(100, (stamps / totalTarget) * 100);
+  const isRewardReady = stamps >= totalTarget && !rewardClaimed;
+
   const addStamp = () => {
+    if (!USE_LOCAL_DEV_FALLBACK) return;
     if (localStamps >= TOTAL_STAMPS) return;
     const next = localStamps + 1;
     setAnimating(next - 1);
@@ -61,6 +64,7 @@ export function StampPage({ onBack }: { onBack: () => void }) {
   };
 
   const reset = () => {
+    if (!USE_LOCAL_DEV_FALLBACK) return;
     setLocalStamps(0);
     setShowReward(false);
   };
@@ -91,7 +95,7 @@ export function StampPage({ onBack }: { onBack: () => void }) {
           <div className="w-full h-2 bg-black rounded-full overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-orange-500 to-yellow-400 rounded-full transition-all duration-500"
-              style={{ width: `${(stamps / totalTarget) * 100}%` }}
+              style={{ width: `${progressPercent}%` }}
             />
           </div>
         </div>
@@ -129,15 +133,15 @@ export function StampPage({ onBack }: { onBack: () => void }) {
           {/* Reward slot */}
           <div className="mt-5 flex items-center gap-3 bg-black/30 rounded-xl p-3 border border-yellow-500/20">
             <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500
-              ${stamps === totalTarget
+              ${isRewardReady
                 ? 'bg-gradient-to-br from-yellow-400 to-orange-500 shadow-[0_0_16px_rgba(234,179,8,0.5)]'
                 : 'bg-black/40 border border-white/10'
               }`}
             >
-              <I8Icon name="gift" size={22} className={stamps === totalTarget ? '' : 'opacity-20'} />
+              <I8Icon name="gift" size={22} className={isRewardReady ? '' : 'opacity-20'} />
             </div>
             <div>
-              <p className={`text-sm font-bold ${stamps === totalTarget ? 'text-yellow-400' : 'text-white/30'}`}>
+              <p className={`text-sm font-bold ${isRewardReady ? 'text-yellow-400' : 'text-white/30'}`}>
                 ล้างรถฟรี 1 ครั้ง
               </p>
               <p className="text-[10px] text-gray-500">เมื่อสะสมครบ {totalTarget} แสตมป์</p>
@@ -156,7 +160,7 @@ export function StampPage({ onBack }: { onBack: () => void }) {
             <Button
               variant="secondary"
               className="bg-white text-orange-600 font-bold text-sm rounded-full hover:bg-white/90"
-              onClick={() => { if (USE_API) claimRewardMutation.mutate(); }}
+              onClick={() => { if (HAS_API_BASE_URL) claimRewardMutation.mutate(); }}
             >
               รับของรางวัล
             </Button>
@@ -166,7 +170,7 @@ export function StampPage({ onBack }: { onBack: () => void }) {
         {/* Add stamp button (demo) */}
         <Button
           onClick={addStamp}
-          disabled={stamps >= totalTarget}
+          disabled={stamps >= totalTarget || HAS_API_BASE_URL}
           className="w-full py-4 text-sm disabled:opacity-40">
           {stamps >= totalTarget ? 'สะสมแสตมป์ครบแล้ว' : '+ เพิ่มแสตมป์ (จำลองการล้างรถ)'}
         </Button>

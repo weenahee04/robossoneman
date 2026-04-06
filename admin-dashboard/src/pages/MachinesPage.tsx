@@ -1,131 +1,216 @@
-import React, { useState, useEffect } from 'react';
-import { Cpu, Wifi, WifiOff, Wrench, RefreshCw, Power, Activity } from 'lucide-react';
-import { MOCK_MACHINES, type Machine } from '@/services/mockData';
-import api, { USE_API } from '@/services/api';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { Activity, Cpu, Power, RefreshCw, Wrench } from 'lucide-react';
+import api, { type AdminUser, type MachineRecord } from '@/services/api';
+import { subscribeAdminRealtime } from '@/services/realtime';
 
-const statusConfig = {
-  idle: { label: 'ว่าง', color: 'text-green-400', bg: 'bg-green-500/10', border: 'border-green-500/20', icon: Wifi },
-  busy: { label: 'กำลังใช้งาน', color: 'text-blue-400', bg: 'bg-blue-500/10', border: 'border-blue-500/20', icon: Activity },
-  maintenance: { label: 'ซ่อมบำรุง', color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20', icon: Wrench },
-  offline: { label: 'Offline', color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/20', icon: WifiOff },
-};
+interface MachinesPageProps {
+  admin: AdminUser;
+  branchId: string | null;
+  realtimeBranchIds: string[];
+}
 
-export function MachinesPage() {
-  const [filter, setFilter] = useState<string>('all');
-  const [machinesData, setMachinesData] = useState<Machine[]>(MOCK_MACHINES);
+const filters = ['all', 'idle', 'reserved', 'washing', 'maintenance', 'offline'] as const;
+
+export function MachinesPage({ admin, branchId, realtimeBranchIds }: MachinesPageProps) {
+  const [selectedFilter, setSelectedFilter] = useState<(typeof filters)[number]>('all');
+  const [machines, setเครื่อง] = useState<MachineRecord[]>([]);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!USE_API) return;
     let cancelled = false;
+
     (async () => {
       try {
-        const data = await api.fetchMachines();
-        if (!cancelled) setMachinesData(data);
-      } catch { /* keep mock data */ }
+        const response = await api.fetchMachines({ branchId, status: selectedFilter === 'all' ? undefined : selectedFilter });
+        if (!cancelled) {
+          setเครื่อง(response);
+          setError(null);
+        }
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err.message || 'โหลดข้อมูลเครื่องไม่สำเร็จ');
+        }
+      }
     })();
-    return () => { cancelled = true; };
-  }, []);
 
-  const filtered = filter === 'all' ? machinesData : machinesData.filter(m => m.status === filter);
+    return () => {
+      cancelled = true;
+    };
+  }, [branchId, selectedFilter]);
 
-  const countByStatus = {
-    all: machinesData.length,
-    idle: machinesData.filter(m => m.status === 'idle').length,
-    busy: machinesData.filter(m => m.status === 'busy').length,
-    maintenance: machinesData.filter(m => m.status === 'maintenance').length,
-    offline: machinesData.filter(m => m.status === 'offline').length,
-  };
+  useEffect(() => {
+    return subscribeAdminRealtime(realtimeBranchIds, (event) => {
+      if (event.type !== 'machine_event') {
+        return;
+      }
+
+      if (branchId && event.branchId !== branchId) {
+        return;
+      }
+
+      setเครื่อง((current) =>
+        current.map((machine) =>
+          machine.id === event.machine.id
+            ? {
+                ...machine,
+                status: event.machine.status,
+                lastHeartbeat: event.machine.lastHeartbeat ?? machine.lastHeartbeat,
+                currentSessionId: event.sessionId ?? machine.currentSessionId,
+                firmwareVersion: event.machine.firmwareVersion ?? machine.firmwareVersion,
+              }
+            : machine
+        )
+      );
+    });
+  }, [branchId, realtimeBranchIds]);
+
+  const scopedเครื่อง = useMemo(() => {
+    if (selectedFilter === 'all') {
+      return machines;
+    }
+
+    return machines.filter((machine) => machine.status === selectedFilter);
+  }, [machines, selectedFilter]);
+
+  async function handleCommand(machineId: string, command: 'restart' | 'maintenance_on' | 'maintenance_off') {
+    try {
+      setLoadingId(machineId + command);
+      await api.sendMachineCommand(machineId, command);
+      setError(null);
+    } catch (err: any) {
+          setError(err.message || 'ส่งคำสั่งไปยังเครื่องไม่สำเร็จ');
+    } finally {
+      setLoadingId(null);
+    }
+  }
 
   return (
-    <div className="space-y-6 max-w-[1400px]">
+    <div className="max-w-[1400px] space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-white">สถานะเครื่อง IoT</h2>
-        <p className="text-gray-500 text-sm mt-0.5">ดูและจัดการเครื่องล้างรถ ESP32 ทุกสาขา</p>
+        <h2 className="text-2xl font-bold text-white">เครื่อง</h2>
+        <p className="mt-1 text-sm text-gray-500">ติดตามสถานะเครื่องแบบเรียลไทม์และสั่งงานตามขอบเขตสาขาที่ได้รับสิทธิ์</p>
       </div>
 
-      {/* Status Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {Object.entries({ all: 'ทั้งหมด', idle: 'ว่าง', busy: 'ใช้งาน', maintenance: 'ซ่อม', offline: 'Offline' }).map(([key, label]) => (
+      {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>}
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+        {filters.map((filter) => (
           <button
-            key={key}
-            onClick={() => setFilter(key)}
-            className={`p-3 rounded-xl text-center transition-all ${
-              filter === key ? 'bg-red-500/15 border border-red-500/30' : 'gradient-card hover:border-gray-700'
+            key={filter}
+            onClick={() => setSelectedFilter(filter)}
+            className={`rounded-xl p-3 text-left transition-all ${
+              selectedFilter === filter ? 'border border-red-500/30 bg-red-500/15' : 'gradient-card'
             }`}
           >
-            <p className={`text-xl font-bold ${filter === key ? 'text-red-400' : 'text-white'}`}>
-              {countByStatus[key as keyof typeof countByStatus]}
+            <p className={`text-xl font-bold ${selectedFilter === filter ? 'text-red-400' : 'text-white'}`}>
+              {filter === 'all' ? machines.length : machines.filter((machine) => machine.status === filter).length}
             </p>
-            <p className="text-xs text-gray-500">{label}</p>
+            <p className="text-xs capitalize text-gray-500">
+              {filter === 'all'
+                ? 'ทั้งหมด'
+                : filter === 'idle'
+                  ? 'ว่าง'
+                  : filter === 'reserved'
+                    ? 'จองแล้ว'
+                    : filter === 'washing'
+                      ? 'กำลังล้าง'
+                      : filter === 'maintenance'
+                        ? 'ซ่อมบำรุง'
+                        : 'ออฟไลน์'}
+            </p>
           </button>
         ))}
       </div>
 
-      {/* Machine Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map(machine => {
-          const config = statusConfig[machine.status];
-          const StatusIcon = config.icon;
-          const timeSinceHeartbeat = Math.round((Date.now() - machine.lastHeartbeat.getTime()) / 1000);
-          const heartbeatText = timeSinceHeartbeat < 60 ? `${timeSinceHeartbeat}s ago` :
-            timeSinceHeartbeat < 3600 ? `${Math.floor(timeSinceHeartbeat / 60)}m ago` :
-            `${Math.floor(timeSinceHeartbeat / 3600)}h ago`;
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-3">
+        {scopedเครื่อง.map((machine) => {
+          const heartbeatAgo = machine.lastHeartbeat
+            ? Math.round((Date.now() - new Date(machine.lastHeartbeat).getTime()) / 1000)
+            : null;
 
           return (
-            <div key={machine.id} className={`gradient-card rounded-2xl p-5 border ${config.border} transition-all`}>
-              <div className="flex items-start justify-between mb-4">
+            <div key={machine.id} className="gradient-card rounded-2xl p-5">
+              <div className="mb-4 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-xl ${config.bg} flex items-center justify-center`}>
-                    <Cpu className={`w-6 h-6 ${config.color}`} />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/5">
+                    <Cpu className="h-6 w-6 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">{machine.name}</h3>
-                    <p className="text-xs text-gray-500">{machine.branchName}</p>
+                    <h3 className="font-semibold text-white">{machine.name}</h3>
+                    <p className="text-xs text-gray-500">{machine.branch.shortName || machine.branch.name}</p>
                   </div>
                 </div>
-                <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold ${config.bg} ${config.color}`}>
-                  <StatusIcon className="w-3 h-3 inline mr-1" />
-                  {config.label}
+                <span className="rounded-full bg-white/5 px-2.5 py-1 text-[11px] uppercase tracking-wide text-gray-300">
+                  {machine.status}
                 </span>
               </div>
 
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">ESP32 ID</span>
-                  <span className="text-gray-300 font-mono text-[10px]">{machine.espDeviceId}</span>
+              <div className="space-y-2 text-sm text-gray-400">
+                <div className="flex justify-between">
+                  <span>รหัสเครื่อง</span>
+                  <span className="font-medium text-gray-200">{machine.code}</span>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">ประเภท</span>
-                  <span className="text-gray-300">{machine.type === 'car' ? 'รถยนต์' : 'มอเตอร์ไซค์'}</span>
+                <div className="flex justify-between">
+                  <span>อุปกรณ์ ESP</span>
+                  <span className="font-mono text-[11px] text-gray-200">{machine.espDeviceId}</span>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">ล้างทั้งหมด</span>
-                  <span className="text-gray-300">{machine.totalWashes.toLocaleString()} ครั้ง</span>
+                <div className="flex justify-between">
+                  <span>จำนวนรอบสะสม</span>
+                  <span className="font-medium text-gray-200">{machine.totalWashes}</span>
                 </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-gray-500">Heartbeat</span>
-                  <span className={`font-medium ${timeSinceHeartbeat > 300 ? 'text-red-400' : 'text-green-400'}`}>
-                    {heartbeatText}
+                <div className="flex justify-between">
+                  <span>รอบปัจจุบัน</span>
+                  <span className="font-medium text-gray-200">{machine.currentSessionId ?? '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>สัญญาณล่าสุด</span>
+                  <span className={`font-medium ${heartbeatAgo !== null && heartbeatAgo > 300 ? 'text-red-400' : 'text-green-400'}`}>
+                    {heartbeatAgo === null ? 'ไม่มีสัญญาณ' : `${heartbeatAgo} วินาทีก่อน`}
                   </span>
                 </div>
               </div>
 
-              {/* Actions */}
-              <div className="flex gap-2">
-                <button className="flex-1 py-2 rounded-lg bg-white/5 text-gray-400 text-xs font-medium hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> Restart
+              <div className="mt-5 grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => handleCommand(machine.id, 'restart')}
+                  disabled={loadingId === machine.id + 'restart'}
+                  className="flex items-center justify-center gap-1 rounded-xl bg-white/5 px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                >
+                  <RefreshCw className="h-3.5 w-3.5" /> รีสตาร์ต
                 </button>
-                <button className="flex-1 py-2 rounded-lg bg-white/5 text-gray-400 text-xs font-medium hover:bg-white/10 hover:text-white transition-colors flex items-center justify-center gap-1">
-                  <Wrench className="w-3 h-3" /> Maintenance
+                <button
+                  onClick={() => handleCommand(machine.id, machine.status === 'maintenance' ? 'maintenance_off' : 'maintenance_on')}
+                  disabled={
+                    !admin.scopes.some((scope) => scope.branchId === machine.branchId && scope.canManageMachines) &&
+                    admin.role !== 'hq_admin'
+                  }
+                  className="flex items-center justify-center gap-1 rounded-xl bg-white/5 px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Wrench className="h-3.5 w-3.5" />
+                  {machine.status === 'maintenance' ? 'กลับมาใช้งาน' : 'เข้าโหมดซ่อม'}
                 </button>
-                <button className="py-2 px-3 rounded-lg bg-white/5 text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors">
-                  <Power className="w-3.5 h-3.5" />
+                <button
+                  onClick={() => handleCommand(machine.id, 'restart')}
+                  disabled={loadingId === machine.id + 'restart'}
+                  className="flex items-center justify-center gap-1 rounded-xl bg-white/5 px-3 py-2 text-xs text-gray-300 transition-colors hover:bg-red-500/10 hover:text-red-300 disabled:opacity-50"
+                >
+                  <Power className="h-3.5 w-3.5" /> เช็กสัญญาณ
                 </button>
               </div>
             </div>
           );
         })}
       </div>
+
+      {!scopedเครื่อง.length && (
+        <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-10 text-center text-gray-500">
+          <Activity className="mx-auto mb-3 h-8 w-8 opacity-40" />
+          ไม่พบเครื่องในขอบเขตที่เลือก
+        </div>
+      )}
     </div>
   );
 }
+
+

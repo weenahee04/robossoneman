@@ -7,8 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ── Users ─────────────────────────────────────────────────
-
 enum UserTier {
   bronze
   silver
@@ -16,244 +14,595 @@ enum UserTier {
   platinum
 }
 
-model User {
-  id           String   @id @default(uuid())
-  lineUserId   String   @unique @map("line_user_id")
-  displayName  String   @map("display_name")
-  avatarUrl    String?  @map("avatar_url")
-  phone        String?
-  tier         UserTier @default(bronze)
-  totalPoints  Int      @default(0) @map("total_points")
-  totalWashes  Int      @default(0) @map("total_washes")
-  referralCode String?  @unique @map("referral_code")
-  referredBy   String?  @map("referred_by")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
-
-  sessions      WashSession[]
-  coupons       UserCoupon[]
-  points        PointsTransaction[]
-  stamps        Stamp[]
-  notifications Notification[]
-  feedback      Feedback[]
-  piggyBank     PiggyBank?
-  vehicles      Vehicle[]
-  referrals     Referral[]      @relation("referrer")
-  referredUsers Referral[]      @relation("referred")
-
-  @@map("users")
+enum BranchOwnershipType {
+  company_owned
+  franchise
 }
-
-// ── Branches ──────────────────────────────────────────────
-
-model Branch {
-  id             String  @id @default(uuid())
-  name           String
-  shortName      String? @map("short_name")
-  address        String
-  area           String
-  type           String  @default("car")
-  lat            Float
-  lng            Float
-  promptPayId    String  @map("promptpay_id")
-  promptPayName  String  @map("promptpay_name")
-  ownerName      String? @map("owner_name")
-  mapsUrl        String? @map("maps_url")
-  hours          String? @default("06:00 - 22:00")
-  operatingHours Json?   @map("operating_hours")
-  isActive       Boolean @default(true) @map("is_active")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  machines Machine[]
-  sessions WashSession[]
-  packages BranchPackageLink[]
-
-  @@map("branches")
-}
-
-// ── Machines ──────────────────────────────────────────────
 
 enum MachineStatus {
   idle
+  reserved
   washing
   maintenance
   offline
 }
 
-model Machine {
-  id              String        @id @default(uuid())
-  branchId        String        @map("branch_id")
-  espDeviceId     String        @unique @map("esp_device_id")
-  name            String
-  type            String        @default("car")
-  status          MachineStatus @default(idle)
-  lastHeartbeat   DateTime?     @map("last_heartbeat")
-  firmwareVersion String?       @map("firmware_version")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
-
-  branch   Branch        @relation(fields: [branchId], references: [id])
-  sessions WashSession[]
-
-  @@map("machines")
+enum PaymentMethod {
+  promptpay
+  cash
+  manual
 }
 
-// ── Wash Packages ─────────────────────────────────────────
-
-model WashPackage {
-  id              String  @id @default(uuid())
-  name            String
-  description     String?
-  vehicleType     String  @default("car") @map("vehicle_type")
-  priceS          Int     @map("price_s")
-  priceM          Int     @map("price_m")
-  priceL          Int     @map("price_l")
-  steps           Json
-  stepDuration    Int     @default(300) @map("step_duration")
-  features        Json?
-  image           String?
-  sortOrder       Int     @default(0) @map("sort_order")
-  isActive        Boolean @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  branches BranchPackageLink[]
-  sessions WashSession[]
-
-  @@map("wash_packages")
+enum BranchPaymentMode {
+  hq_managed
+  branch_managed
+  manual_promptpay
 }
 
-model BranchPackageLink {
-  id             String  @id @default(uuid())
-  branchId       String  @map("branch_id")
-  packageId      String  @map("package_id")
-  priceOverrideS Int?    @map("price_override_s")
-  priceOverrideM Int?    @map("price_override_m")
-  priceOverrideL Int?    @map("price_override_l")
-
-  branch  Branch      @relation(fields: [branchId], references: [id])
-  package WashPackage @relation(fields: [packageId], references: [id])
-
-  @@unique([branchId, packageId])
-  @@map("branch_package_links")
+enum BranchPaymentProvider {
+  promptpay_manual
+  opn
+  stripe
+  bank_qr
+  custom
 }
 
-// ── Wash Sessions ─────────────────────────────────────────
+enum SettlementOwnerType {
+  hq
+  franchisee
+}
+
+enum BranchPaymentApprovalStatus {
+  draft
+  pending_review
+  approved
+  rejected
+}
 
 enum PaymentStatus {
   pending
-  paid
+  confirmed
   failed
+  cancelled
   refunded
+  expired
 }
 
-enum WashStatus {
-  waiting
-  washing
+enum WashSessionStatus {
+  pending_payment
+  payment_failed
+  ready_to_wash
+  in_progress
   completed
   cancelled
+  refunded
 }
-
-model WashSession {
-  id            String        @id @default(uuid())
-  userId        String        @map("user_id")
-  branchId      String        @map("branch_id")
-  machineId     String        @map("machine_id")
-  packageId     String        @map("package_id")
-  carSize       String        @map("car_size")
-  addons        Json          @default("[]")
-  totalPrice    Int           @map("total_price")
-  paymentStatus PaymentStatus @default(pending) @map("payment_status")
-  washStatus    WashStatus    @default(waiting) @map("wash_status")
-  currentStep   Int           @default(0) @map("current_step")
-  totalSteps    Int           @default(0) @map("total_steps")
-  progress      Int           @default(0)
-  pointsEarned  Int           @default(0) @map("points_earned")
-  rating        Int?
-  reviewText    String?       @map("review_text")
-  couponId      String?       @map("coupon_id")
-  startedAt     DateTime?     @map("started_at")
-  completedAt   DateTime?     @map("completed_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  user    User        @relation(fields: [userId], references: [id])
-  branch  Branch      @relation(fields: [branchId], references: [id])
-  machine Machine     @relation(fields: [machineId], references: [id])
-  package WashPackage @relation(fields: [packageId], references: [id])
-  points  PointsTransaction[]
-
-  @@map("wash_sessions")
-}
-
-// ── Coupons ───────────────────────────────────────────────
 
 enum DiscountType {
   percent
   fixed
 }
 
-model Coupon {
-  id            String       @id @default(uuid())
-  code          String       @unique
-  title         String
-  description   String?
-  discountType  DiscountType @map("discount_type")
-  discountValue Int          @map("discount_value")
-  minSpend      Int          @default(0) @map("min_spend")
-  maxUses       Int          @default(0) @map("max_uses")
-  usedCount     Int          @default(0) @map("used_count")
-  branchIds     String[]     @default([]) @map("branch_ids")
-  validFrom     DateTime     @map("valid_from")
-  validUntil    DateTime     @map("valid_until")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  updatedAt     DateTime     @updatedAt @map("updated_at")
-
-  users UserCoupon[]
-
-  @@map("coupons")
+enum CouponScope {
+  all_branches
+  selected_branches
+  branch_only
 }
 
-model UserCoupon {
-  id       String    @id @default(uuid())
-  userId   String    @map("user_id")
-  couponId String    @map("coupon_id")
-  isUsed   Boolean   @default(false) @map("is_used")
-  usedAt   DateTime? @map("used_at")
-
-  user   User   @relation(fields: [userId], references: [id])
-  coupon Coupon @relation(fields: [couponId], references: [id])
-
-  @@unique([userId, couponId])
-  @@map("user_coupons")
+enum CouponStatus {
+  draft
+  active
+  inactive
+  archived
 }
 
-// ── Points ────────────────────────────────────────────────
+enum UserCouponStatus {
+  claimed
+  redeemed
+  expired
+  cancelled
+}
 
 enum PointsType {
   earn
   redeem
   expire
   bonus
+  adjust
+}
+
+enum NotificationCategory {
+  wash
+  coupon
+  points
+  system
+}
+
+enum AdminRole {
+  hq_admin
+  branch_admin
+}
+
+enum AuditActorType {
+  system
+  customer
+  admin
+}
+
+model User {
+  id           String   @id @default(uuid())
+  lineUserId   String   @unique @map("line_user_id")
+  displayName  String   @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  email        String?
+  phone        String?
+  tier         UserTier @default(bronze)
+  totalPoints  Int      @default(0) @map("total_points")
+  totalWashes  Int      @default(0) @map("total_washes")
+  isActive     Boolean  @default(true) @map("is_active")
+  deactivatedAt DateTime? @map("deactivated_at")
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  wallet           PointWallet?
+  sessions         WashSession[]
+  payments         Payment[]
+  coupons          UserCoupon[]
+  couponRedemptions CouponRedemption[]
+  points           PointsTransaction[]
+  stamps           Stamp[]
+  notifications    Notification[]
+  feedback         Feedback[]
+  piggyBank        PiggyBank?
+  vehicles         Vehicle[]
+  settings         UserSettings?
+
+  @@map("users")
+}
+
+model UserSettings {
+  id                  String   @id @default(uuid())
+  userId              String   @unique @map("user_id")
+  notificationGeneral Boolean  @default(true) @map("notification_general")
+  notificationWash    Boolean  @default(true) @map("notification_wash")
+  notificationCoupon  Boolean  @default(true) @map("notification_coupon")
+  notificationPoints  Boolean  @default(false) @map("notification_points")
+  locale              String   @default("th") 
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+model Branch {
+  id             String              @id @default(uuid())
+  code           String              @unique
+  name           String
+  shortName      String?             @map("short_name")
+  address        String
+  area           String
+  type           String              @default("car")
+  ownershipType  BranchOwnershipType @default(franchise) @map("ownership_type")
+  franchiseCode  String?             @map("franchise_code")
+  lat            Float
+  lng            Float
+  promptPayId    String              @map("promptpay_id")
+  promptPayName  String              @map("promptpay_name")
+  ownerName      String?             @map("owner_name")
+  mapsUrl        String?             @map("maps_url")
+  hours          String?             @default("06:00 - 22:00")
+  operatingHours Json?               @map("operating_hours")
+  isActive       Boolean             @default(true) @map("is_active")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @updatedAt @map("updated_at")
+
+  settings         BranchSettings?
+  machines         Machine[]
+  sessions         WashSession[]
+  payments         Payment[]
+  paymentConfigs    BranchPaymentConfig[]
+  packageConfigs   BranchPackageConfig[]
+  couponBranches   CouponBranchLink[]
+  couponRedemptions CouponRedemption[]
+  scanTokens       MachineScanToken[]
+  adminScopes      AdminBranchScope[]
+  auditLogs        AuditLog[]
+
+  @@map("branches")
+}
+
+model BranchSettings {
+  id                     String   @id @default(uuid())
+  branchId               String   @unique @map("branch_id")
+  timezone               String   @default("Asia/Bangkok")
+  currency               String   @default("THB")
+  locale                 String   @default("th-TH")
+  pointsEarnRate         Int      @default(10) @map("points_earn_rate")
+  pointsMinSpend         Int      @default(1) @map("points_min_spend")
+  allowsPointRedemption  Boolean  @default(true) @map("allows_point_redemption")
+  receiptFooter          String?  @map("receipt_footer")
+  supportPhone           String?  @map("support_phone")
+  maxConcurrentSessions  Int      @default(2) @map("max_concurrent_sessions")
+  washStartGraceMinutes  Int      @default(15) @map("wash_start_grace_minutes")
+  createdAt              DateTime @default(now()) @map("created_at")
+  updatedAt              DateTime @updatedAt @map("updated_at")
+
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@map("branch_settings")
+}
+
+model Machine {
+  id              String        @id @default(uuid())
+  branchId        String        @map("branch_id")
+  code            String
+  espDeviceId     String        @unique @map("esp_device_id")
+  name            String
+  type            String        @default("car")
+  status          MachineStatus @default(idle)
+  isEnabled       Boolean       @default(true) @map("is_enabled")
+  sortOrder       Int           @default(0) @map("sort_order")
+  maintenanceNote String?       @map("maintenance_note")
+  lastHeartbeat   DateTime?     @map("last_heartbeat")
+  firmwareVersion String?       @map("firmware_version")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  branch   Branch        @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  sessions WashSession[]
+  scanTokens MachineScanToken[]
+
+  @@unique([branchId, code])
+  @@map("machines")
+}
+
+model MachineScanToken {
+  id                  String   @id @default(uuid())
+  tokenHash           String   @unique @map("token_hash")
+  branchId            String   @map("branch_id")
+  machineId           String   @map("machine_id")
+  issuedAt            DateTime @map("issued_at")
+  expiresAt           DateTime @map("expires_at")
+  nonce               String   @unique
+  consumedAt          DateTime? @map("consumed_at")
+  consumedBySessionId String?  @map("consumed_by_session_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  branch  Branch  @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  machine Machine @relation(fields: [machineId], references: [id], onDelete: Cascade)
+
+  @@index([branchId, machineId])
+  @@index([expiresAt])
+  @@map("machine_scan_tokens")
+}
+
+model WashPackage {
+  id           String   @id @default(uuid())
+  code         String   @unique
+  name         String
+  description  String?
+  vehicleType  String   @default("car") @map("vehicle_type")
+  priceS       Int      @map("price_s")
+  priceM       Int      @map("price_m")
+  priceL       Int      @map("price_l")
+  steps        Json
+  stepDuration Int      @default(300) @map("step_duration")
+  features     Json?
+  image        String?
+  sortOrder    Int      @default(0) @map("sort_order")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  branchConfigs BranchPackageConfig[]
+  sessions      WashSession[]
+
+  @@map("wash_packages")
+}
+
+model BranchPackageConfig {
+  id                 String   @id @default(uuid())
+  branchId           String   @map("branch_id")
+  packageId          String   @map("package_id")
+  isActive           Boolean  @default(true) @map("is_active")
+  isVisible          Boolean  @default(true) @map("is_visible")
+  displayName        String?  @map("display_name")
+  descriptionOverride String? @map("description_override")
+  priceOverrideS     Int?     @map("price_override_s")
+  priceOverrideM     Int?     @map("price_override_m")
+  priceOverrideL     Int?     @map("price_override_l")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  package WashPackage @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  sessions WashSession[]
+
+  @@unique([branchId, packageId])
+  @@map("branch_package_configs")
+}
+
+model WashSession {
+  id                    String            @id @default(uuid())
+  userId                String            @map("user_id")
+  branchId              String            @map("branch_id")
+  machineId             String            @map("machine_id")
+  packageId             String            @map("package_id")
+  scanTokenId           String            @unique @map("scan_token_id")
+  paymentConfigId       String?           @map("payment_config_id")
+  paymentRoutingMode    String?           @map("payment_routing_mode")
+  branchPackageConfigId String?           @map("branch_package_config_id")
+  scanNonce             String?           @map("scan_nonce")
+  scanIssuedAt          DateTime?         @map("scan_issued_at")
+  scanExpiresAt         DateTime?         @map("scan_expires_at")
+  scanSource            String?           @map("scan_source")
+  carSize               String            @map("car_size")
+  addons                Json              @default("[]")
+  subtotalPrice         Int               @default(0) @map("subtotal_price")
+  discountAmount        Int               @default(0) @map("discount_amount")
+  totalPrice            Int               @map("total_price")
+  status                WashSessionStatus @default(pending_payment)
+  currentStep           Int               @default(0) @map("current_step")
+  totalSteps            Int               @default(0) @map("total_steps")
+  progress              Int               @default(0)
+  pointsEarned          Int               @default(0) @map("points_earned")
+  rating                Int?
+  reviewText            String?           @map("review_text")
+  startedAt             DateTime?         @map("started_at")
+  completedAt           DateTime?         @map("completed_at")
+  cancelledAt           DateTime?         @map("cancelled_at")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch          Branch               @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  machine         Machine              @relation(fields: [machineId], references: [id], onDelete: Restrict)
+  package         WashPackage          @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  paymentConfig   BranchPaymentConfig? @relation(fields: [paymentConfigId], references: [id], onDelete: SetNull)
+  branchPackageConfig BranchPackageConfig? @relation(fields: [branchPackageConfigId], references: [id], onDelete: SetNull)
+  payment         Payment?
+  couponRedemption CouponRedemption?
+  points          PointsTransaction[]
+
+  @@map("wash_sessions")
+}
+
+model Payment {
+  id                     String        @id @default(uuid())
+  sessionId              String        @unique @map("session_id")
+  userId                 String        @map("user_id")
+  branchId               String        @map("branch_id")
+  scanTokenId            String?       @map("scan_token_id")
+  paymentConfigId        String?       @map("payment_config_id")
+  method                 PaymentMethod @default(promptpay)
+  status                 PaymentStatus @default(pending)
+  currency               String        @default("THB")
+  amount                 Int
+  provider               String        @default("mock_promptpay")
+  providerRef            String?       @map("provider_ref")
+  providerStatus         String?       @map("provider_status")
+  providerConfirmedAt    DateTime?     @map("provider_confirmed_at")
+  reference              String?       @unique
+  qrPayload              String?       @map("qr_payload")
+  providerPayload        Json?         @map("provider_payload")
+  paymentQrType          String?       @map("payment_qr_type")
+  paymentConfirmedSource String?       @map("payment_confirmed_source")
+  expiresAt              DateTime?     @map("expires_at")
+  confirmedAt            DateTime?     @map("confirmed_at")
+  failedAt               DateTime?     @map("failed_at")
+  cancelledAt            DateTime?     @map("cancelled_at")
+  refundedAt             DateTime?     @map("refunded_at")
+  lastWebhookAt          DateTime?     @map("last_webhook_at")
+  lastWebhookEventId     String?       @map("last_webhook_event_id")
+  lastWebhookStatus      String?       @map("last_webhook_status")
+  lastReconciledAt       DateTime?     @map("last_reconciled_at")
+  reconciliationAttempts Int           @default(0) @map("reconciliation_attempts")
+  metadata               Json?
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  session  WashSession       @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  user     User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch   Branch            @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  paymentConfig BranchPaymentConfig? @relation(fields: [paymentConfigId], references: [id], onDelete: SetNull)
+  attempts PaymentAttempt[]
+
+  @@index([branchId, status])
+  @@index([provider, providerRef])
+  @@map("payments")
+}
+
+model BranchPaymentConfig {
+  id                  String               @id @default(uuid())
+  branchId            String               @map("branch_id")
+  mode                BranchPaymentMode
+  provider            BranchPaymentProvider
+  isActive            Boolean              @default(true) @map("is_active")
+  isLocked            Boolean              @default(false) @map("is_locked")
+  approvalStatus      BranchPaymentApprovalStatus @default(draft) @map("approval_status")
+  approvedAt          DateTime?            @map("approved_at")
+  approvedByAdminId   String?              @map("approved_by_admin_id")
+  displayName         String               @map("display_name")
+  statementName       String?              @map("statement_name")
+  settlementOwnerType SettlementOwnerType  @default(franchisee) @map("settlement_owner_type")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+
+  branch       Branch                     @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  credentials  BranchPaymentCredential[]
+  capabilities BranchPaymentCapability?
+  sessions     WashSession[]
+  payments     Payment[]
+
+  @@index([branchId, isActive])
+  @@map("branch_payment_configs")
+}
+
+model BranchPaymentCredential {
+  id                    String   @id @default(uuid())
+  branchPaymentConfigId String   @map("branch_payment_config_id")
+  key                   String
+  valueEncrypted        String   @map("value_encrypted")
+  maskedValue           String?  @map("masked_value")
+  isSecret              Boolean  @default(true) @map("is_secret")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  branchPaymentConfig BranchPaymentConfig @relation(fields: [branchPaymentConfigId], references: [id], onDelete: Cascade)
+
+  @@unique([branchPaymentConfigId, key])
+  @@map("branch_payment_credentials")
+}
+
+model BranchPaymentCapability {
+  id                        String   @id @default(uuid())
+  branchPaymentConfigId     String   @unique @map("branch_payment_config_id")
+  supportsWebhook           Boolean  @default(false) @map("supports_webhook")
+  supportsPolling           Boolean  @default(false) @map("supports_polling")
+  supportsDynamicQr         Boolean  @default(false) @map("supports_dynamic_qr")
+  supportsReferenceBinding  Boolean  @default(false) @map("supports_reference_binding")
+  supportsRefund            Boolean  @default(false) @map("supports_refund")
+  supportsSliplessConfirmation Boolean @default(false) @map("supports_slipless_confirmation")
+  createdAt                 DateTime @default(now()) @map("created_at")
+  updatedAt                 DateTime @updatedAt @map("updated_at")
+
+  branchPaymentConfig BranchPaymentConfig @relation(fields: [branchPaymentConfigId], references: [id], onDelete: Cascade)
+
+  @@map("branch_payment_capabilities")
+}
+
+model PaymentAttempt {
+  id             String        @id @default(uuid())
+  paymentId      String        @map("payment_id")
+  status         PaymentStatus
+  source         String        @default("system")
+  action         String?       
+  providerRef    String?       @map("provider_ref")
+  providerStatus String?       @map("provider_status")
+  eventId        String?       @map("event_id")
+  note           String?
+  requestBody    Json?         @map("request_body")
+  responseBody   Json?         @map("response_body")
+  attemptedAt    DateTime      @default(now()) @map("attempted_at")
+
+  payment Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@map("payment_attempts")
+}
+
+model Coupon {
+  id              String        @id @default(uuid())
+  code            String        @unique
+  title           String
+  description     String?
+  scope           CouponScope   @default(branch_only)
+  status          CouponStatus  @default(active)
+  discountType    DiscountType  @map("discount_type")
+  discountValue   Int           @map("discount_value")
+  minSpend        Int           @default(0) @map("min_spend")
+  maxUses         Int           @default(0) @map("max_uses")
+  maxUsesPerUser  Int           @default(1) @map("max_uses_per_user")
+  usedCount       Int           @default(0) @map("used_count")
+  packageIds      String[]      @default([]) @map("package_ids")
+  validFrom       DateTime      @map("valid_from")
+  validUntil      DateTime      @map("valid_until")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  branches     CouponBranchLink[]
+  users        UserCoupon[]
+  redemptions  CouponRedemption[]
+
+  @@map("coupons")
+}
+
+model CouponBranchLink {
+  id        String   @id @default(uuid())
+  couponId  String   @map("coupon_id")
+  branchId  String   @map("branch_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  coupon Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([couponId, branchId])
+  @@map("coupon_branch_links")
+}
+
+model UserCoupon {
+  id         String           @id @default(uuid())
+  userId     String           @map("user_id")
+  couponId   String           @map("coupon_id")
+  status     UserCouponStatus @default(claimed)
+  claimedAt  DateTime         @default(now()) @map("claimed_at")
+  redeemedAt DateTime?        @map("redeemed_at")
+
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon     Coupon            @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  redemption CouponRedemption?
+
+  @@unique([userId, couponId])
+  @@map("user_coupons")
+}
+
+model CouponRedemption {
+  id            String   @id @default(uuid())
+  userCouponId  String   @unique @map("user_coupon_id")
+  couponId      String   @map("coupon_id")
+  userId        String   @map("user_id")
+  branchId      String   @map("branch_id")
+  sessionId     String?  @unique @map("session_id")
+  discountAmount Int     @map("discount_amount")
+  redeemedAt    DateTime @default(now()) @map("redeemed_at")
+
+  userCoupon UserCoupon  @relation(fields: [userCouponId], references: [id], onDelete: Cascade)
+  coupon     Coupon      @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  branch     Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  session    WashSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@map("coupon_redemptions")
+}
+
+model PointWallet {
+  id               String   @id @default(uuid())
+  userId           String   @unique @map("user_id")
+  balance          Int      @default(0)
+  lifetimeEarned   Int      @default(0) @map("lifetime_earned")
+  lifetimeRedeemed Int      @default(0) @map("lifetime_redeemed")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions PointsTransaction[]
+
+  @@map("point_wallets")
 }
 
 model PointsTransaction {
-  id          String     @id @default(uuid())
-  userId      String     @map("user_id")
-  sessionId   String?    @map("session_id")
-  type        PointsType
-  amount      Int
-  description String
-  createdAt   DateTime   @default(now()) @map("created_at")
+  id           String     @id @default(uuid())
+  walletId     String     @map("wallet_id")
+  userId       String     @map("user_id")
+  branchId     String?    @map("branch_id")
+  sessionId    String?    @map("session_id")
+  type         PointsType
+  amount       Int
+  balanceAfter Int        @map("balance_after")
+  description  String
+  metadata     Json?
+  createdAt    DateTime   @default(now()) @map("created_at")
 
-  user    User         @relation(fields: [userId], references: [id])
-  session WashSession? @relation(fields: [sessionId], references: [id])
+  wallet  PointWallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session WashSession?  @relation(fields: [sessionId], references: [id], onDelete: SetNull)
 
+  @@index([userId, createdAt])
   @@map("points_transactions")
 }
-
-// ── Stamps ────────────────────────────────────────────────
 
 model Stamp {
   id            String    @id @default(uuid())
@@ -265,18 +614,9 @@ model Stamp {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("stamps")
-}
-
-// ── Notifications ─────────────────────────────────────────
-
-enum NotificationCategory {
-  wash
-  coupon
-  points
-  system
 }
 
 model Notification {
@@ -288,28 +628,28 @@ model Notification {
   isRead    Boolean              @default(false) @map("is_read")
   createdAt DateTime             @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
 }
 
-// ── Feedback ──────────────────────────────────────────────
-
 model Feedback {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
+  branchId  String?  @map("branch_id")
+  sessionId String?  @map("session_id")
   type      String
   message   String
   status    String   @default("pending")
+  adminNotes String? @map("admin_notes")
+  resolvedAt DateTime? @map("resolved_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("feedback")
 }
-
-// ── Piggy Bank ────────────────────────────────────────────
 
 model PiggyBank {
   id        String   @id @default(uuid())
@@ -319,12 +659,10 @@ model PiggyBank {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("piggy_banks")
 }
-
-// ── Vehicles ──────────────────────────────────────────────
 
 model Vehicle {
   id        String   @id @default(uuid())
@@ -338,12 +676,10 @@ model Vehicle {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("vehicles")
 }
-
-// ── Promotions ────────────────────────────────────────────
 
 model Promotion {
   id          String   @id @default(uuid())
@@ -362,28 +698,39 @@ model Promotion {
   @@map("promotions")
 }
 
-// ── Referrals ─────────────────────────────────────────────
+model RewardCatalog {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  pointsCost  Int      @map("points_cost")
+  category    String
+  tag         String?
+  icon        String
+  iconBg      String?  @map("icon_bg")
+  stock       Int?
+  branchIds   String[] @default([]) @map("branch_ids")
+  isActive    Boolean  @default(true) @map("is_active")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
-model Referral {
-  id           String   @id @default(uuid())
-  referrerId   String   @map("referrer_id")
-  referredId   String   @map("referred_id")
-  pointsEarned Int      @default(0) @map("points_earned")
-  createdAt    DateTime @default(now()) @map("created_at")
-
-  referrer User @relation("referrer", fields: [referrerId], references: [id])
-  referred User @relation("referred", fields: [referredId], references: [id])
-
-  @@unique([referrerId, referredId])
-  @@map("referrals")
+  @@map("reward_catalog")
 }
 
-// ── Admin Users ───────────────────────────────────────────
+model NotificationCampaign {
+  id                 String   @id @default(uuid())
+  title              String
+  body               String
+  category           NotificationCategory @default(system)
+  scope              String
+  branchIds          String[] @default([]) @map("branch_ids")
+  targetUserCount    Int      @default(0) @map("target_user_count")
+  sentCount          Int      @default(0) @map("sent_count")
+  createdByAdminId   String   @map("created_by_admin_id")
+  createdAt          DateTime @default(now()) @map("created_at")
 
-enum AdminRole {
-  hq
-  franchise_owner
-  branch_manager
+  @@map("notification_campaigns")
 }
 
 model AdminUser {
@@ -391,11 +738,50 @@ model AdminUser {
   email        String    @unique
   passwordHash String    @map("password_hash")
   name         String
-  role         AdminRole @default(branch_manager)
-  branchIds    String[]  @map("branch_ids")
+  role         AdminRole @default(branch_admin)
   isActive     Boolean   @default(true) @map("is_active")
+  lastLoginAt  DateTime? @map("last_login_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
+  branchScopes AdminBranchScope[]
+  auditLogs    AuditLog[]
+
   @@map("admin_users")
+}
+
+model AdminBranchScope {
+  id                String   @id @default(uuid())
+  adminUserId       String   @map("admin_user_id")
+  branchId          String   @map("branch_id")
+  canViewRevenue    Boolean  @default(true) @map("can_view_revenue")
+  canManageMachines Boolean  @default(true) @map("can_manage_machines")
+  canManageCoupons  Boolean  @default(true) @map("can_manage_coupons")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  adminUser AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  branch    Branch    @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, branchId])
+  @@map("admin_branch_scopes")
+}
+
+model AuditLog {
+  id          String         @id @default(uuid())
+  actorType   AuditActorType @map("actor_type")
+  adminUserId String?        @map("admin_user_id")
+  userId      String?        @map("user_id")
+  branchId    String?        @map("branch_id")
+  action      String
+  entityType  String         @map("entity_type")
+  entityId    String?        @map("entity_id")
+  metadata    Json?
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  adminUser AdminUser? @relation(fields: [adminUserId], references: [id], onDelete: SetNull)
+  branch    Branch?    @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([branchId, createdAt])
+  @@index([actorType, createdAt])
+  @@map("audit_logs")
 }

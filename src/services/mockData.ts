@@ -15,7 +15,7 @@ export interface Machine {
   id: string;
   name: string;
   type: 'car' | 'motorcycle';
-  status: 'idle' | 'busy' | 'maintenance';
+  status: 'idle' | 'reserved' | 'washing' | 'maintenance' | 'offline';
   espDeviceId: string;
 }
 
@@ -40,12 +40,15 @@ export interface WashSession {
   carSize: 'S' | 'M' | 'L';
   addons: string[];
   totalPrice: number;
-  paymentStatus: 'pending' | 'confirmed';
-  washStatus: 'waiting' | 'in_progress' | 'completed';
+  status: 'pending_payment' | 'ready_to_wash' | 'in_progress' | 'completed' | 'cancelled';
+  paymentStatus: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded' | 'expired';
+  washStatus: 'waiting' | 'ready' | 'in_progress' | 'completed' | 'cancelled';
   currentStep: number;
+  totalSteps: number;
   progress: number;
   pointsEarned: number;
   rating: number | null;
+  reviewText?: string;
   startedAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;
@@ -54,7 +57,7 @@ export interface WashSession {
 export interface User {
   id: string;
   displayName: string;
-  pictureUrl: string;
+  avatarUrl: string;
   points: number;
   totalWashes: number;
   memberSince: Date;
@@ -244,7 +247,7 @@ export const branches: Branch[] = realBranches.map((rb) => ({
 export const mockUser: User = {
   id: 'line_user_001',
   displayName: 'W',
-  pictureUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100',
+  avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=100&h=100',
   points: 1250,
   totalWashes: 14,
   memberSince: new Date('2025-01-15'),

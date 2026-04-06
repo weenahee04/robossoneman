@@ -41,7 +41,7 @@ export function useCreateSession() {
 export function useConfirmPayment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (sessionId: string) => api.confirmPayment(sessionId),
+    mutationFn: (paymentId: string) => api.confirmPaymentByPaymentId(paymentId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['sessionHistory'] });
     },
@@ -89,10 +89,25 @@ export function useRedeemPoints() {
 
 // ── Coupon hooks ──────────────────────────────────────────
 
-export function useCoupons() {
+export function useCoupons(branchId?: string) {
   return useQuery({
-    queryKey: ['coupons'],
-    queryFn: () => api.getCoupons(),
+    queryKey: ['coupons', branchId],
+    queryFn: () => api.getCoupons(branchId),
+  });
+}
+
+export function useAvailableCoupons(branchId?: string) {
+  return useQuery({
+    queryKey: ['availableCoupons', branchId],
+    queryFn: () => api.getAvailableCoupons(branchId),
+  });
+}
+
+export function useRewards(branchId?: string) {
+  return useQuery({
+    queryKey: ['rewards', branchId],
+    queryFn: () => api.getRewards(branchId),
+    staleTime: 1000 * 60 * 5,
   });
 }
 
@@ -102,6 +117,7 @@ export function useClaimCoupon() {
     mutationFn: (code: string) => api.claimCoupon(code),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['coupons'] });
+      qc.invalidateQueries({ queryKey: ['availableCoupons'] });
     },
   });
 }
@@ -128,10 +144,11 @@ export function useClaimStampReward() {
 
 // ── Notification hooks ────────────────────────────────────
 
-export function useNotifications(page = 1) {
+export function useNotifications(page = 1, enabled = true) {
   return useQuery({
     queryKey: ['notifications', page],
     queryFn: () => api.getNotifications(page),
+    enabled,
     refetchInterval: 30000,
   });
 }
@@ -156,15 +173,6 @@ export function useMarkAllNotificationsRead() {
   });
 }
 
-// ── Referral hooks ────────────────────────────────────────
-
-export function useReferralInfo() {
-  return useQuery({
-    queryKey: ['referral'],
-    queryFn: () => api.getReferralInfo(),
-  });
-}
-
 // ── Feedback hooks ────────────────────────────────────────
 
 export function useSubmitFeedback() {
@@ -173,12 +181,51 @@ export function useSubmitFeedback() {
   });
 }
 
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.updateProfile>[0]) => api.updateProfile(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vehicles'] });
+    },
+  });
+}
+
+export function useUserSettings(enabled = true) {
+  return useQuery({
+    queryKey: ['userSettings'],
+    queryFn: () => api.getUserSettings(),
+    enabled,
+  });
+}
+
+export function useUpdateUserSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: Parameters<typeof api.updateUserSettings>[0]) => api.updateUserSettings(data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['userSettings'] });
+    },
+  });
+}
+
+export function useAccountAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (action: 'deactivate' | 'delete') => api.runAccountAction(action),
+    onSuccess: () => {
+      qc.clear();
+    },
+  });
+}
+
 // ── Vehicle hooks ─────────────────────────────────────────
 
-export function useVehicles() {
+export function useVehicles(enabled = true) {
   return useQuery({
     queryKey: ['vehicles'],
     queryFn: () => api.getVehicles(),
+    enabled,
   });
 }
 

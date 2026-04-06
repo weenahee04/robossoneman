@@ -12,6 +12,7 @@ packageRoutes.get('/', async (c) => {
   return c.json({
     data: packages.map((p) => ({
       id: p.id,
+      code: p.code,
       name: p.name,
       description: p.description,
       vehicleType: p.vehicleType,
@@ -36,6 +37,7 @@ packageRoutes.get('/:id', async (c) => {
   return c.json({
     data: {
       id: pkg.id,
+      code: pkg.code,
       name: pkg.name,
       description: pkg.description,
       vehicleType: pkg.vehicleType,
