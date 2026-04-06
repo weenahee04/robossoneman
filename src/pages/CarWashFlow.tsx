@@ -697,13 +697,6 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
         setSession(updatedSession);
         if (updatedSession.payment?.status === 'confirmed' || updatedSession.status === 'ready_to_wash') {
           clearInterval(pollInterval);
-          setShowPaymentSuccessPopup(true);
-          setTimeout(() => {
-            if (!cancelled) {
-              setShowPaymentSuccessPopup(false);
-              goToStep('warning');
-            }
-          }, 2500);
         }
       } catch {
         // Silently ignore poll errors — will retry on next interval
@@ -715,6 +708,25 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
       clearInterval(pollInterval);
     };
   }, [currentStep, session?.payment?.id, session?.payment?.status, session?.payment?.provider, goToStep]);
+
+  // Detect payment confirmation and trigger success flow
+  useEffect(() => {
+    if (
+      currentStep !== 'payment' ||
+      !session?.payment?.id ||
+      (session.payment.status !== 'confirmed' && session.status !== 'ready_to_wash')
+    ) {
+      return;
+    }
+
+    setShowPaymentSuccessPopup(true);
+    const timer = setTimeout(() => {
+      setShowPaymentSuccessPopup(false);
+      goToStep('warning');
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [currentStep, session?.payment?.status, session?.status, goToStep]);
 
   // Rating handler
   const handleRate = async (stars: number) => {
