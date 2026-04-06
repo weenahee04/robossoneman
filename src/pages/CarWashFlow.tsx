@@ -667,7 +667,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     return () => {
       cancelled = true;
     };
-  }, [currentStep, session?.payment?.qrPayload]);
+  }, [currentStep, session?.payment?.qrPayload, session?.payment?.metadata]);
 
   useEffect(() => {
     if (currentStep !== 'payment') {
@@ -1334,7 +1334,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
                       สแกน QR นี้จากแอปธนาคารเพื่อชำระเงิน
                     </p>
                   </>
-                ) : paymentQrImage && !isStripeProvider ? (
+                ) : paymentQrImage ? (
                   <>
                     <img
                       src={paymentQrImage}
