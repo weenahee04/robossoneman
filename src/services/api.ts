@@ -327,6 +327,13 @@ class ApiClient {
     });
   }
 
+  async verifyPayment(paymentId: string): Promise<WashSession> {
+    return this.request<WashSession>({
+      method: 'POST',
+      url: `/payments/${paymentId}/verify`,
+    });
+  }
+
   async verifyPaymentSlip(paymentId: string, file: File): Promise<WashSession> {
     const formData = new FormData();
     formData.append('file', file);

@@ -675,6 +675,41 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     }
   }, [currentStep]);
 
+  // Auto-poll Stripe payment verification when payment is pending
+  useEffect(() => {
+    if (
+      currentStep !== 'payment' ||
+      !HAS_API_BASE_URL ||
+      !session?.payment?.id ||
+      session.payment.status !== 'pending' ||
+      session.payment.provider !== 'stripe'
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+    const pollInterval = setInterval(async () => {
+      if (cancelled) return;
+      try {
+        const updatedSession = normalizeSession(await api.verifyPayment(session.payment!.id));
+        if (cancelled) return;
+        setSession(updatedSession);
+        if (updatedSession.payment?.status === 'confirmed' || updatedSession.status === 'ready_to_wash') {
+          clearInterval(pollInterval);
+          setSlipVerifySuccess('ชำระเงินสำเร็จ พร้อมเริ่มล้างรถได้เลย');
+          goToStep('warning');
+        }
+      } catch {
+        // Silently ignore poll errors — will retry on next interval
+      }
+    }, 5000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(pollInterval);
+    };
+  }, [currentStep, session?.payment?.id, session?.payment?.status, session?.payment?.provider, goToStep]);
+
   // Rating handler
   const handleRate = async (stars: number) => {
     setRating(stars);
