@@ -230,6 +230,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const [selectedSlipFile, setSelectedSlipFile] = useState<File | null>(null);
   const [slipVerifyError, setSlipVerifyError] = useState<string | null>(null);
   const [slipVerifySuccess, setSlipVerifySuccess] = useState<string | null>(null);
+  const [showPaymentSuccessPopup, setShowPaymentSuccessPopup] = useState(false);
 
   // Session state
   const [session, setSession] = useState<WashSession | null>(null);
@@ -696,8 +697,13 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
         setSession(updatedSession);
         if (updatedSession.payment?.status === 'confirmed' || updatedSession.status === 'ready_to_wash') {
           clearInterval(pollInterval);
-          setSlipVerifySuccess('ชำระเงินสำเร็จ พร้อมเริ่มล้างรถได้เลย');
-          goToStep('warning');
+          setShowPaymentSuccessPopup(true);
+          setTimeout(() => {
+            if (!cancelled) {
+              setShowPaymentSuccessPopup(false);
+              goToStep('warning');
+            }
+          }, 2500);
         }
       } catch {
         // Silently ignore poll errors — will retry on next interval
@@ -1267,6 +1273,8 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     const paymentAmount = paymentPayload?.amount ?? payment?.amount?.toFixed(2) ?? `${totalPrice.toFixed(2)}`;
     const paymentProvider = paymentPayload?.provider ?? payment?.provider ?? 'promptpay';
     const paymentExpiresAt = paymentPayload?.expiresAt ?? payment?.expiresAt ?? null;
+    const isStripeProvider = payment?.provider === 'stripe' || paymentProvider === 'stripe';
+    const stripeQrImage = resolveStripeQrImage(payment);
 
     return (
       <motion.div
@@ -1294,7 +1302,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             </span>
           </motion.div>
 
-          {/* PromptPay QR */}
+          {/* QR Code Card */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1302,12 +1310,31 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             className="w-full max-w-sm bg-white rounded-3xl p-6 mb-6 shadow-2xl">
             <div className="text-center mb-4">
               <p className="text-gray-600 text-sm font-medium">โอนเงินผ่าน</p>
-              <p className="text-blue-700 font-bold text-lg">{paymentProvider} พร้อมเพย์</p>
+              <p className="text-blue-700 font-bold text-lg">
+                {isStripeProvider ? 'Stripe PromptPay' : 'พร้อมเพย์'}
+              </p>
+              {isStripeProvider && (
+                <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
+                  Live Mode
+                </span>
+              )}
             </div>
 
-            <div className="relative w-full aspect-square bg-gray-50 rounded-2xl border-2 border-blue-100 mb-4 overflow-hidden p-5">
-              <div className="w-full h-full rounded-2xl border border-blue-100 bg-white flex flex-col items-center justify-center gap-4 text-center px-4 py-5">
-                {paymentQrImage ? (
+            {/* QR Image — single QR only */}
+            <div className="relative w-full aspect-square bg-gray-50 rounded-2xl border-2 border-blue-100 mb-4 overflow-hidden p-4">
+              <div className="w-full h-full rounded-2xl border border-blue-100 bg-white flex flex-col items-center justify-center gap-3 text-center px-4 py-4">
+                {isStripeProvider && stripeQrImage ? (
+                  <>
+                    <img
+                      src={stripeQrImage}
+                      alt="Stripe PromptPay QR"
+                      className="w-full max-w-[260px] rounded-xl"
+                    />
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      สแกน QR นี้จากแอปธนาคารเพื่อชำระเงิน
+                    </p>
+                  </>
+                ) : paymentQrImage && !isStripeProvider ? (
                   <>
                     <img
                       src={paymentQrImage}
@@ -1323,15 +1350,9 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
                     <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center shadow-sm border border-blue-100">
                       <img src="/Roboss_logo.png" alt="ROBOSS" className="w-12 h-12 object-contain" />
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-gray-500 text-xs uppercase tracking-[0.2em]">QR Payload</p>
-                      <p className="text-gray-900 text-sm font-semibold break-all">
-                        {payment?.qrPayload ?? 'Pending payment payload'}
-                      </p>
+                    <div className="animate-pulse space-y-2">
+                      <p className="text-gray-400 text-sm font-medium">กำลังสร้าง QR Code...</p>
                     </div>
-                    <p className="text-gray-500 text-xs leading-relaxed">
-                      ระบบกำลังเตรียม QR image หากยังไม่ขึ้นสามารถใช้ payload นี้อ้างอิงได้
-                    </p>
                   </>
                 )}
               </div>
@@ -1343,44 +1364,72 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
               <p className="text-3xl font-black text-gray-900">{paymentAmount} <span className="text-base font-normal text-gray-500">บาท</span></p>
             </div>
 
-            {/* Payee info */}
-            <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
-              <div className="flex items-center justify-between text-sm mb-1">
-                <span className="text-gray-500">ชื่อบัญชี</span>
-                <span className="text-gray-800 font-medium text-right ml-3">{paymentRecipientName}</span>
+            {/* Payee info — show only for manual PromptPay, hide for Stripe */}
+            {isStripeProvider ? (
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-1">
+                <p className="text-blue-700 text-xs font-bold text-center">รายการนี้ใช้ Stripe PromptPay แบบ dynamic QR</p>
+                <p className="text-gray-500 text-[10px] text-center leading-relaxed">
+                  ชื่อผู้รับ/เลขพร้อมเพย์ที่แสดงในแอปธนาคารอาจไม่ตรงกับ
+                  ร้านค้าโดยตรง เนื่องจากเป็นการชำระผ่านระบบ Stripe
+                </p>
+                {paymentReference !== '-' && (
+                  <div className="flex items-center justify-between text-[11px] pt-1 border-t border-blue-100">
+                    <span className="text-gray-500">Reference</span>
+                    <span className="text-gray-700 font-mono font-medium">{paymentReference}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">เบอร์พร้อมเพย์</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-gray-800 font-mono font-medium">{paymentRecipientId}</span>
-                  <button
-                    type="button"
-                    onClick={() => void navigator.clipboard?.writeText(paymentRecipientId)}
-                    className="text-blue-500 hover:text-blue-600">
-                    <img src={getIconUrl('copy', 28)} alt="copy" width={14} height={14} style={{ filter: 'invert(0.4) sepia(1) saturate(5) hue-rotate(190deg)' }} />
-                  </button>
+            ) : (
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
+                <div className="flex items-center justify-between text-sm mb-1">
+                  <span className="text-gray-500">ชื่อบัญชี</span>
+                  <span className="text-gray-800 font-medium text-right ml-3">{paymentRecipientName}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">เบอร์พร้อมเพย์</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-800 font-mono font-medium">{paymentRecipientId}</span>
+                    <button
+                      type="button"
+                      onClick={() => void navigator.clipboard?.writeText(paymentRecipientId)}
+                      className="text-blue-500 hover:text-blue-600">
+                      <img src={getIconUrl('copy', 28)} alt="copy" width={14} height={14} style={{ filter: 'invert(0.4) sepia(1) saturate(5) hue-rotate(190deg)' }} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">Reference</span>
+                  <span className="text-gray-800 font-mono font-medium text-right ml-3">{paymentReference}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-500">หมดอายุ</span>
+                  <span className="text-gray-800 font-medium text-right ml-3">
+                    {paymentExpiresAt ? new Date(paymentExpiresAt).toLocaleString('th-TH') : '-'}
+                  </span>
                 </div>
               </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">Reference</span>
-                <span className="text-gray-800 font-mono font-medium text-right ml-3">{paymentReference}</span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-500">หมดอายุ</span>
-                <span className="text-gray-800 font-medium text-right ml-3">
-                  {paymentExpiresAt ? new Date(paymentExpiresAt).toLocaleString('th-TH') : '-'}
-                </span>
-              </div>
-            </div>
+            )}
           </motion.div>
 
-          {/* Confirm Button (manual confirm) */}
+          {/* Action Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="w-full max-w-sm space-y-3">
-            {HAS_API_BASE_URL ? (
+            {isStripeProvider ? (
+              /* Stripe: auto-polling, show waiting state */
+              <>
+                <div className="flex items-center justify-center gap-3 py-4 px-4 rounded-2xl bg-app-dark border border-white/10">
+                  <div className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                  <p className="text-white text-sm font-medium">รอการชำระเงิน... ระบบจะตรวจสอบอัตโนมัติ</p>
+                </div>
+                <p className="text-gray-600 text-xs text-center">
+                  สแกน QR ด้านบนจากแอปธนาคาร เมื่อชำระแล้วหน้านี้จะอัพเดตอัตโนมัติ
+                </p>
+              </>
+            ) : HAS_API_BASE_URL ? (
+              /* Manual PromptPay with API: slip upload */
               <>
                 <label className="w-full flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-white/15 bg-app-dark px-4 py-4 text-left text-white transition-colors hover:border-white/30">
                   <div className="min-w-0">
@@ -1424,23 +1473,69 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
                 </p>
               </>
             ) : (
+              /* Local dev fallback */
               <>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={handleConfirmPayment}
-              disabled={isConfirmingPayment || (HAS_API_BASE_URL && !session?.payment)}
-              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-white/20 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 text-lg">
-              <I8Icon name="checkmark" size={22} />
-              {isConfirmingPayment ? 'กำลังยืนยันการชำระเงิน...' : 'ฉันจ่ายเงินแล้ว'}
-            </motion.button>
-            <p className="text-gray-600 text-xs text-center">
-              * กดปุ่มนี้หลังจากโอนเงินเรียบร้อยแล้ว
-            </p>
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleConfirmPayment}
+                  disabled={isConfirmingPayment || (HAS_API_BASE_URL && !session?.payment)}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-white/20 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 text-lg">
+                  <I8Icon name="checkmark" size={22} />
+                  {isConfirmingPayment ? 'กำลังยืนยันการชำระเงิน...' : 'ฉันจ่ายเงินแล้ว'}
+                </motion.button>
+                <p className="text-gray-600 text-xs text-center">
+                  * กดปุ่มนี้หลังจากโอนเงินเรียบร้อยแล้ว
+                </p>
               </>
             )}
           </motion.div>
         </div>
+
+        {/* Payment Success Popup */}
+        <AnimatePresence>
+          {showPaymentSuccessPopup && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm">
+              <motion.div
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ type: 'spring', damping: 15, stiffness: 300 }}
+                className="bg-app-dark rounded-3xl p-8 mx-6 max-w-xs w-full text-center border border-green-500/30 shadow-2xl shadow-green-900/30">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.2, type: 'spring', damping: 10 }}
+                  className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-5">
+                  <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <motion.path
+                      initial={{ pathLength: 0 }}
+                      animate={{ pathLength: 1 }}
+                      transition={{ delay: 0.4, duration: 0.5 }}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                </motion.div>
+                <h3 className="text-white text-xl font-black mb-2">ชำระเงินสำเร็จ!</h3>
+                <p className="text-gray-400 text-sm">กำลังเตรียมเริ่มล้างรถ...</p>
+                <div className="mt-4 w-full bg-white/10 rounded-full h-1.5 overflow-hidden">
+                  <motion.div
+                    initial={{ width: '0%' }}
+                    animate={{ width: '100%' }}
+                    transition={{ duration: 2.5, ease: 'linear' }}
+                    className="h-full bg-green-500 rounded-full"
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
     );
   };
