@@ -35,3 +35,4 @@ backend/.env
 # Local tooling
 .cursor/
 .claude/
+.vercel

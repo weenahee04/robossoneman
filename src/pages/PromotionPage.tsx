@@ -1,13 +1,14 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useBranch } from '../services/branchContext';
 import { getPromotionsForBranch } from '../services/branchOffers';
 import { usePromotions as useApiPromotions } from '@/hooks/useApi';
+import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { getIconUrl, type IconName } from '../services/icons';
-
-const USE_API = !!import.meta.env.VITE_API_URL;
+import { setWashFlowIntent } from '@/services/washFlowIntent';
 
 function I8Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
   return <img src={getIconUrl(name, size * 2)} alt={name} width={size} height={size} className={`inline-block ${className}`} style={{ filter: 'invert(1) brightness(1.1)' }} />;
@@ -28,11 +29,12 @@ interface Promotion {
   image?: string;
 }
 export function PromotionPage({ onBack }: PromotionPageProps) {
+  const navigate = useNavigate();
   const { branch } = useBranch();
   const { data: apiPromotions } = useApiPromotions(branch.id);
 
   const promotions: Promotion[] = useMemo(() => {
-    if (USE_API && apiPromotions) {
+    if (HAS_API_BASE_URL && apiPromotions) {
       return apiPromotions.map((p) => ({
         id: p.id,
         title: p.title,
@@ -46,10 +48,31 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
         image: p.image,
       }));
     }
-    return getPromotionsForBranch(branch.id);
+    if (USE_LOCAL_DEV_FALLBACK) {
+      return getPromotionsForBranch(branch.id);
+    }
+
+    return [];
   }, [apiPromotions, branch.id]);
 
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
+
+  const handleUsePromotion = (promotion: Promotion) => {
+    setWashFlowIntent({
+      source: 'promotion',
+      branchId: branch.id,
+      branchName: branch.name,
+      branchType: branch.type,
+      promotion: {
+        id: promotion.id,
+        title: promotion.title,
+        branchIds: [branch.id],
+      },
+    });
+    setSelectedPromo(null);
+    navigate('/carwash');
+  };
+
   return (
     <div className="flex-1 flex flex-col bg-app-black overflow-hidden relative">
       {/* Header */}
@@ -290,7 +313,7 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
 
               {/* Bottom CTA */}
               <div className="p-4 border-t border-white/5">
-                <Button className="w-full py-4 text-base" size="lg">
+                <Button className="w-full py-4 text-base" size="lg" onClick={() => handleUsePromotion(selectedPromo)}>
                   ใช้โปรโมชั่น
                 </Button>
               </div>

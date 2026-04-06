@@ -45,7 +45,13 @@ stampRoutes.post('/claim-reward', async (c) => {
     return c.json({ message: 'Not enough stamps to claim reward' }, 400);
   }
 
-  const REWARD_POINTS = 500;
+  const rewardPoints = 500;
+  const wallet = await prisma.pointWallet.upsert({
+    where: { userId },
+    update: {},
+    create: { userId },
+  });
+  const nextBalance = wallet.balance + rewardPoints;
 
   await prisma.$transaction([
     prisma.stamp.update({
@@ -54,23 +60,31 @@ stampRoutes.post('/claim-reward', async (c) => {
     }),
     prisma.pointsTransaction.create({
       data: {
+        walletId: wallet.id,
         userId,
         type: 'bonus',
-        amount: REWARD_POINTS,
-        description: 'Stamp card reward — free wash!',
+        amount: rewardPoints,
+        balanceAfter: nextBalance,
+        description: 'Stamp card reward - free wash!',
+      },
+    }),
+    prisma.pointWallet.update({
+      where: { id: wallet.id },
+      data: {
+        balance: nextBalance,
+        lifetimeEarned: { increment: rewardPoints },
       },
     }),
     prisma.user.update({
       where: { id: userId },
-      data: { totalPoints: { increment: REWARD_POINTS } },
+      data: { totalPoints: nextBalance },
     }),
-    // Create new stamp card
     prisma.stamp.create({
       data: { userId, targetCount: 10 },
     }),
   ]);
 
   return c.json({
-    data: { message: 'Reward claimed! New stamp card started.', pointsAwarded: REWARD_POINTS },
+    data: { message: 'Reward claimed! New stamp card started.', pointsAwarded: rewardPoints },
   });
 });

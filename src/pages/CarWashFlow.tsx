@@ -1,16 +1,22 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Lottie from 'lottie-react';
+import QRCode from 'qrcode';
 import carAnimation from '../CarAnimation.json';
 import { getIconUrl, type IconName } from '../services/icons';
-import { branches, type Branch, type BranchPackage, type WashSession, POINTS_RATE } from '../services/mockData';
-import { createSession, confirmPayment, listenToSession, rateSession, getBranch } from '../services/washSession';
+import { branches } from '../services/mockData';
+import { createSession, confirmPayment, listenToSession, rateSession } from '../services/washSession';
 import { addPoints, calculatePoints, formatPoints, getUserPoints } from '../services/points';
-import { generatePromptPayPayload } from '../services/promptpay';
 import api from '../services/api';
 import { useWebSocket } from '../hooks/useWebSocket';
-
-const USE_API = !!import.meta.env.VITE_API_URL;
+import { usePointsBalance } from '@/hooks/useApi';
+import { useAuth } from '@/contexts/AuthContext';
+import { ALLOW_DEV_API_FAILURE_FALLBACK, HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
+import { getSessionWashStage } from '../lib/session';
+import { useBranch } from '../services/branchContext';
+import type { Branch, ResolvedScan, WashSession } from '../types';
+import type { WashFlowIntentCoupon, WashFlowIntentPromotion } from '@/services/washFlowIntent';
+import { consumeWashFlowIntent } from '@/services/washFlowIntent';
 
 // Reusable Icons8 icon component - renders monochrome PNG with brightness filter for dark theme
 function I8Icon({ name, size = 24, className = '' }: { name: IconName; size?: number; className?: string }) {
@@ -65,7 +71,140 @@ const stepIcons: { name: string; iconName: IconName; color: string }[] = [
   { name: 'เคลือบเงา', iconName: 'shine', color: '#8B5CF6' },
 ];
 
+function normalizeSession(session: WashSession): WashSession {
+  return {
+    ...session,
+    addons: session.addons || [],
+  };
+}
+
+function normalizeBranchType(branchType?: Branch['type'] | string): 'car' | 'bike' {
+  return branchType === 'bike' ? 'bike' : 'car';
+}
+
+function matchesBranchMachineType(machine: Branch['machines'][number], branchType: Branch['type'] | string = 'car') {
+  if (normalizeBranchType(branchType) === 'bike') {
+    return machine.type === 'motorcycle';
+  }
+
+  return machine.type === 'car';
+}
+
+function findAvailableMachine(branch: Branch) {
+  return branch.machines.find(
+    (machine) =>
+      matchesBranchMachineType(machine, branch.type) &&
+      machine.isEnabled !== false &&
+      machine.status === 'idle'
+  );
+}
+
+function buildBranchScanCandidates(params: {
+  preferredBranchId?: string;
+  branches: Branch[];
+}) {
+  const { preferredBranchId, branches } = params;
+  if (!preferredBranchId) {
+    return branches;
+  }
+
+  const preferred = branches.find((branch) => branch.id === preferredBranchId);
+  const others = branches.filter((branch) => branch.id !== preferredBranchId);
+  return preferred ? [preferred, ...others] : branches;
+}
+
+function mapBranchToBranchContext(branch: Branch) {
+  return {
+    id: branch.id,
+    name: branch.name,
+    shortName: branch.shortName || branch.name.replace('ROBOSS ', ''),
+    address: branch.address,
+    type: normalizeBranchType(branch.type),
+    isOpen: branch.isOpen,
+    hours: branch.hours || '06:00 - 22:00',
+    mapsUrl: branch.mapsUrl || undefined,
+    lat: branch.location?.lat,
+    lng: branch.location?.lng,
+    promptPayId: branch.promptPayId,
+    promptPayName: branch.promptPayName,
+    machinesFree: branch.machinesFree,
+    machinesTotal: branch.machinesTotal,
+  };
+}
+
+function resolveCouponDiscount(params: {
+  coupon: WashFlowIntentCoupon | null;
+  branchId?: string;
+  packageId?: string;
+  subtotalPrice: number;
+}) {
+  const { coupon, branchId, packageId, subtotalPrice } = params;
+  if (!coupon || subtotalPrice <= 0) {
+    return 0;
+  }
+
+  if (coupon.branchIds?.length && branchId && !coupon.branchIds.includes(branchId)) {
+    return 0;
+  }
+
+  if (coupon.packageIds?.length && packageId && !coupon.packageIds.includes(packageId)) {
+    return 0;
+  }
+
+  if (subtotalPrice < coupon.minSpend) {
+    return 0;
+  }
+
+  if (coupon.discountType === 'fixed') {
+    return Math.min(coupon.discountValue, subtotalPrice);
+  }
+
+  if (coupon.discountType === 'percent') {
+    return Math.min(Math.floor(subtotalPrice * (coupon.discountValue / 100)), subtotalPrice);
+  }
+
+  return 0;
+}
+
+function parsePromptPayPayload(payload?: string | null) {
+  if (!payload?.startsWith('promptpay://pay?')) {
+    return null;
+  }
+
+  try {
+    const url = new URL(payload);
+    return {
+      provider: url.searchParams.get('provider'),
+      recipient: url.searchParams.get('recipient'),
+      recipientName: url.searchParams.get('recipientName'),
+      amount: url.searchParams.get('amount'),
+      currency: url.searchParams.get('currency'),
+      reference: url.searchParams.get('reference'),
+      expiresAt: url.searchParams.get('expiresAt'),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function resolveStripeQrImage(payment?: WashSession['payment'] | null) {
+  if (!payment?.metadata || typeof payment.metadata !== 'object') {
+    return null;
+  }
+
+  const qrContext = (payment.metadata as Record<string, unknown>).paymentQrContext;
+  if (!qrContext || typeof qrContext !== 'object') {
+    return null;
+  }
+
+  const imageUrl = (qrContext as Record<string, unknown>).qrImageUrl;
+  return typeof imageUrl === 'string' && imageUrl ? imageUrl : null;
+}
+
 export function CarWashFlow({ onBack }: CarWashFlowProps) {
+  const { user: authUser, refreshUser } = useAuth();
+  const { branch: currentBranch, setBranch: setCurrentBranch } = useBranch();
+  const pointsBalanceQuery = usePointsBalance();
   // Flow state
   const [currentStep, setCurrentStep] = useState<Step>('scan');
   const [direction, setDirection] = useState(1);
@@ -73,6 +212,9 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   // Branch & Machine state (from QR scan)
   const [selectedBranch, setSelectedBranch] = useState<Branch | null>(null);
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
+  const [resolvedScanTokenId, setResolvedScanTokenId] = useState<string | null>(null);
+  const [selectedCoupon, setSelectedCoupon] = useState<WashFlowIntentCoupon | null>(null);
+  const [selectedPromotion, setSelectedPromotion] = useState<WashFlowIntentPromotion | null>(null);
 
   // Package selection state
   const [selectedPackageIndex, setSelectedPackageIndex] = useState(0);
@@ -81,6 +223,13 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
 
   // Payment state
   const [paymentCountdown, setPaymentCountdown] = useState(300); // 5 minutes
+  const [isPreparingPayment, setIsPreparingPayment] = useState(false);
+  const [isConfirmingPayment, setIsConfirmingPayment] = useState(false);
+  const [isStartingWash, setIsStartingWash] = useState(false);
+  const [paymentQrImage, setPaymentQrImage] = useState<string | null>(null);
+  const [selectedSlipFile, setSelectedSlipFile] = useState<File | null>(null);
+  const [slipVerifyError, setSlipVerifyError] = useState<string | null>(null);
+  const [slipVerifySuccess, setSlipVerifySuccess] = useState<string | null>(null);
 
   // Session state
   const [session, setSession] = useState<WashSession | null>(null);
@@ -94,25 +243,71 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const wsHandlerRef = useRef<(data: unknown) => void>(() => {});
   const { connected: wsConnected, subscribeSession } = useWebSocket({
     onMessage: (data) => wsHandlerRef.current(data),
-    autoReconnect: USE_API,
+    autoReconnect: HAS_API_BASE_URL,
   });
 
   useEffect(() => {
     wsHandlerRef.current = (data: unknown) => {
       const msg = data as Record<string, unknown>;
-      if (msg.type === 'session_progress' && session && msg.sessionId === session.id) {
+      const isTrackedSession =
+        session &&
+        ((msg.type === 'session_progress' && msg.sessionId === session.id) ||
+          (msg.type === 'session_update' && msg.sessionId === session.id));
+
+      if (isTrackedSession) {
+        const sessionPayload =
+          msg.type === 'session_update' && msg.session && typeof msg.session === 'object'
+            ? (msg.session as Record<string, unknown>)
+            : null;
+        const machinePayload =
+          msg.type === 'session_update' && msg.machine && typeof msg.machine === 'object'
+            ? (msg.machine as Record<string, unknown>)
+            : null;
+
         setSession((prev) => {
           if (!prev) return prev;
-          return {
+          return normalizeSession({
             ...prev,
-            currentStep: (msg.currentStep as number) ?? prev.currentStep,
-            progress: (msg.progress as number) ?? prev.progress,
-          };
+            currentStep:
+              (sessionPayload?.currentStep as number) ?? (msg.currentStep as number) ?? prev.currentStep,
+            progress: (sessionPayload?.progress as number) ?? (msg.progress as number) ?? prev.progress,
+            status:
+              (sessionPayload?.status as WashSession['status']) ??
+              (msg.sessionStatus as WashSession['status']) ??
+              prev.status,
+            pointsEarned:
+              (sessionPayload?.pointsEarned as number) ?? (msg.pointsEarned as number) ?? prev.pointsEarned,
+            payment: prev.payment
+              ? {
+                  ...prev.payment,
+                  status:
+                    (sessionPayload?.paymentStatus as NonNullable<WashSession['payment']>['status']) ??
+                    prev.payment.status,
+                }
+              : prev.payment,
+            machine: prev.machine
+              ? {
+                  ...prev.machine,
+                  status: (machinePayload?.status as NonNullable<WashSession['machine']>['status']) ?? prev.machine.status,
+                  lastHeartbeat:
+                    (machinePayload?.lastHeartbeat as string) ?? prev.machine.lastHeartbeat,
+                }
+              : prev.machine,
+          });
         });
-        if (msg.status === 'idle' && msg.progress === 100) {
-          const earned = (session.totalPrice || 0) * POINTS_RATE;
+        const effectiveMachineStatus =
+          (machinePayload?.status as string) ?? (msg.status as string);
+        const effectiveProgress =
+          (sessionPayload?.progress as number) ?? (msg.progress as number);
+
+        if (effectiveMachineStatus === 'idle' && effectiveProgress === 100) {
+          const earned = (msg.pointsEarned as number) ?? session.pointsEarned ?? calculatePoints(session.totalPrice || 0);
           setTimeout(() => {
             goToStep('complete');
+            if (HAS_API_BASE_URL) {
+              void pointsBalanceQuery.refetch();
+              void refreshUser();
+            }
             setTimeout(() => {
               setShowPointsAnimation(true);
               animatePointsCounter(earned);
@@ -121,10 +316,10 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
         }
       }
     };
-  }, [session]);
+  }, [session, goToStep, pointsBalanceQuery, refreshUser]);
 
   useEffect(() => {
-    if (USE_API && session && currentStep === 'working' && wsConnected) {
+    if (HAS_API_BASE_URL && session && currentStep === 'working' && wsConnected) {
       subscribeSession(session.id);
     }
   }, [session, currentStep, wsConnected, subscribeSession]);
@@ -133,91 +328,244 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const [scanPulse, setScanPulse] = useState(false);
 
   // Get packages for selected branch (exclude addons)
-  const mainPackages = selectedBranch?.packages.filter(p => p.id !== 'vacuum') || [];
-  const vacuumPackage = selectedBranch?.packages.find(p => p.id === 'vacuum');
+  const mainPackages = selectedBranch?.packages.filter((p) => !['vacuum', 'pkg_vacuum'].includes(p.id)) || [];
+  const vacuumPackage = selectedBranch?.packages.find((p) => ['vacuum', 'pkg_vacuum'].includes(p.id));
   const selectedPackage = mainPackages[selectedPackageIndex];
+  const selectedMachine = selectedBranch?.machines.find((machine) => machine.id === selectedMachineId) ?? null;
 
-  const totalPrice = selectedPackage
+  const subtotalPrice = selectedPackage
     ? selectedPackage.prices[carSize] + (addVacuum && vacuumPackage ? vacuumPackage.prices[carSize] : 0)
     : 0;
+  const discountAmount = resolveCouponDiscount({
+    coupon: selectedCoupon,
+    branchId: selectedBranch?.id,
+    packageId: selectedPackage?.id,
+    subtotalPrice,
+  });
+  const totalPrice = Math.max(subtotalPrice - discountAmount, 0);
+
+  useEffect(() => {
+    setSelectedPackageIndex(0);
+    setAddVacuum(false);
+  }, [selectedBranch?.id, selectedMachineId]);
 
   // Navigate to next step
-  const goToStep = useCallback((step: Step) => {
+  function goToStep(step: Step) {
     const stepOrder: Step[] = ['scan', 'select', 'payment', 'warning', 'working', 'complete'];
     const currentIdx = stepOrder.indexOf(currentStep);
     const nextIdx = stepOrder.indexOf(step);
     setDirection(nextIdx > currentIdx ? 1 : -1);
     setCurrentStep(step);
-  }, [currentStep]);
+  }
+
+  const resolvePreferredBranch = useCallback(async (preferredBranchId?: string) => {
+    if (HAS_API_BASE_URL) {
+      const branchList = preferredBranchId
+        ? [await api.getBranch(preferredBranchId), ...(await api.getBranches()).filter((branch) => branch.id !== preferredBranchId)]
+        : await api.getBranches();
+      const branchWithMachine = branchList.find((branch) => findAvailableMachine(branch));
+      const machine = branchWithMachine ? findAvailableMachine(branchWithMachine) : null;
+      if (!branchWithMachine || !machine) {
+        return null;
+      }
+
+      const qrData = `roboss://${branchWithMachine.id}/${machine.id}`;
+      return api.resolveScan(qrData);
+    }
+
+    if (USE_LOCAL_DEV_FALLBACK) {
+      const fallbackBranches = branches as unknown as Branch[];
+      const orderedBranches = buildBranchScanCandidates({
+        preferredBranchId,
+        branches: fallbackBranches,
+      });
+      const branchWithMachine = orderedBranches.find((branch) => findAvailableMachine(branch));
+      const machine = branchWithMachine ? findAvailableMachine(branchWithMachine) : null;
+      if (!branchWithMachine || !machine) {
+        return null;
+      }
+
+      return {
+        qrData: `roboss://${branchWithMachine.id}/${machine.id}`,
+        branch: branchWithMachine,
+        machine,
+      };
+    }
+
+    return null;
+  }, []);
+
+  const applyResolvedBranchSelection = useCallback((resolved: ResolvedScan) => {
+    setSelectedBranch(resolved.branch);
+    setSelectedMachineId(resolved.machine.id);
+    setResolvedScanTokenId(resolved.scan?.tokenId ?? null);
+    setCurrentBranch(mapBranchToBranchContext(resolved.branch));
+  }, [setCurrentBranch]);
 
   // Simulate QR scan — pick a random branch
   const handleSimulateScan = useCallback(() => {
     setScanPulse(true);
-    setTimeout(() => {
-      const randomBranch = branches[Math.floor(Math.random() * branches.length)];
-      const carMachines = randomBranch.machines.filter(m => m.type === 'car' && m.status === 'idle');
-      const machine = carMachines[0] || randomBranch.machines[0];
-      setSelectedBranch(randomBranch);
-      setSelectedMachineId(machine.id);
-      setScanPulse(false);
-      goToStep('select');
+    setTimeout(async () => {
+      try {
+        const resolved = await resolvePreferredBranch(currentBranch.id || undefined);
+        if (!resolved) throw new Error('No branch available');
+        applyResolvedBranchSelection(resolved);
+        setScanPulse(false);
+        goToStep('select');
+      } catch {
+        setScanPulse(false);
+      }
     }, 1500);
-  }, [goToStep]);
+  }, [applyResolvedBranchSelection, currentBranch.id, goToStep, resolvePreferredBranch]);
+
+  useEffect(() => {
+    const intent = consumeWashFlowIntent();
+    if (!intent) {
+      return;
+    }
+
+    setSelectedCoupon(intent.coupon ?? null);
+    setSelectedPromotion(intent.promotion ?? null);
+
+    const preferredBranchId = intent.branchId || currentBranch.id || undefined;
+    let isCancelled = false;
+
+    void (async () => {
+      try {
+        const resolved = await resolvePreferredBranch(preferredBranchId);
+        if (!resolved || isCancelled) {
+          return;
+        }
+
+        applyResolvedBranchSelection(resolved);
+        goToStep('select');
+      } catch {
+        // Keep the default scan step if branch resolution fails.
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [applyResolvedBranchSelection, currentBranch.id, goToStep, resolvePreferredBranch]);
 
   // Handle payment confirmation — create session then show warning (do NOT start wash yet)
-  const handleConfirmPayment = useCallback(async () => {
+  const handlePreparePayment = useCallback(async () => {
     if (!selectedBranch || !selectedPackage) return;
 
-    if (USE_API) {
+    setIsPreparingPayment(true);
+    if (HAS_API_BASE_URL) {
       try {
-        const apiSession = await api.createSession({
+        if (!resolvedScanTokenId) {
+          throw new Error('Missing scan token for session creation');
+        }
+        if (session && ['pending_payment', 'ready_to_wash'].includes(session.status)) {
+          await api.cancelSession(session.id);
+          setSession(null);
+        }
+        const apiSession = normalizeSession(await api.createSession({
           branchId: selectedBranch.id,
           machineId: selectedMachineId,
           packageId: selectedPackage.id,
+          scanTokenId: resolvedScanTokenId,
           carSize,
-          addons: addVacuum ? ['vacuum'] : [],
-          totalPrice,
-        });
-        setSession(apiSession as unknown as WashSession);
+          addons: addVacuum && vacuumPackage ? [vacuumPackage.id] : [],
+          totalPrice: subtotalPrice,
+          couponId: discountAmount > 0 ? selectedCoupon?.id : undefined,
+        }));
+        const paymentSession = normalizeSession(await api.createPayment(apiSession.id));
+        setSession(paymentSession);
+        setSelectedSlipFile(null);
+        setSlipVerifyError(null);
+        setSlipVerifySuccess(null);
+        goToStep('payment');
+        return;
+      } catch {
+        if (!ALLOW_DEV_API_FAILURE_FALLBACK) {
+          return;
+        }
+      } finally {
+        setIsPreparingPayment(false);
+      }
+    }
+
+    if (!USE_LOCAL_DEV_FALLBACK && !ALLOW_DEV_API_FAILURE_FALLBACK) {
+      setIsPreparingPayment(false);
+      return;
+    }
+
+    setIsPreparingPayment(false);
+    goToStep('payment');
+  }, [selectedBranch, selectedPackage, selectedMachineId, resolvedScanTokenId, carSize, addVacuum, vacuumPackage, session, goToStep, selectedCoupon, discountAmount, subtotalPrice]);
+
+  // Called when user taps "ตรวจสอบเรียบร้อยแล้ว" on the warning page
+  const handleConfirmPayment = useCallback(async () => {
+    if (!selectedBranch || !selectedPackage) return;
+
+    setIsConfirmingPayment(true);
+    if (HAS_API_BASE_URL && session?.payment?.id) {
+      try {
+        const updatedSession = normalizeSession(await api.confirmPaymentByPaymentId(session.payment.id));
+        setSession(updatedSession);
         goToStep('warning');
         return;
       } catch {
-        // Fall through to mock
+        if (!ALLOW_DEV_API_FAILURE_FALLBACK) {
+          return;
+        }
+      } finally {
+        setIsConfirmingPayment(false);
       }
+    }
+
+    if (!USE_LOCAL_DEV_FALLBACK && !ALLOW_DEV_API_FAILURE_FALLBACK) {
+      setIsConfirmingPayment(false);
+      return;
     }
 
     const newSession = createSession({
       branchId: selectedBranch.id,
       machineId: selectedMachineId,
       userId: 'line_user_001',
-      vehicleType: 'car',
+      vehicleType: selectedBranch.type === 'bike' ? 'motorcycle' : 'car',
       packageId: selectedPackage.id,
       carSize,
       addons: addVacuum ? ['vacuum'] : [],
       totalPrice,
     });
-    setSession(newSession);
+    setSession(normalizeSession(newSession as unknown as WashSession));
     goToStep('warning');
-  }, [selectedBranch, selectedPackage, selectedMachineId, carSize, addVacuum, totalPrice, goToStep]);
+    setIsConfirmingPayment(false);
+  }, [selectedBranch, selectedPackage, selectedMachineId, carSize, addVacuum, totalPrice, session, goToStep, selectedCoupon, discountAmount, subtotalPrice, vacuumPackage]);
 
-  // Called when user taps "ตรวจสอบเรียบร้อยแล้ว" on the warning page
   const handleStartWash = useCallback(async () => {
     if (!session || !selectedBranch || !selectedPackage) return;
 
-    if (USE_API) {
+    setIsStartingWash(true);
+    if (HAS_API_BASE_URL) {
       try {
-        await api.confirmPayment(session.id);
+        const startedSession = normalizeSession(await api.startWash(session.id));
+        setSession(startedSession);
         goToStep('working');
         return;
       } catch {
-        // Fall through to mock
+        if (!ALLOW_DEV_API_FAILURE_FALLBACK) {
+          return;
+        }
+      } finally {
+        setIsStartingWash(false);
       }
+    }
+
+    if (!USE_LOCAL_DEV_FALLBACK && !ALLOW_DEV_API_FAILURE_FALLBACK) {
+      setIsStartingWash(false);
+      return;
     }
 
     confirmPayment(session.id);
     listenToSession(session.id, (updated) => {
-      setSession({ ...updated });
-      if (updated.washStatus === 'completed') {
+      setSession(normalizeSession(updated as unknown as WashSession));
+      if (getSessionWashStage(updated as unknown as WashSession) === 'completed') {
         addPoints(updated.pointsEarned, `${selectedPackage.name} ไซส์ ${carSize} — ${selectedBranch.name}`, updated.id);
         setTimeout(() => {
           goToStep('complete');
@@ -229,6 +577,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
       }
     });
     goToStep('working');
+    setIsStartingWash(false);
   }, [session, selectedBranch, selectedPackage, carSize, goToStep]);
 
   // Animate points counter
@@ -246,10 +595,28 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     }, 30);
   };
 
+  const handleBackToSelectFromPayment = useCallback(async () => {
+    if (HAS_API_BASE_URL && session && ['pending_payment', 'ready_to_wash'].includes(session.status)) {
+      try {
+        await api.cancelSession(session.id);
+      } catch {
+        // Ignore cancellation errors and still let the user go back.
+      }
+      setSession(null);
+    }
+    setSelectedSlipFile(null);
+    setSlipVerifyError(null);
+    setSlipVerifySuccess(null);
+    goToStep('select');
+  }, [session, goToStep]);
+
   // Payment countdown
   useEffect(() => {
     if (currentStep === 'payment') {
-      setPaymentCountdown(300);
+      const initialCountdown = session?.payment?.expiresAt
+        ? Math.max(0, Math.floor((new Date(session.payment.expiresAt).getTime() - Date.now()) / 1000))
+        : 300;
+      setPaymentCountdown(initialCountdown);
       const timer = setInterval(() => {
         setPaymentCountdown(prev => {
           if (prev <= 0) {
@@ -261,13 +628,127 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
       }, 1000);
       return () => clearInterval(timer);
     }
+  }, [currentStep, session?.payment?.expiresAt]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const stripeQrImage = currentStep === 'payment' ? resolveStripeQrImage(session?.payment) : null;
+
+    if (currentStep !== 'payment' || !session?.payment?.qrPayload) {
+      setPaymentQrImage(stripeQrImage);
+      return;
+    }
+
+    if (stripeQrImage) {
+      setPaymentQrImage(stripeQrImage);
+      return;
+    }
+
+    void QRCode.toDataURL(session.payment.qrPayload, {
+      margin: 1,
+      width: 320,
+      color: {
+        dark: '#111827',
+        light: '#FFFFFF',
+      },
+    })
+      .then((imageUrl) => {
+        if (!cancelled) {
+          setPaymentQrImage(imageUrl);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setPaymentQrImage(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStep, session?.payment?.qrPayload]);
+
+  useEffect(() => {
+    if (currentStep !== 'payment') {
+      setSlipVerifyError(null);
+      setSlipVerifySuccess(null);
+    }
   }, [currentStep]);
 
   // Rating handler
-  const handleRate = (stars: number) => {
+  const handleRate = async (stars: number) => {
     setRating(stars);
-    if (session) rateSession(session.id, stars);
+    if (!session) return;
+
+    if (HAS_API_BASE_URL) {
+      try {
+        const updatedSession = normalizeSession(await api.rateSession(session.id, stars));
+        setSession(updatedSession);
+        return;
+      } catch {
+        if (!ALLOW_DEV_API_FAILURE_FALLBACK) {
+          return;
+        }
+      }
+    }
+
+    if (USE_LOCAL_DEV_FALLBACK || ALLOW_DEV_API_FAILURE_FALLBACK) {
+      rateSession(session.id, stars);
+    }
   };
+
+  const handleSlipFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    setSelectedSlipFile(file);
+    setSlipVerifyError(null);
+    setSlipVerifySuccess(null);
+  }, []);
+
+  const handleVerifySlipPayment = useCallback(async () => {
+    if (!session?.payment?.id) {
+      return;
+    }
+
+    if (!selectedSlipFile) {
+      setSlipVerifyError('กรุณาแนบสลิปก่อนตรวจสอบการชำระเงิน');
+      return;
+    }
+
+    setIsConfirmingPayment(true);
+    setSlipVerifyError(null);
+    setSlipVerifySuccess(null);
+
+    if (HAS_API_BASE_URL) {
+      try {
+        const updatedSession = normalizeSession(
+          await api.verifyPaymentSlip(session.payment.id, selectedSlipFile)
+        );
+        setSession(updatedSession);
+        setSlipVerifySuccess('ระบบตรวจสลิปผ่านแล้ว พร้อมเริ่มล้างรถได้เลย');
+        goToStep('warning');
+        return;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'ตรวจสอบสลิปไม่สำเร็จ';
+        setSlipVerifyError(message);
+        if (!ALLOW_DEV_API_FAILURE_FALLBACK) {
+          return;
+        }
+      } finally {
+        setIsConfirmingPayment(false);
+      }
+    }
+
+    if (!USE_LOCAL_DEV_FALLBACK && !ALLOW_DEV_API_FAILURE_FALLBACK) {
+      setIsConfirmingPayment(false);
+      return;
+    }
+
+    await handleConfirmPayment();
+  }, [session?.payment?.id, selectedSlipFile, goToStep, handleConfirmPayment]);
+
+  const displayedTotalPoints = HAS_API_BASE_URL
+    ? (pointsBalanceQuery.data?.balance ?? authUser?.totalPoints ?? 0)
+    : getUserPoints();
 
   const stepIndex = ['scan', 'select', 'payment', 'warning', 'working', 'complete'].indexOf(currentStep);
 
@@ -489,8 +970,10 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             <div className="flex-1 min-w-0">
               <p className="text-white font-bold text-sm truncate">{selectedBranch.name}</p>
               <p className="text-gray-400 text-xs">
-                ตู้: {selectedBranch.machines.find(m => m.id === selectedMachineId)?.name} •
-                <span className="text-green-400 ml-1">● ว่าง</span>
+                ตู้: {selectedMachine?.name || '-'} •
+                <span className={`ml-1 ${selectedMachine?.status === 'idle' ? 'text-green-400' : 'text-yellow-400'}`}>
+                  ● {selectedMachine?.status === 'idle' ? 'ว่าง' : 'ไม่ว่าง'}
+                </span>
               </p>
             </div>
           </div>
@@ -523,7 +1006,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
                       transition={{ duration: 0.3 }}
                       className="relative z-10 rounded-2xl overflow-hidden">
                       <img
-                        src={pkg.image}
+                        src={pkg.image || '/freepik_0001.png'}
                         alt={pkg.name}
                         className="w-full h-auto object-cover pointer-events-none"
                         draggable={false}
@@ -678,7 +1161,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
                 +{formatPoints(calculatePoints(totalPrice))} <span className="text-xs font-normal text-yellow-500">พ้อยท์</span>
               </motion.p>
             </div>
-            <p className="text-gray-500 text-[10px] text-right">1฿ = {POINTS_RATE} pts</p>
+            <p className="text-gray-500 text-[10px] text-right">1฿ = {calculatePoints(1)} pts</p>
           </motion.div>
 
           {/* Continue Button */}
@@ -702,6 +1185,12 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
                     <span className="text-white">{vacuumPackage.prices[carSize]}฿</span>
                   </div>
                 )}
+                {discountAmount > 0 && selectedCoupon && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">{selectedCoupon.title}</span>
+                    <span className="text-green-400">-{discountAmount}เธฟ</span>
+                  </div>
+                )}
                 <div className="border-t border-white/5 pt-2 flex justify-between items-center">
                   <span className="text-gray-400 font-medium">ยอดชำระสุทธิ</span>
                   <motion.span
@@ -718,8 +1207,9 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => goToStep('payment')}
-              className="w-full bg-app-red hover:bg-red-600 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-red-900/30 flex items-center justify-center gap-2 text-lg">
+              onClick={handlePreparePayment}
+              disabled={isPreparingPayment}
+              className="w-full bg-app-red hover:bg-red-600 disabled:bg-white/10 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-red-900/30 flex items-center justify-center gap-2 text-lg">
               ดำเนินการชำระเงิน
             </motion.button>
           </motion.div>
@@ -732,6 +1222,16 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const renderPayment = () => {
     const minutes = Math.floor(paymentCountdown / 60);
     const seconds = paymentCountdown % 60;
+    const payment = session?.payment ?? null;
+    const paymentPayload = parsePromptPayPayload(payment?.qrPayload);
+    const paymentRecipientName =
+      paymentPayload?.recipientName ?? session?.branch?.promptPayName ?? selectedBranch?.promptPayName ?? '-';
+    const paymentRecipientId =
+      paymentPayload?.recipient ?? session?.branch?.promptPayId ?? selectedBranch?.promptPayId ?? '-';
+    const paymentReference = paymentPayload?.reference ?? payment?.reference ?? '-';
+    const paymentAmount = paymentPayload?.amount ?? payment?.amount?.toFixed(2) ?? `${totalPrice.toFixed(2)}`;
+    const paymentProvider = paymentPayload?.provider ?? payment?.provider ?? 'promptpay';
+    const paymentExpiresAt = paymentPayload?.expiresAt ?? payment?.expiresAt ?? null;
 
     return (
       <motion.div
@@ -742,7 +1242,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
         custom={direction}
         transition={{ duration: 0.3 }}>
 
-        {renderHeader('ชำระเงิน', true, () => goToStep('select'))}
+        {renderHeader('ชำระเงิน', true, handleBackToSelectFromPayment)}
         {renderProgressBar()}
 
         <div className="flex-1 flex flex-col items-center p-6">
@@ -767,48 +1267,74 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             className="w-full max-w-sm bg-white rounded-3xl p-6 mb-6 shadow-2xl">
             <div className="text-center mb-4">
               <p className="text-gray-600 text-sm font-medium">โอนเงินผ่าน</p>
-              <p className="text-blue-700 font-bold text-lg">PromptPay พร้อมเพย์</p>
+              <p className="text-blue-700 font-bold text-lg">{paymentProvider} พร้อมเพย์</p>
             </div>
 
-            {/* QR Placeholder with PromptPay styling */}
-            <div className="relative w-full aspect-square bg-gray-50 rounded-2xl flex items-center justify-center border-2 border-blue-100 mb-4 overflow-hidden">
-              {/* Fake QR pattern */}
-              <div className="absolute inset-4 grid grid-cols-12 gap-px opacity-60">
-                {Array.from({ length: 144 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`aspect-square rounded-sm ${
-                      Math.random() > 0.45 ? 'bg-gray-900' : 'bg-transparent'
-                    }`}
-                  />
-                ))}
-              </div>
-              {/* Center logo */}
-              <div className="relative z-10 w-16 h-16 bg-white rounded-xl flex items-center justify-center shadow-md border border-gray-100">
-                <img src="/Roboss_logo.png" alt="ROBOSS" className="w-12 h-12 object-contain" />
+            <div className="relative w-full aspect-square bg-gray-50 rounded-2xl border-2 border-blue-100 mb-4 overflow-hidden p-5">
+              <div className="w-full h-full rounded-2xl border border-blue-100 bg-white flex flex-col items-center justify-center gap-4 text-center px-4 py-5">
+                {paymentQrImage ? (
+                  <>
+                    <img
+                      src={paymentQrImage}
+                      alt="PromptPay QR"
+                      className="w-full max-w-[250px] rounded-2xl border border-gray-100 shadow-sm"
+                    />
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      สแกน QR นี้จากแอปธนาคารเพื่อชำระเงินสำหรับ session นี้ได้ทันที
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-blue-50 rounded-xl flex items-center justify-center shadow-sm border border-blue-100">
+                      <img src="/Roboss_logo.png" alt="ROBOSS" className="w-12 h-12 object-contain" />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-gray-500 text-xs uppercase tracking-[0.2em]">QR Payload</p>
+                      <p className="text-gray-900 text-sm font-semibold break-all">
+                        {payment?.qrPayload ?? 'Pending payment payload'}
+                      </p>
+                    </div>
+                    <p className="text-gray-500 text-xs leading-relaxed">
+                      ระบบกำลังเตรียม QR image หากยังไม่ขึ้นสามารถใช้ payload นี้อ้างอิงได้
+                    </p>
+                  </>
+                )}
               </div>
             </div>
 
             {/* Amount */}
             <div className="text-center mb-3">
               <p className="text-gray-500 text-sm">จำนวนเงิน</p>
-              <p className="text-3xl font-black text-gray-900">{totalPrice}.00 <span className="text-base font-normal text-gray-500">บาท</span></p>
+              <p className="text-3xl font-black text-gray-900">{paymentAmount} <span className="text-base font-normal text-gray-500">บาท</span></p>
             </div>
 
             {/* Payee info */}
-            <div className="bg-blue-50 rounded-xl p-3 border border-blue-100">
+            <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-2">
               <div className="flex items-center justify-between text-sm mb-1">
                 <span className="text-gray-500">ชื่อบัญชี</span>
-                <span className="text-gray-800 font-medium">{selectedBranch?.promptPayName}</span>
+                <span className="text-gray-800 font-medium text-right ml-3">{paymentRecipientName}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-gray-500">เบอร์พร้อมเพย์</span>
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-800 font-mono font-medium">{selectedBranch?.promptPayId}</span>
-                  <button className="text-blue-500 hover:text-blue-600">
+                  <span className="text-gray-800 font-mono font-medium">{paymentRecipientId}</span>
+                  <button
+                    type="button"
+                    onClick={() => void navigator.clipboard?.writeText(paymentRecipientId)}
+                    className="text-blue-500 hover:text-blue-600">
                     <img src={getIconUrl('copy', 28)} alt="copy" width={14} height={14} style={{ filter: 'invert(0.4) sepia(1) saturate(5) hue-rotate(190deg)' }} />
                   </button>
                 </div>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">Reference</span>
+                <span className="text-gray-800 font-mono font-medium text-right ml-3">{paymentReference}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-gray-500">หมดอายุ</span>
+                <span className="text-gray-800 font-medium text-right ml-3">
+                  {paymentExpiresAt ? new Date(paymentExpiresAt).toLocaleString('th-TH') : '-'}
+                </span>
               </div>
             </div>
           </motion.div>
@@ -819,17 +1345,65 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
             className="w-full max-w-sm space-y-3">
+            {HAS_API_BASE_URL ? (
+              <>
+                <label className="w-full flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-dashed border-white/15 bg-app-dark px-4 py-4 text-left text-white transition-colors hover:border-white/30">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold">แนบสลิปการโอนเงิน</p>
+                    <p className="mt-1 truncate text-xs text-gray-400">
+                      {selectedSlipFile ? selectedSlipFile.name : 'เลือกไฟล์สลิปจากธนาคารเพื่อให้ระบบตรวจสอบอัตโนมัติ'}
+                    </p>
+                  </div>
+                  <span className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white">
+                    {selectedSlipFile ? 'เปลี่ยนไฟล์' : 'เลือกไฟล์'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleSlipFileChange}
+                  />
+                </label>
+
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={handleVerifySlipPayment}
+                  disabled={isConfirmingPayment || !session?.payment || !selectedSlipFile}
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:bg-white/20 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 text-lg">
+                  <I8Icon name="checkmark" size={22} />
+                  {isConfirmingPayment ? 'กำลังตรวจสลิปและยืนยันการชำระเงิน...' : 'ตรวจสลิปและยืนยันการชำระเงิน'}
+                </motion.button>
+                {slipVerifyError ? (
+                  <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+                    {slipVerifyError}
+                  </div>
+                ) : null}
+                {slipVerifySuccess ? (
+                  <div className="rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-200">
+                    {slipVerifySuccess}
+                  </div>
+                ) : null}
+                <p className="text-gray-600 text-xs text-center">
+                  * หลังโอนแล้วแนบสลิปเพื่อให้ระบบตรวจยอด ผู้รับ และเวลาโอนก่อนปล่อยให้เริ่มล้างรถ
+                </p>
+              </>
+            ) : (
+              <>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleConfirmPayment}
-              className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 text-lg">
+              disabled={isConfirmingPayment || (HAS_API_BASE_URL && !session?.payment)}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-white/20 text-white font-bold py-4 rounded-2xl transition-colors shadow-lg shadow-green-900/30 flex items-center justify-center gap-2 text-lg">
               <I8Icon name="checkmark" size={22} />
-              ฉันจ่ายเงินแล้ว
+              {isConfirmingPayment ? 'กำลังยืนยันการชำระเงิน...' : 'ฉันจ่ายเงินแล้ว'}
             </motion.button>
             <p className="text-gray-600 text-xs text-center">
               * กดปุ่มนี้หลังจากโอนเงินเรียบร้อยแล้ว
             </p>
+              </>
+            )}
           </motion.div>
         </div>
       </motion.div>
@@ -1017,7 +1591,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
               +{formatPoints(animatedPoints)}
             </motion.p>
             <p className="text-gray-500 text-xs mt-1">
-              ยอดสะสมรวม: {formatPoints(getUserPoints())} พ้อยท์
+              ยอดสะสมรวม: {formatPoints(displayedTotalPoints)} พ้อยท์
             </p>
           </motion.div>
         )}
@@ -1056,7 +1630,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             </div>
             <div className="border-t border-white/5 pt-2 flex justify-between items-center">
               <span className="text-gray-400 font-medium">ยอดชำระสุทธิ</span>
-              <span className="text-app-red font-bold text-xl">{totalPrice} ฿</span>
+              <span className="text-app-red font-bold text-xl">{session?.totalPrice ?? totalPrice} ฿</span>
             </div>
           </div>
         </motion.div>
@@ -1189,9 +1763,10 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
           transition={{ delay: 0.45 }}
           whileTap={{ scale: 0.97 }}
           onClick={handleStartWash}
-          className="w-full bg-red-600 text-white font-black text-base py-4 rounded-2xl shadow-lg shadow-red-200 active:bg-red-700 transition-colors"
+              disabled={isStartingWash || (HAS_API_BASE_URL && session?.status !== 'ready_to_wash')}
+          className="w-full bg-red-600 disabled:bg-gray-300 text-white font-black text-base py-4 rounded-2xl shadow-lg shadow-red-200 active:bg-red-700 transition-colors"
         >
-          ตรวจสอบเรียบร้อยแล้ว เริ่มล้างรถ
+          {isStartingWash ? 'กำลังเริ่มล้างรถ...' : 'ตรวจสอบเรียบร้อยแล้ว เริ่มล้างรถ'}
         </motion.button>
       </div>
     </motion.div>

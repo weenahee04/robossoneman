@@ -46,9 +46,11 @@ export function createSession(params: {
   const session: WashSession = {
     id: generateId(),
     ...params,
+    status: 'pending_payment',
     paymentStatus: 'pending',
     washStatus: 'waiting',
     currentStep: 0,
+    totalSteps: 0,
     progress: 0,
     pointsEarned: 0,
     rating: null,
@@ -64,6 +66,7 @@ export function confirmPayment(sessionId: string): WashSession | null {
   const session = sessions.get(sessionId);
   if (!session) return null;
   
+  session.status = 'in_progress';
   session.paymentStatus = 'confirmed';
   session.washStatus = 'in_progress';
   session.startedAt = new Date();
@@ -114,6 +117,7 @@ function simulateWash(sessionId: string) {
   if (!pkg) return;
   
   const totalSteps = pkg.steps.length;
+  session.totalSteps = totalSteps;
   // Use 3 seconds per step for demo (normally 5 min)
   const stepDuration = 3000; // ms
   const updateInterval = 100; // ms
@@ -139,6 +143,7 @@ function simulateWash(sessionId: string) {
         clearInterval(timer);
         session.currentStep = totalSteps - 1;
         session.progress = 100;
+        session.status = 'completed';
         session.washStatus = 'completed';
         session.completedAt = new Date();
         session.pointsEarned = session.totalPrice * POINTS_RATE;
@@ -151,10 +156,11 @@ function simulateWash(sessionId: string) {
   }, updateInterval);
 }
 
-export function rateSession(sessionId: string, rating: number): WashSession | null {
+export function rateSession(sessionId: string, rating: number, reviewText?: string): WashSession | null {
   const session = sessions.get(sessionId);
   if (!session) return null;
   session.rating = rating;
+  session.reviewText = reviewText;
   notifyListeners(sessionId, session);
   return session;
 }

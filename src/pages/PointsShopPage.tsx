@@ -8,9 +8,9 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import { getIconUrl, type IconName } from '../services/icons';
 import { getUserPoints, formatPoints } from '../services/points';
-import { usePointsBalance, useRedeemPoints } from '@/hooks/useApi';
-
-const USE_API = !!import.meta.env.VITE_API_URL;
+import { usePointsBalance, useRedeemPoints, useRewards } from '@/hooks/useApi';
+import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
+import { useBranch } from '@/services/branchContext';
 
 function I8Icon({ name, size = 20, className = '' }: { name: IconName; size?: number; className?: string }) {
   return <img src={getIconUrl(name, size * 2)} alt={name} width={size} height={size} className={`inline-block ${className}`} style={{ filter: 'invert(1) brightness(1.1)' }} />;
@@ -40,30 +40,49 @@ const rewards: Reward[] = [
 ];
 
 export function PointsShopPage({ onBack }: { onBack: () => void }) {
+  const { branch } = useBranch();
   const [filter, setFilter] = useState('all');
   const [selectedReward, setSelectedReward] = useState<Reward | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
 
   const balanceQuery = usePointsBalance();
   const redeemMutation = useRedeemPoints();
+  const rewardsQuery = useRewards(branch.id);
 
   const userPoints = useMemo(() => {
-    if (USE_API && balanceQuery.data?.balance != null) return balanceQuery.data.balance;
-    return getUserPoints();
+    if (HAS_API_BASE_URL && balanceQuery.data?.balance != null) return balanceQuery.data.balance;
+    return USE_LOCAL_DEV_FALLBACK ? getUserPoints() : 0;
   }, [balanceQuery.data]);
 
-  const filtered = filter === 'all' ? rewards : rewards.filter(r => r.category === filter);
+  const rewardList = useMemo(() => {
+    if (HAS_API_BASE_URL && rewardsQuery.data) {
+      return rewardsQuery.data.map((reward) => ({
+        id: reward.id,
+        name: reward.name,
+        description: reward.description || '',
+        points: reward.points,
+        category: reward.category,
+        tag: reward.tag || undefined,
+        icon: reward.icon as IconName,
+        iconBg: reward.iconBg || 'bg-white/10',
+        stock: reward.stock ?? undefined,
+      }));
+    }
+
+    return rewards;
+  }, [rewardsQuery.data]);
+
+  const filtered = filter === 'all' ? rewardList : rewardList.filter(r => r.category === filter);
 
   const handleRedeem = () => {
-    if (USE_API && selectedReward) {
+    if (HAS_API_BASE_URL && selectedReward) {
       redeemMutation.mutate(
         { amount: selectedReward.points, rewardId: selectedReward.id },
         {
           onSuccess: () => { setSelectedReward(null); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 2000); },
-          onError: () => { setSelectedReward(null); setShowSuccess(true); setTimeout(() => setShowSuccess(false), 2000); },
         }
       );
-    } else {
+    } else if (USE_LOCAL_DEV_FALLBACK) {
       setSelectedReward(null);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);

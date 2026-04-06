@@ -5,12 +5,13 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { getIconUrl, type IconName } from '../services/icons';
 import { formatPoints } from '../services/points';
 import { useSessionHistory } from '@/hooks/useApi';
+import { getSessionWashStage } from '@/lib/session';
+import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 import type { WashSession } from '@/types';
-
-const USE_API = !!import.meta.env.VITE_API_URL;
 
 const ICONS8_BASE = 'https://img.icons8.com/?format=png&size=';
 function Ico({ id, size = 20, className = '' }: { id: string | number; size?: number; className?: string }) {
@@ -32,6 +33,7 @@ interface WashRecord {
   size: string;
   status: 'completed' | 'cancelled';
   duration: string;
+  session?: WashSession;
 }
 
 const mockHistory: WashRecord[] = [
@@ -61,36 +63,59 @@ function formatDateFull(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('th-TH', { weekday: 'short', day: 'numeric', month: 'short', year: '2-digit' });
 }
 
+function formatDateTime(dateStr?: string | null) {
+  if (!dateStr) return '-';
+  return new Date(dateStr).toLocaleString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function formatMoney(value?: number | null) {
+  const amount = typeof value === 'number' ? value : 0;
+  return `฿${amount.toLocaleString('th-TH')}`;
+}
+
 
 function mapSessionToRecord(s: WashSession): WashRecord {
-  const status: WashRecord['status'] = s.washStatus === 'completed' ? 'completed' : 'cancelled';
+  const status: WashRecord['status'] = getSessionWashStage(s) === 'completed' ? 'completed' : 'cancelled';
   const startMs = s.startedAt ? new Date(s.startedAt).getTime() : 0;
   const endMs = s.completedAt ? new Date(s.completedAt).getTime() : 0;
   const durationMin = startMs && endMs ? Math.round((endMs - startMs) / 60000) : 0;
   return {
     id: s.id,
     date: s.completedAt || s.createdAt,
-    branch: s.branchId,
-    package: s.packageId,
+    branch: s.branch?.name || s.branchId,
+    package: s.package?.name || s.packageId,
     price: s.totalPrice,
     points: s.pointsEarned,
     rating: s.rating ?? 0,
     size: s.carSize,
     status,
     duration: durationMin > 0 ? `${durationMin} นาที` : '-',
+    session: s,
   };
 }
 
 export function WashHistoryPage({ onBack }: { onBack: () => void }) {
   const [activeTab, setActiveTab] = useState('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [selectedReceipt, setSelectedReceipt] = useState<WashRecord | null>(null);
 
   const sessionQuery = useSessionHistory();
   const history = useMemo<WashRecord[]>(() => {
-    if (USE_API && sessionQuery.data?.data?.length) {
+    if (HAS_API_BASE_URL && sessionQuery.data) {
       return sessionQuery.data.data.map(mapSessionToRecord);
     }
-    return mockHistory;
+
+    if (USE_LOCAL_DEV_FALLBACK) {
+      return mockHistory;
+    }
+
+    return [];
   }, [sessionQuery.data]);
 
   const completed = history.filter(w => w.status === 'completed');
@@ -265,8 +290,16 @@ export function WashHistoryPage({ onBack }: { onBack: () => void }) {
                                 </div>
                               ))}
                             </div>
-                            {record.status === 'completed' && (
-                              <Button variant="secondary" size="sm" className="w-full text-xs h-9 gap-2">
+                              {record.status === 'completed' && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                className="w-full text-xs h-9 gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedReceipt(record);
+                                }}
+                              >
                                 <div className="w-5 h-5 rounded bg-black border border-white/10 flex items-center justify-center flex-shrink-0">
                                   <Ico id={4720} size={11} />
                                 </div>
@@ -294,6 +327,72 @@ export function WashHistoryPage({ onBack }: { onBack: () => void }) {
           )}
         </motion.div>
       </div>
+
+      <Dialog open={Boolean(selectedReceipt)} onOpenChange={(open) => !open && setSelectedReceipt(null)}>
+        <DialogContent className="max-w-md border-white/10 bg-app-black text-white">
+          {selectedReceipt && (
+            <>
+              <DialogHeader className="text-left">
+                <DialogTitle className="text-white">ใบเสร็จบริการล้างรถ</DialogTitle>
+                <DialogDescription className="text-white/40">
+                  {selectedReceipt.package} • {selectedReceipt.branch}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-white/30">สถานะชำระเงิน</p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {selectedReceipt.session?.payment?.status ?? (selectedReceipt.status === 'completed' ? 'confirmed' : 'cancelled')}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-white/30">ยอดรวม</p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {formatMoney(selectedReceipt.session?.totalPrice ?? selectedReceipt.price)}
+                    </p>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-white/30">สาขา</p>
+                    <p className="mt-1 text-sm font-semibold text-white">{selectedReceipt.branch}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                    <p className="text-[10px] uppercase tracking-wider text-white/30">ป้ายทะเบียน/ขนาด</p>
+                    <p className="mt-1 text-sm font-semibold text-white">
+                      {selectedReceipt.session?.carSize ?? selectedReceipt.size}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                  {[
+                    { label: 'Session ID', value: selectedReceipt.session?.id ?? selectedReceipt.id },
+                    { label: 'Payment ref', value: selectedReceipt.session?.payment?.reference ?? '-' },
+                    { label: 'Created', value: formatDateTime(selectedReceipt.session?.createdAt ?? selectedReceipt.date) },
+                    { label: 'Started', value: formatDateTime(selectedReceipt.session?.startedAt) },
+                    { label: 'Completed', value: formatDateTime(selectedReceipt.session?.completedAt) },
+                    { label: 'Points earned', value: formatPoints(selectedReceipt.session?.pointsEarned ?? selectedReceipt.points) },
+                    { label: 'Rating', value: selectedReceipt.session?.rating ? `${selectedReceipt.session.rating}/5` : '-' },
+                    { label: 'Review', value: selectedReceipt.session?.reviewText || '-' },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-start justify-between gap-4 border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                      <span className="text-[10px] uppercase tracking-wider text-white/25">{item.label}</span>
+                      <span className="text-right text-sm text-white/85">{item.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button variant="secondary" size="sm" onClick={() => setSelectedReceipt(null)}>
+                    ปิด
+                  </Button>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

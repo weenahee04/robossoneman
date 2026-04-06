@@ -1,0 +1,477 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ROBOSS System Setup Guide</title>
+    <style>
+      :root {
+        --bg: #050505;
+        --panel: rgba(16, 16, 18, 0.92);
+        --card: rgba(24, 24, 28, 0.9);
+        --soft: #a2a2aa;
+        --text: #f5f5f7;
+        --muted: #c7c7cd;
+        --red: #ff3b30;
+        --red-deep: #9d0f16;
+        --red-soft: rgba(255, 59, 48, 0.12);
+        --line: rgba(255, 255, 255, 0.1);
+        --ok: #7ef29a;
+        --warn: #ffd166;
+        --shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+      }
+
+      * { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(255, 59, 48, 0.2), transparent 24%),
+          radial-gradient(circle at top right, rgba(255, 59, 48, 0.13), transparent 26%),
+          linear-gradient(180deg, #090909 0%, #040404 100%);
+      }
+
+      a { color: #ff9f99; }
+      .shell { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 28px 0 80px; }
+      .hero, .toc, .content section, .callout, .table-wrap, .code-block, .footer {
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+      }
+
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(145deg, rgba(255, 59, 48, 0.18), rgba(255, 59, 48, 0.04)), var(--panel);
+        border-radius: 36px;
+        padding: 34px;
+      }
+
+      .hero::after {
+        content: "";
+        position: absolute;
+        inset: -20% auto auto 58%;
+        width: 300px;
+        height: 300px;
+        border-radius: 999px;
+        background: radial-gradient(circle, rgba(255, 59, 48, 0.22), transparent 70%);
+        pointer-events: none;
+      }
+
+      .eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        background: rgba(255, 59, 48, 0.14);
+        border: 1px solid rgba(255, 59, 48, 0.25);
+        color: #ffd7d4;
+        font-size: 13px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      h1, h2, h3 { margin: 0; line-height: 1.15; }
+      h1 { margin-top: 18px; max-width: 780px; font-size: clamp(32px, 5vw, 62px); font-weight: 800; }
+      .hero p { max-width: 840px; margin: 18px 0 0; color: var(--muted); font-size: 18px; line-height: 1.75; }
+
+      .hero-grid, .grid-2, .grid-3 { display: grid; gap: 16px; }
+      .hero-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: 28px; }
+      .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+      .hero-stat, .card, .timeline-item .body {
+        padding: 18px 20px;
+        border-radius: 20px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+
+      .hero-stat strong, .timeline-item .body strong { display: block; color: #fff; margin-bottom: 8px; }
+      .hero-stat span, .card p, .card li, .content li, .content p, .section-head p, .footer { color: var(--muted); line-height: 1.75; }
+
+      .layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 22px; margin-top: 24px; }
+      .toc { position: sticky; top: 20px; align-self: start; border-radius: 28px; padding: 22px; background: var(--card); }
+      .toc h2 { font-size: 16px; margin-bottom: 14px; }
+      .toc a {
+        display: block; padding: 10px 12px; margin-bottom: 8px; color: var(--muted);
+        text-decoration: none; border-radius: 12px; transition: 0.2s ease;
+      }
+      .toc a:hover { color: #fff; background: rgba(255, 59, 48, 0.1); }
+
+      .content { display: grid; gap: 22px; }
+      .content section { border-radius: 28px; padding: 30px; background: var(--card); }
+      .section-head {
+        display: flex; justify-content: space-between; gap: 16px; align-items: end; margin-bottom: 22px;
+      }
+      .section-head p { margin: 0; max-width: 760px; }
+      .section-kicker {
+        color: #ff9f99; text-transform: uppercase; letter-spacing: 0.1em;
+        font-size: 12px; font-weight: 700; margin-bottom: 10px;
+      }
+
+      ul, ol { margin: 0; padding-left: 20px; }
+      li + li { margin-top: 8px; }
+
+      .callout {
+        border-radius: 18px; padding: 18px 20px; margin-top: 18px;
+        background: linear-gradient(135deg, rgba(255, 59, 48, 0.16), rgba(255, 59, 48, 0.05)), rgba(255, 255, 255, 0.02);
+      }
+      .callout strong { display: block; margin-bottom: 8px; color: #fff; }
+
+      .table-wrap {
+        overflow: hidden; border-radius: 20px; margin-top: 16px; background: rgba(255,255,255,0.02);
+      }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 15px 16px; text-align: left; vertical-align: top; border-bottom: 1px solid rgba(255,255,255,0.08); }
+      th {
+        background: rgba(255, 59, 48, 0.12); color: #fff; font-size: 13px;
+        letter-spacing: 0.06em; text-transform: uppercase;
+      }
+      td { color: var(--muted); font-size: 14px; line-height: 1.75; }
+
+      code, .pill { font-family: Consolas, "Courier New", monospace; }
+      .pill {
+        display: inline-flex; padding: 4px 9px; border-radius: 999px; background: var(--red-soft);
+        border: 1px solid rgba(255, 59, 48, 0.22); color: #ffc5c1; font-size: 12px;
+      }
+
+      .code-block {
+        border-radius: 20px; padding: 18px 20px; margin-top: 16px; overflow-x: auto; background: #0b0b0d;
+      }
+      pre { margin: 0; color: #f3d7d5; font-size: 13px; line-height: 1.8; white-space: pre-wrap; }
+
+      .timeline { display: grid; gap: 14px; }
+      .timeline-item { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 14px; align-items: start; }
+      .timeline-item .num {
+        width: 52px; height: 52px; display: grid; place-items: center; border-radius: 18px;
+        font-weight: 800; color: #fff; background: linear-gradient(180deg, var(--red), var(--red-deep));
+      }
+
+      .footer { margin-top: 24px; padding: 18px 22px; border-radius: 20px; background: rgba(255, 255, 255, 0.03); }
+      .ok { color: var(--ok); }
+      .warn { color: var(--warn); }
+
+      @media (max-width: 1080px) {
+        .layout { grid-template-columns: 1fr; }
+        .toc { position: static; }
+        .grid-3 { grid-template-columns: 1fr; }
+      }
+
+      @media (max-width: 820px) {
+        .hero-grid, .grid-2 { grid-template-columns: 1fr; }
+        .shell { width: min(100% - 20px, 1240px); padding-top: 12px; }
+        .hero, .content section, .toc { padding: 22px; border-radius: 24px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div class="eyebrow">ROBOSS Setup Guide</div>
+        <h1>คู่มือตั้งค่าระบบ ROBOSS สำหรับลูกค้าและแฟรนไชส์</h1>
+        <p>
+          เอกสารฉบับนี้ใช้สำหรับตั้งค่าระบบตั้งแต่โครงสร้างพื้นฐาน, backend, customer portal,
+          admin dashboard ไปจนถึงการตั้งค่า payment ในหลังบ้าน โดยอ้างอิงจาก flow และ env
+          ที่ใช้งานอยู่จริงในโปรเจกต์ปัจจุบัน เหมาะสำหรับทีมลูกค้า, ทีม implement และแฟรนไชส์สาขา
+        </p>
+        <div class="hero-grid">
+          <div class="hero-stat">
+            <strong>ขอบเขตคู่มือ</strong>
+            <span>ระบบลูกค้า, หลังบ้าน, backend, database, LINE, Clerk, payment และ checklist ก่อน go-live</span>
+          </div>
+          <div class="hero-stat">
+            <strong>โฟกัสสำคัญ</strong>
+            <span>ให้แฟรนไชส์สามารถ setup payment ปลายทางของตัวเองได้ โดย HQ ยังควบคุม governance ได้</span>
+          </div>
+          <div class="hero-stat">
+            <strong>ข้อควรจำ</strong>
+            <span>ระบบจะปล่อยให้เริ่มล้างได้ต่อเมื่อ payment ถูกยืนยันสำเร็จแล้วเท่านั้น</span>
+          </div>
+        </div>
+      </header>
+
+      <div class="layout">
+        <aside class="toc">
+          <h2>สารบัญ</h2>
+          <a href="#overview">1. ภาพรวมระบบ</a>
+          <a href="#prepare">2. สิ่งที่ต้องเตรียม</a>
+          <a href="#backend">3. การตั้งค่า Backend</a>
+          <a href="#frontend">4. การตั้งค่า Frontend และ Admin</a>
+          <a href="#payment">5. การตั้งค่า Payment</a>
+          <a href="#flow">6. Flow การชำระเงิน</a>
+          <a href="#roles">7. สิทธิ์ HQ และ Franchise</a>
+          <a href="#test">8. การทดสอบก่อนเปิดใช้งาน</a>
+          <a href="#golive">9. Checklist ก่อน Go-Live</a>
+          <a href="#trouble">10. Troubleshooting</a>
+        </aside>
+
+        <main class="content">
+          <section id="overview">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">System Overview</div>
+                <h2>1. ภาพรวมระบบ</h2>
+              </div>
+              <p>สถาปัตยกรรมของ ROBOSS แยกส่วนชัดเจนเพื่อให้ scale หลายสาขาและหลายแฟรนไชส์ได้ง่ายขึ้น</p>
+            </div>
+            <div class="grid-3">
+              <div class="card"><h3>Customer Portal</h3><p>หน้าลูกค้าใช้สำหรับเข้าใช้งานผ่านลิงก์หน้าเว็บหรือ LINE Rich Menu แล้วเชื่อมต่อกับ backend API และ WebSocket</p></div>
+              <div class="card"><h3>Admin Dashboard</h3><p>หน้าหลังบ้านใช้ให้ HQ และแฟรนไชส์บริหารสาขา, payment config, coupon, package, session และนโยบายส่วนกลาง</p></div>
+              <div class="card"><h3>Backend + Machine</h3><p>backend ทำหน้าที่เป็น source of truth ของ session, payment, machine event, MQTT command และ audit log</p></div>
+            </div>
+            <div class="code-block"><pre>LINE Rich Menu / Web Entry
+        ↓
+Customer Portal
+        ↓
+ROBOSS Backend API + WebSocket
+        ↓
+PostgreSQL / Payment Provider / MQTT / Machine Events
+        ↓
+ESP32 / PLC / เครื่องล้าง</pre></div>
+            <div class="callout"><strong>หลักการสำคัญ</strong>ถึงแฟรนไชส์จะรับเงินเข้าบัญชีของตัวเองได้ แต่การตัดสินว่า session ไหนจ่ายสำเร็จและพร้อมล้างหรือยัง ต้องเกิดจาก backend กลางเสมอ เพื่อให้ audit, machine safety และการกระทบยอดทำงานตรงกันทุกฝ่าย</div>
+          </section>
+
+          <section id="prepare">
+            <div class="section-head">
+              <div><div class="section-kicker">Preparation</div><h2>2. สิ่งที่ต้องเตรียมก่อนเริ่มตั้งค่า</h2></div>
+              <p>แนะนำให้ล็อกข้อมูลต่อไปนี้ให้ครบก่อนเริ่ม setup จริง เพื่อลดการแก้ env หลายรอบ</p>
+            </div>
+            <div class="grid-2">
+              <div class="card">
+                <h3>Infrastructure</h3>
+                <ul>
+                  <li>PostgreSQL พร้อมค่า <code>DATABASE_URL</code></li>
+                  <li>Backend hosting พร้อม public URL เช่น <code>https://api.roboss.co.th</code></li>
+                  <li>Customer portal URL และ admin URL จริง</li>
+                  <li>MQTT broker URL และ credential สำหรับเครื่องล้าง</li>
+                </ul>
+              </div>
+              <div class="card">
+                <h3>Identity และ Integration</h3>
+                <ul>
+                  <li>LINE Login channel</li>
+                  <li>LINE Official Account / Rich Menu</li>
+                  <li>Clerk key ถ้าจะใช้ customer auth แบบ Clerk</li>
+                  <li>Payment provider contract และ webhook secret</li>
+                </ul>
+              </div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>รายการ</th><th>ต้องมีเมื่อไร</th><th>หมายเหตุ</th></tr></thead>
+                <tbody>
+                  <tr><td>โดเมน backend / customer / admin</td><td>ก่อน deploy staging</td><td>ใช้ผูก <code>CORS_ORIGIN</code>, callback URL และ Rich Menu entry</td></tr>
+                  <tr><td>JWT / machine / payment secrets</td><td>ก่อนเปิด production</td><td>ควรเป็นค่าใหม่ยาวอย่างน้อย 32 ตัวอักษร</td></tr>
+                  <tr><td>Payment provider endpoint</td><td>ก่อนรับเงินจริง</td><td>production ห้ามใช้ scaffold adapter แบบหลอก</td></tr>
+                  <tr><td>PromptPay ID / ชื่อรับเงินของแต่ละสาขา</td><td>ก่อนเปิดสาขาใช้งานจริง</td><td>ต้องกรอกในหลังบ้านหรือ seed เข้าระบบให้พร้อม</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="backend">
+            <div class="section-head">
+              <div><div class="section-kicker">Backend Setup</div><h2>3. การตั้งค่า Backend</h2></div>
+              <p>backend เป็นส่วนที่สำคัญที่สุด เพราะเป็นตัวตรวจสิทธิ์, สร้าง session, สร้าง payment และสั่งงาน machine</p>
+            </div>
+            <div class="timeline">
+              <div class="timeline-item"><div class="num">01</div><div class="body"><strong>เตรียม env production</strong>ตั้งค่า <code>DATABASE_URL</code>, <code>JWT_SECRET</code>, <code>JWT_REFRESH_SECRET</code>, <code>SCAN_TOKEN_SECRET</code>, <code>BRANCH_PAYMENT_CREDENTIAL_SECRET</code>, <code>CORS_ORIGIN</code>, <code>MACHINE_EVENT_SECRET</code> และตัวแปร payment/webhook ให้ครบ</div></div>
+              <div class="timeline-item"><div class="num">02</div><div class="body"><strong>ตรวจความพร้อม env</strong>รันคำสั่งตรวจสอบก่อนเสมอ เพื่อจับค่าที่ placeholder, weak secret หรือ config ที่ production ไม่อนุญาต</div></div>
+              <div class="timeline-item"><div class="num">03</div><div class="body"><strong>migrate database และ build</strong>ใช้ migration จริงกับ production database และทดสอบ build / smoke test ก่อนเปิด endpoint ให้ลูกค้าเข้า</div></div>
+            </div>
+            <div class="code-block"><pre>cd backend
+npm install
+npm run verify:env
+npm run verify:production
+npx prisma migrate deploy --schema prisma/schema.prisma
+npm test
+npm run build</pre></div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>ENV สำคัญ</th><th>หน้าที่</th><th>ข้อกำหนด</th></tr></thead>
+                <tbody>
+                  <tr><td><code>DATABASE_URL</code></td><td>เชื่อม PostgreSQL</td><td>ต้องเป็น production DB จริง</td></tr>
+                  <tr><td><code>CORS_ORIGIN</code></td><td>กำหนด frontend/admin ที่อนุญาต</td><td>ห้ามมี <code>localhost</code> หรือ <code>*</code> ใน production</td></tr>
+                  <tr><td><code>JWT_SECRET</code>, <code>JWT_REFRESH_SECRET</code></td><td>ออก token ให้ระบบ</td><td>ต้องยาวและไม่ใช้ค่า default</td></tr>
+                  <tr><td><code>SCAN_TOKEN_SECRET</code></td><td>ใช้กับ machine scan token</td><td>สำคัญต่อความปลอดภัยของ flow หน้าเครื่อง</td></tr>
+                  <tr><td><code>BRANCH_PAYMENT_CREDENTIAL_SECRET</code></td><td>เข้ารหัส credential payment ของสาขา</td><td>ห้ามใช้ค่าอ่อนหรือซ้ำกับ secret ตัวอื่น</td></tr>
+                  <tr><td><code>MACHINE_EVENT_SECRET</code></td><td>ยืนยัน event จากฝั่งเครื่อง</td><td>production ต้องมีเสมอ</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout"><strong>Guardrail ของระบบ</strong>production ถูกออกแบบให้ reject config ที่ไม่ปลอดภัย เช่น <code>PAYMENT_ALLOW_MANUAL_CONFIRM=true</code>, ไม่มี <code>PAYMENT_PROVIDER_WEBHOOK_SECRET</code> หรือยังใช้ provider ชนิด scaffold อยู่</div>
+          </section>
+
+          <section id="frontend">
+            <div class="section-head">
+              <div><div class="section-kicker">Frontend Setup</div><h2>4. การตั้งค่า Customer Portal และ Admin Dashboard</h2></div>
+              <p>ทั้ง 2 ส่วนแยก deploy กันได้ แต่ต้องชี้ไป backend ตัวเดียวกันและอยู่ใน CORS ที่ backend อนุญาต</p>
+            </div>
+            <div class="grid-2">
+              <div class="card">
+                <h3>Customer Portal</h3>
+                <ul>
+                  <li><code>VITE_API_URL</code> ชี้ไป <code>https://api...</code></li>
+                  <li><code>VITE_WS_URL</code> ชี้ไป <code>wss://api.../ws</code> ถ้ามี</li>
+                  <li><code>VITE_CUSTOMER_PORTAL_URL</code> เป็น URL หน้า portal จริง</li>
+                  <li><code>VITE_LINE_RICH_MENU_ENTRY_URL</code> ใช้เป็น entry จาก LINE</li>
+                  <li>ถ้าใช้ Clerk ให้ใส่ <code>VITE_CLERK_PUBLISHABLE_KEY</code></li>
+                </ul>
+              </div>
+              <div class="card">
+                <h3>Admin Dashboard</h3>
+                <ul>
+                  <li><code>VITE_API_URL</code> ชี้ไป backend URL หลัก</li>
+                  <li>ต้องอยู่ใน <code>CORS_ORIGIN</code> เช่นเดียวกับ customer portal</li>
+                  <li>ใช้สำหรับจัดการ branch, package, coupon, payment config และ session</li>
+                </ul>
+              </div>
+            </div>
+            <div class="code-block"><pre># customer portal
+VITE_API_URL=https://api.roboss.co.th/api
+VITE_WS_URL=wss://api.roboss.co.th/ws
+VITE_CUSTOMER_PORTAL_URL=https://portal.roboss.co.th
+VITE_LINE_RICH_MENU_ENTRY_URL=https://portal.roboss.co.th
+VITE_CLERK_PUBLISHABLE_KEY=pk_live_xxx
+
+# admin dashboard
+VITE_API_URL=https://api.roboss.co.th</pre></div>
+          </section>
+
+          <section id="payment">
+            <div class="section-head">
+              <div><div class="section-kicker">Payment Setup</div><h2>5. การตั้งค่า Payment ในระบบ</h2></div>
+              <p>ส่วนนี้ใช้สำหรับ HQ และแฟรนไชส์ในการกำหนดปลายทางรับเงินของแต่ละสาขา และควบคุมความพร้อมก่อนเปิดใช้งาน</p>
+            </div>
+            <div class="grid-3">
+              <div class="card"><h3>Mode ที่รองรับ</h3><ul><li><span class="pill">hq_managed</span> HQ ดูแลปลายทางรับเงิน</li><li><span class="pill">branch_managed</span> สาขาหรือแฟรนไชส์ดูแลเอง</li><li><span class="pill">manual_promptpay</span> ใช้ PromptPay แบบ manual ก่อน</li></ul></div>
+              <div class="card"><h3>Provider ที่รองรับในข้อมูล config</h3><ul><li><span class="pill">promptpay_manual</span></li><li><span class="pill">opn</span></li><li><span class="pill">stripe</span></li><li><span class="pill">bank_qr</span></li><li><span class="pill">custom</span></li></ul></div>
+              <div class="card"><h3>Governance Status</h3><ul><li><span class="pill">draft</span> ยังไม่พร้อม</li><li><span class="pill">pending_review</span> รอ HQ ตรวจ</li><li><span class="pill">approved</span> ผ่านแล้ว</li><li><span class="pill">rejected</span> ต้องแก้ไข</li></ul></div>
+            </div>
+            <div class="timeline" style="margin-top: 18px;">
+              <div class="timeline-item"><div class="num">1</div><div class="body"><strong>เลือกสาขาที่จะตั้งค่า</strong>เข้าเมนูตั้งค่าการชำระเงินในหลังบ้าน แล้วเลือกสาขาที่ต้องการให้รับเงินจริง</div></div>
+              <div class="timeline-item"><div class="num">2</div><div class="body"><strong>กำหนด mode และ provider</strong>เลือกว่าจะให้ HQ ดูแลหรือสาขาดูแลเอง จากนั้นเลือกชนิด provider ที่จะใช้รับเงิน</div></div>
+              <div class="timeline-item"><div class="num">3</div><div class="body"><strong>กรอกข้อมูลปลายทางรับเงิน</strong>อย่างน้อยควรมี <code>promptpay_id</code> และ <code>promptpay_name</code> หรือ credential ตาม provider จริง เช่น API key, merchant id, webhook secret</div></div>
+              <div class="timeline-item"><div class="num">4</div><div class="body"><strong>ตั้งค่า capability ให้ตรงความสามารถจริง</strong>ระบบต้องรู้ว่า provider นี้รองรับ webhook, polling, dynamic QR, reference binding หรือ refund หรือไม่</div></div>
+              <div class="timeline-item"><div class="num">5</div><div class="body"><strong>เปิดใช้งานและรอ HQ approve ถ้ามี governance</strong>ถ้าระบบใช้งานแบบ HQ คุมกลาง สาขาต้องส่ง config ขึ้น review ก่อนเปิดจริง</div></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Field / Credential</th><th>จำเป็นเมื่อไร</th><th>คำอธิบาย</th></tr></thead>
+                <tbody>
+                  <tr><td><code>promptpay_id</code></td><td>แทบทุก flow ที่เป็น PromptPay</td><td>เลข PromptPay ปลายทางที่สาขาจะรับเงินจริง</td></tr>
+                  <tr><td><code>promptpay_name</code></td><td>ควรมีเสมอ</td><td>ชื่อแสดงผู้รับเงินใน QR context และเอกสารอ้างอิง</td></tr>
+                  <tr><td><code>api_key</code> / <code>merchant_id</code></td><td>เมื่อใช้ provider แบบ API</td><td>ใช้ยิง create payment และ verify payment</td></tr>
+                  <tr><td><code>webhook_secret</code></td><td>เมื่อ provider ส่ง webhook กลับ</td><td>ใช้ตรวจความถูกต้องของ callback</td></tr>
+                  <tr><td><code>supportsReferenceBinding</code></td><td class="warn">จำเป็นมาก</td><td>ถ้าไม่มี ระบบจะไม่ถือว่า config พร้อมใช้งานจริง</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout"><strong>เงื่อนไข readiness ของ payment config</strong>config จะถือว่า “พร้อมใช้งาน” ก็ต่อเมื่อมี config ของสาขา, มี PromptPay ID, มีชื่อรับเงิน, เปิดใช้งานไว้ และรองรับ <code>supportsReferenceBinding</code></div>
+            <div class="code-block"><pre># ตัวอย่าง env ฝั่ง backend สำหรับ live payment
+PAYMENT_PROVIDER_NAME=replace-with-real-provider-adapter
+PAYMENT_PROVIDER_CREATE_URL=https://payments.example.com/v1/payments
+PAYMENT_PROVIDER_VERIFY_URL=https://payments.example.com/v1/payments/:providerRef
+PAYMENT_PROVIDER_VERIFY_METHOD=GET
+PAYMENT_PROVIDER_API_KEY=replace-with-provider-api-key
+PAYMENT_PROVIDER_CALLBACK_URL=https://api.roboss.co.th/api/payments/webhook/provider
+PAYMENT_PROVIDER_WEBHOOK_SECRET=replace-with-unique-webhook-secret
+PAYMENT_PROVIDER_SIGNATURE_SECRET=
+PAYMENT_ALLOW_MANUAL_CONFIRM=false</pre></div>
+          </section>
+
+          <section id="flow">
+            <div class="section-head">
+              <div><div class="section-kicker">Payment Flow</div><h2>6. Flow การชำระเงินของระบบ</h2></div>
+              <p>ใช้ส่วนนี้อธิบายให้ลูกค้าเข้าใจว่าระบบไม่ปล่อยให้เครื่องเริ่มทำงานจากการสร้าง QR อย่างเดียว แต่ต้องยืนยันว่าเงินเข้าแล้วจริง</p>
+            </div>
+            <div class="timeline">
+              <div class="timeline-item"><div class="num">1</div><div class="body"><strong>ลูกค้าสแกน QR หน้าเครื่องและสร้าง session</strong>ระบบผูก session เข้ากับ branch, machine และ scan context ของรายการนั้น</div></div>
+              <div class="timeline-item"><div class="num">2</div><div class="body"><strong>backend สร้าง payment</strong>ถ้า session อยู่ในสถานะรอชำระ ระบบจะเลือก payment config ของสาขา, สร้าง reference, สร้าง QR payload และบันทึก payment เป็นสถานะ <code>pending</code></div></div>
+              <div class="timeline-item"><div class="num">3</div><div class="body"><strong>payment มีอายุจำกัด</strong>payment ที่รออยู่มี expiry ประมาณ 5 นาที ถ้าไม่จ่ายทันจะกลายเป็น <code>expired</code></div></div>
+              <div class="timeline-item"><div class="num">4</div><div class="body"><strong>ระบบรอยืนยันการชำระเงิน</strong>การยืนยันทำได้จาก webhook ของ provider, การ verify/reconcile จากหลังบ้าน หรือ manual confirm เฉพาะกรณีพิเศษที่ไม่ได้เปิดใน production</div></div>
+              <div class="timeline-item"><div class="num">5</div><div class="body"><strong>เมื่อจ่ายสำเร็จ session จะกลายเป็น ready_to_wash</strong>ถ้าสถานะ payment กลายเป็น <code>confirmed</code> ระบบจะเปลี่ยน session เป็น <code>ready_to_wash</code> และจองเครื่องไว้ให้รายการนั้น</div></div>
+              <div class="timeline-item"><div class="num">6</div><div class="body"><strong>ถ้าจ่ายไม่ผ่านหรือหมดเวลา</strong>session จะกลับไปฝั่ง <code>payment_failed</code> หรือสถานะที่เกี่ยวข้อง และระบบจะไม่ปล่อยให้เริ่มล้าง</div></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Provider Status</th><th>Mapped เป็น</th><th>ผลกับระบบ</th></tr></thead>
+                <tbody>
+                  <tr><td><code>success</code>, <code>paid</code>, <code>succeeded</code></td><td class="ok"><code>confirmed</code></td><td>พร้อมล้าง</td></tr>
+                  <tr><td><code>failed</code>, <code>declined</code>, <code>error</code></td><td><code>failed</code></td><td>กลับไปแก้รายการชำระเงิน</td></tr>
+                  <tr><td><code>expired</code>, <code>timeout</code></td><td><code>expired</code></td><td>ต้องสร้าง payment ใหม่</td></tr>
+                  <tr><td><code>cancelled</code></td><td><code>cancelled</code></td><td>ยกเลิกรายการ</td></tr>
+                  <tr><td><code>refunded</code></td><td><code>refunded</code></td><td>คืนเงินและ update session ตามเงื่อนไข</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section id="roles">
+            <div class="section-head">
+              <div><div class="section-kicker">Roles & Governance</div><h2>7. สิทธิ์ HQ และ Franchise</h2></div>
+              <p>เพื่อให้แฟรนไชส์ดูแลปลายทางรับเงินของตัวเองได้ แต่ HQ ยังควบคุมความปลอดภัยและมาตรฐานกลางได้</p>
+            </div>
+            <div class="grid-2">
+              <div class="card"><h3>HQ Admin</h3><ul><li>ดูและจัดการ payment config ได้ทุกสาขา</li><li>lock config ไม่ให้สาขาแก้เองได้</li><li>approve / reject config ของสาขา</li><li>ดู governance overview และ audit log</li><li>ตรวจ readiness ของ payment config ทั้งระบบ</li></ul></div>
+              <div class="card"><h3>Franchise / Branch Admin</h3><ul><li>แก้ได้เฉพาะสาขาที่ตัวเองมีสิทธิ์</li><li>กรอก PromptPay ID, ชื่อรับเงิน และ provider credential ของตัวเอง</li><li>ส่ง config เข้าสู่สถานะ review</li><li>เปิด/ปิด config ได้เมื่อ HQ ไม่ lock ไว้</li></ul></div>
+            </div>
+          </section>
+
+          <section id="test">
+            <div class="section-head">
+              <div><div class="section-kicker">Verification</div><h2>8. การทดสอบก่อนเปิดใช้งาน</h2></div>
+              <p>แนะนำให้ทดสอบจากต้นทางถึงปลายทาง ไม่ใช่เช็กแค่หน้าเว็บโหลดขึ้นได้</p>
+            </div>
+            <div class="grid-2">
+              <div class="card"><h3>Backend / Infra</h3><ul><li>เช็ก <code>/health</code> และ <code>/ready</code> ต้องตอบ 200</li><li>ล็อกอินแอดมินได้จริง</li><li>backend เชื่อม DB ได้</li><li>MQTT รับ event และส่ง command ได้</li></ul></div>
+              <div class="card"><h3>Payment Flow</h3><ul><li>สร้าง session ได้จากหน้าเครื่องหรือ customer flow</li><li>ระบบสร้าง payment และ reference ถูกสาขา</li><li>webhook หรือ verify เปลี่ยน payment เป็น confirmed ได้</li><li>session เปลี่ยนเป็น ready_to_wash หลังยืนยันเท่านั้น</li></ul></div>
+            </div>
+            <div class="code-block"><pre># useful smoke flow
+GET  /health
+GET  /ready
+POST /api/admin/login
+POST /api/payments
+POST /api/payments/:id/verify
+POST /api/payments/:id/reconcile
+POST /api/payments/webhook/provider</pre></div>
+          </section>
+
+          <section id="golive">
+            <div class="section-head">
+              <div><div class="section-kicker">Go-Live</div><h2>9. Checklist ก่อนเปิดใช้งานจริง</h2></div>
+              <p>ใช้รายการนี้เป็นตัวเช็กสุดท้ายก่อนเปิดรับลูกค้าจริง</p>
+            </div>
+            <div class="grid-2">
+              <div class="card"><h3>ต้องผ่านทั้งหมด</h3><ul><li><span class="ok">พร้อม</span> backend health / ready ผ่าน</li><li><span class="ok">พร้อม</span> admin และ customer portal ใช้งานได้จากโดเมนจริง</li><li><span class="ok">พร้อม</span> payment webhook secret และ signature config ถูกต้อง</li><li><span class="ok">พร้อม</span> แต่ละสาขามี payment config ที่ active และ ready</li><li><span class="ok">พร้อม</span> machine event secret และ MQTT ทำงานจริง</li></ul></div>
+              <div class="card"><h3>ห้ามเปิดใช้งานถ้ายังมีข้อใดข้อหนึ่ง</h3><ul><li><span class="warn">ห้าม</span> ยังใช้ provider scaffold อยู่</li><li><span class="warn">ห้าม</span> เปิด <code>PAYMENT_ALLOW_MANUAL_CONFIRM=true</code> ใน production</li><li><span class="warn">ห้าม</span> ไม่มี webhook secret</li><li><span class="warn">ห้าม</span> CORS ยังชี้ localhost</li><li><span class="warn">ห้าม</span> promptpay_id ของสาขายังไม่ครบหรือไม่ผ่าน HQ review</li></ul></div>
+            </div>
+          </section>
+
+          <section id="trouble">
+            <div class="section-head">
+              <div><div class="section-kicker">Troubleshooting</div><h2>10. ปัญหาที่พบบ่อยและแนวทางแก้</h2></div>
+              <p>ใช้ส่วนนี้เป็น quick guide เวลา setup แล้ว flow ยังไม่สมบูรณ์</p>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>อาการ</th><th>สาเหตุที่เป็นไปได้</th><th>แนวทางแก้</th></tr></thead>
+                <tbody>
+                  <tr><td>สร้าง payment ไม่ได้</td><td>สาขายังไม่มี payment config ที่ active หรือไม่มี reference binding</td><td>เข้าเมนูตั้งค่าการชำระเงิน แล้วเช็ก <code>promptpay_id</code>, <code>promptpay_name</code> และ capability</td></tr>
+                  <tr><td>จ่ายแล้วแต่ session ไม่พร้อมล้าง</td><td>webhook ไม่เข้า, verify ไม่ผ่าน หรือ amount mismatch</td><td>เช็ก webhook secret, payload mapping, verify URL และ audit/payment attempt</td></tr>
+                  <tr><td>หน้าเว็บเข้าได้แต่เรียก API ไม่ผ่าน</td><td>CORS_ORIGIN ไม่รวมโดเมนที่ deploy จริง</td><td>อัปเดต <code>CORS_ORIGIN</code> ทั้ง customer portal และ admin domain</td></tr>
+                  <tr><td>เครื่องไม่เริ่มแม้ payment confirmed แล้ว</td><td>machine ไม่พร้อม, MQTT ไม่ถึง หรือ session ไม่อยู่สถานะ <code>ready_to_wash</code></td><td>เช็ก machine status, MQTT topic, machine event secret และ start wash guard</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="footer">เอกสารนี้จัดทำจากโครงสร้างและ flow ที่มีอยู่ในโปรเจกต์ ROBOSS ปัจจุบัน หากต้องการเวอร์ชันสำหรับลูกค้าแบบใส่โลโก้บริษัท, ปุ่มพิมพ์ PDF, หรือแยกฉบับ “คู่มือแฟรนไชส์” กับ “คู่มือทีมติดตั้ง” สามารถต่อยอดจากไฟล์นี้ได้ทันที</div>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

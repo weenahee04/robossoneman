@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence, useDragControls } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { getIconUrl, type IconName } from '../services/icons';
 import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { useBranch } from '../services/branchContext';
+import { setWashFlowIntent } from '@/services/washFlowIntent';
 
 const USE_API = !!import.meta.env.VITE_API_URL;
 
@@ -130,7 +132,8 @@ const filters: { key: FilterType; label: string }[] = [
 interface NearbyBranchesProps { onBack: () => void; }
 
 export function NearbyBranches({ onBack }: NearbyBranchesProps) {
-  const { allBranches } = useBranch();
+  const navigate = useNavigate();
+  const { allBranches, setBranch } = useBranch();
   const [userLocation, setUserLocation] = useState<[number, number]>(DEFAULT_LOCATION);
   const [selectedBranch, setSelectedBranch] = useState<(Branch & { distance: number }) | null>(null);
   const [mapCenter, setMapCenter] = useState<[number, number]>(DEFAULT_LOCATION);
@@ -149,9 +152,11 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
         lng: b.lng!,
         isOpen: b.isOpen,
         hours: b.hours,
-        services: ['wash'] as ('wash' | 'coating' | 'vacuum')[],
-        machinesFree: 0,
-        machinesTotal: 0,
+        services: b.type === 'bike'
+          ? (['wash'] as ('wash' | 'coating' | 'vacuum')[])
+          : (['wash', 'coating', 'vacuum'] as ('wash' | 'coating' | 'vacuum')[]),
+        machinesFree: b.machinesFree,
+        machinesTotal: b.machinesTotal,
         image: b.type === 'bike' ? '/roboss_bike_icon.png' : '/roboss_car_icon.png',
         rating: 0,
         mapsUrl: b.mapsUrl,
@@ -202,6 +207,31 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
     setMapCenter(userLocation);
     setMapZoom(13);
     setSelectedBranch(null);
+  };
+
+  const handleStartWashAtBranch = () => {
+    if (!selectedBranch) {
+      return;
+    }
+
+    const mappedBranch = allBranches.find(
+      (branchInfo) =>
+        branchInfo.id === selectedBranch.id ||
+        branchInfo.name === selectedBranch.name ||
+        branchInfo.shortName === selectedBranch.name.replace('ROBOSS ', '')
+    );
+
+    if (mappedBranch) {
+      setBranch(mappedBranch);
+    }
+
+    setWashFlowIntent({
+      source: 'branch',
+      branchId: mappedBranch?.id ?? selectedBranch.id,
+      branchName: mappedBranch?.name ?? selectedBranch.name,
+      branchType: selectedBranch.type,
+    });
+    navigate('/carwash');
   };
 
   const serviceMap: Record<string, { icon: IconName; name: string }> = {
@@ -411,7 +441,7 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
               >
                 <I8Icon name="mapPin" size={14} /> นำทาง
               </Button>
-              <Button size="sm" className="flex-1 text-xs h-10">
+              <Button size="sm" className="flex-1 text-xs h-10" onClick={handleStartWashAtBranch}>
                 <I8Icon name="car" size={14} /> เริ่มล้างรถที่สาขานี้
               </Button>
             </div>

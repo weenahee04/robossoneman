@@ -3,5 +3,6 @@ export type AppEnv = {
     userId: string;
     adminId: string;
     adminRole: string;
+    adminBranchIds: string[];
   };
 };

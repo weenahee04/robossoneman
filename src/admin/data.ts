@@ -33,7 +33,7 @@ export interface Machine {
   branchName: string;
   name: string;
   type: 'car' | 'motorcycle';
-  status: 'idle' | 'busy' | 'maintenance' | 'offline';
+  status: 'idle' | 'reserved' | 'washing' | 'maintenance' | 'offline';
   espDeviceId: string;
   lastHeartbeat: Date;
   totalWashes: number;
@@ -50,8 +50,8 @@ export interface WashSession {
   packageName: string;
   carSize: 'S' | 'M' | 'L';
   totalPrice: number;
-  paymentStatus: 'pending' | 'confirmed' | 'failed';
-  washStatus: 'waiting' | 'in_progress' | 'completed' | 'cancelled';
+  paymentStatus: 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded' | 'expired';
+  washStatus: 'waiting' | 'ready' | 'in_progress' | 'completed' | 'cancelled';
   rating: number | null;
   createdAt: Date;
   completedAt: Date | null;
@@ -91,9 +91,9 @@ export const MOCK_BRANCHES: Branch[] = [
 
 export const MOCK_MACHINES: Machine[] = [
   { id: 'm001', branchId: 'b001', branchName: 'ROBOSS ลาดพร้าว', name: 'ตู้ A1', type: 'car', status: 'idle', espDeviceId: 'ESP32-b001-A1', lastHeartbeat: new Date(), totalWashes: 1420 },
-  { id: 'm002', branchId: 'b001', branchName: 'ROBOSS ลาดพร้าว', name: 'ตู้ A2', type: 'car', status: 'busy', espDeviceId: 'ESP32-b001-A2', lastHeartbeat: new Date(), totalWashes: 1355, currentSessionId: 's001' },
+  { id: 'm002', branchId: 'b001', branchName: 'ROBOSS ลาดพร้าว', name: 'ตู้ A2', type: 'car', status: 'washing', espDeviceId: 'ESP32-b001-A2', lastHeartbeat: new Date(), totalWashes: 1355, currentSessionId: 's001' },
   { id: 'm003', branchId: 'b001', branchName: 'ROBOSS ลาดพร้าว', name: 'ตู้ B1', type: 'motorcycle', status: 'idle', espDeviceId: 'ESP32-b001-B1', lastHeartbeat: new Date(), totalWashes: 890 },
-  { id: 'm004', branchId: 'b002', branchName: 'ROBOSS บางนา', name: 'ตู้ A1', type: 'car', status: 'busy', espDeviceId: 'ESP32-b002-A1', lastHeartbeat: new Date(), totalWashes: 2100, currentSessionId: 's002' },
+  { id: 'm004', branchId: 'b002', branchName: 'ROBOSS บางนา', name: 'ตู้ A1', type: 'car', status: 'washing', espDeviceId: 'ESP32-b002-A1', lastHeartbeat: new Date(), totalWashes: 2100, currentSessionId: 's002' },
   { id: 'm005', branchId: 'b002', branchName: 'ROBOSS บางนา', name: 'ตู้ A2', type: 'car', status: 'idle', espDeviceId: 'ESP32-b002-A2', lastHeartbeat: new Date(), totalWashes: 1980 },
   { id: 'm006', branchId: 'b002', branchName: 'ROBOSS บางนา', name: 'ตู้ A3', type: 'car', status: 'maintenance', espDeviceId: 'ESP32-b002-A3', lastHeartbeat: new Date(Date.now() - 3600000), totalWashes: 2350 },
   { id: 'm007', branchId: 'b003', branchName: 'ROBOSS รังสิต', name: 'ตู้ A1', type: 'car', status: 'idle', espDeviceId: 'ESP32-b003-A1', lastHeartbeat: new Date(), totalWashes: 670 },
@@ -128,7 +128,7 @@ export function getOverviewStats(branchIds?: string[]) {
   const totalRevenue = branches.reduce((s, b) => s + b.todayRevenue, 0);
   const totalSessions = branches.reduce((s, b) => s + b.todaySessions, 0);
   const activeBranches = branches.filter(b => b.isActive).length;
-  const machinesBusy = machines.filter(m => m.status === 'busy').length;
+  const machinesBusy = machines.filter(m => m.status === 'washing' || m.status === 'reserved').length;
   const machinesIdle = machines.filter(m => m.status === 'idle').length;
   const machinesMaint = machines.filter(m => m.status === 'maintenance' || m.status === 'offline').length;
   const avgRating = branches.filter(b => b.isActive).length > 0 ? branches.filter(b => b.isActive).reduce((s, b) => s + b.avgRating, 0) / branches.filter(b => b.isActive).length : 0;

@@ -1,194 +1,160 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { getRuntimeConfig } from '../lib/config.js';
 import { prisma } from '../lib/prisma.js';
 import { requireAuth } from '../middleware/auth.js';
 import type { AppEnv } from '../lib/types.js';
+import { confirmPayment } from '../services/payment-flow.js';
+import { ScanTokenError } from '../services/scan-tokens.js';
+import { getSessionDetail } from '../services/session-details.js';
+import { mapCustomerSession } from '../lib/mappers.js';
+import {
+  cancelWashSession,
+  completeWashSession,
+  createWashSession,
+  startWashSession,
+  updateWashProgress,
+} from '../services/wash-flow.js';
 
 export const sessionRoutes = new Hono<AppEnv>();
+const runtimeConfig = getRuntimeConfig();
 sessionRoutes.use('*', requireAuth);
-
-const POINTS_RATE = 10; // 1 THB = 10 points
 
 const createSessionSchema = z.object({
   branchId: z.string().min(1),
   machineId: z.string().min(1),
   packageId: z.string().min(1),
+  scanTokenId: z.string().min(1),
   carSize: z.enum(['S', 'M', 'L']),
   addons: z.array(z.string()).default([]),
-  totalPrice: z.number().positive(),
+  totalPrice: z.number().positive().optional(),
   couponId: z.string().min(1).optional(),
 });
 
-// Create wash session
 sessionRoutes.post('/', async (c) => {
   const userId = c.get('userId');
   const body = await c.req.json();
   const data = createSessionSchema.parse(body);
 
-  // Verify machine is available
-  const machine = await prisma.machine.findUnique({
-    where: { id: data.machineId },
-  });
+  try {
+    const session = await createWashSession({ userId, ...data });
+    return c.json({ data: session }, 201);
+  } catch (error) {
+    if (error instanceof ScanTokenError) {
+      const status = (() => {
+        switch (error.status) {
+          case 404:
+            return 404 as const;
+          case 409:
+            return 409 as const;
+          case 410:
+            return 410 as const;
+          default:
+            return 400 as const;
+        }
+      })();
 
-  if (!machine || machine.status !== 'idle') {
-    return c.json({ message: 'Machine is not available' }, 400);
+      return c.json({ message: error.message, code: error.code }, status);
+    }
+
+    const message = error instanceof Error ? error.message : 'Failed to create session';
+    const status =
+      message === 'Package not found'
+        ? 404
+        : message === 'Scan token has already been consumed'
+          ? 409
+          : 400;
+    return c.json({ message }, status);
   }
-
-  // Get package for step count
-  const pkg = await prisma.washPackage.findUnique({
-    where: { id: data.packageId },
-  });
-
-  if (!pkg) {
-    return c.json({ message: 'Package not found' }, 404);
-  }
-
-  const steps = pkg.steps as string[];
-
-  const session = await prisma.washSession.create({
-    data: {
-      userId,
-      branchId: data.branchId,
-      machineId: data.machineId,
-      packageId: data.packageId,
-      carSize: data.carSize,
-      addons: data.addons,
-      totalPrice: data.totalPrice,
-      totalSteps: steps.length,
-      couponId: data.couponId || null,
-    },
-  });
-
-  return c.json({ data: session }, 201);
 });
 
-// Confirm payment for a session
+sessionRoutes.post('/:id/start', async (c) => {
+  const userId = c.get('userId');
+  const sessionId = c.req.param('id');
+
+  try {
+    const session = await startWashSession({ sessionId, userId });
+    return c.json({ data: session });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to start wash';
+    const status = message === 'Session not found' ? 404 : 400;
+    return c.json({ message }, status);
+  }
+});
+
 sessionRoutes.post('/:id/confirm-payment', async (c) => {
   const userId = c.get('userId');
   const sessionId = c.req.param('id');
 
-  const session = await prisma.washSession.findFirst({
-    where: { id: sessionId, userId },
-  });
-
-  if (!session) {
-    return c.json({ message: 'Session not found' }, 404);
+  try {
+    const session = await confirmPayment({ sessionId, userId });
+    return c.json({ data: session });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to confirm payment';
+    const status = ['Payment not found', 'Session not found'].includes(message) ? 404 : 400;
+    return c.json({ message }, status);
   }
-
-  if (session.paymentStatus !== 'pending') {
-    return c.json({ message: 'Payment already processed' }, 400);
-  }
-
-  // Update session to paid and start washing
-  const updated = await prisma.washSession.update({
-    where: { id: sessionId },
-    data: {
-      paymentStatus: 'paid',
-      washStatus: 'washing',
-      startedAt: new Date(),
-    },
-  });
-
-  // Mark machine as washing
-  await prisma.machine.update({
-    where: { id: session.machineId },
-    data: { status: 'washing' },
-  });
-
-  return c.json({ data: updated });
 });
 
-// Update wash progress (called by IoT bridge or simulation)
 sessionRoutes.patch('/:id/progress', async (c) => {
+  if (runtimeConfig.isProduction) {
+    return c.json({ message: 'Progress updates must come from machine events in production' }, 403);
+  }
+
   const sessionId = c.req.param('id');
   const body = await c.req.json();
-  const { currentStep, progress } = z
-    .object({ currentStep: z.number(), progress: z.number() })
+  const { currentStep, progress, machineStatus } = z
+    .object({
+      currentStep: z.number().int().min(0).optional(),
+      progress: z.number().min(0).max(100).optional(),
+      machineStatus: z.enum(['idle', 'reserved', 'washing', 'maintenance', 'offline']).optional(),
+    })
     .parse(body);
 
-  const updated = await prisma.washSession.update({
-    where: { id: sessionId },
-    data: { currentStep, progress },
-  });
-
-  return c.json({ data: updated });
+  try {
+    const updated = await updateWashProgress({
+      sessionId,
+      currentStep,
+      progress,
+      machineStatus,
+    });
+    return c.json({ data: updated });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to update progress';
+    return c.json({ message }, 404);
+  }
 });
 
-// Complete wash session
 sessionRoutes.post('/:id/complete', async (c) => {
+  if (runtimeConfig.isProduction) {
+    return c.json({ message: 'Session completion must come from machine events in production' }, 403);
+  }
+
   const sessionId = c.req.param('id');
 
-  const session = await prisma.washSession.findUnique({
-    where: { id: sessionId },
-  });
-
-  if (!session) {
-    return c.json({ message: 'Session not found' }, 404);
+  try {
+    const session = await completeWashSession(sessionId);
+    return c.json({ data: session });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to complete session';
+    return c.json({ message }, 404);
   }
-
-  const pointsEarned = session.totalPrice * POINTS_RATE;
-
-  // Transaction: complete session + award points + update user + update machine + add stamp
-  const [updated] = await prisma.$transaction([
-    prisma.washSession.update({
-      where: { id: sessionId },
-      data: {
-        washStatus: 'completed',
-        progress: 100,
-        currentStep: session.totalSteps,
-        pointsEarned,
-        completedAt: new Date(),
-      },
-    }),
-    prisma.pointsTransaction.create({
-      data: {
-        userId: session.userId,
-        sessionId,
-        type: 'earn',
-        amount: pointsEarned,
-        description: `Wash completed — ${pointsEarned} points`,
-      },
-    }),
-    prisma.user.update({
-      where: { id: session.userId },
-      data: {
-        totalPoints: { increment: pointsEarned },
-        totalWashes: { increment: 1 },
-      },
-    }),
-    prisma.machine.update({
-      where: { id: session.machineId },
-      data: { status: 'idle' },
-    }),
-    prisma.stamp.updateMany({
-      where: { userId: session.userId, rewardClaimed: false },
-      data: {
-        currentCount: { increment: 1 },
-        lastStampAt: new Date(),
-      },
-    }),
-  ]);
-
-  // Update user tier based on total washes
-  const user = await prisma.user.findUnique({ where: { id: session.userId } });
-  if (user) {
-    let newTier = user.tier;
-    if (user.totalWashes >= 100) newTier = 'platinum';
-    else if (user.totalWashes >= 50) newTier = 'gold';
-    else if (user.totalWashes >= 20) newTier = 'silver';
-
-    if (newTier !== user.tier) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { tier: newTier },
-      });
-    }
-  }
-
-  return c.json({ data: updated });
 });
 
-// Rate session
+sessionRoutes.post('/:id/cancel', async (c) => {
+  const userId = c.get('userId');
+  const sessionId = c.req.param('id');
+
+  try {
+    const session = await cancelWashSession({ sessionId, userId });
+    return c.json({ data: session });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to cancel session';
+    const status = message === 'Session not found' ? 404 : 400;
+    return c.json({ message }, status);
+  }
+});
+
 sessionRoutes.post('/:id/rate', async (c) => {
   const userId = c.get('userId');
   const sessionId = c.req.param('id');
@@ -205,35 +171,19 @@ sessionRoutes.post('/:id/rate', async (c) => {
     return c.json({ message: 'Session not found' }, 404);
   }
 
-  const updated = await prisma.washSession.update({
+  if (session.status !== 'completed') {
+    return c.json({ message: 'Session is not completed yet' }, 400);
+  }
+
+  await prisma.washSession.update({
     where: { id: sessionId },
     data: { rating, reviewText },
   });
 
-  return c.json({ data: updated });
+  const detail = await getSessionDetail(sessionId);
+  return c.json({ data: detail });
 });
 
-// Get session by ID
-sessionRoutes.get('/:id', async (c) => {
-  const userId = c.get('userId');
-  const sessionId = c.req.param('id');
-
-  const session = await prisma.washSession.findFirst({
-    where: { id: sessionId, userId },
-    include: {
-      branch: { select: { name: true } },
-      package: { select: { name: true, steps: true } },
-    },
-  });
-
-  if (!session) {
-    return c.json({ message: 'Session not found' }, 404);
-  }
-
-  return c.json({ data: session });
-});
-
-// Get session history
 sessionRoutes.get('/history', async (c) => {
   const userId = c.get('userId');
   const page = Number(c.req.query('page') || 1);
@@ -243,8 +193,27 @@ sessionRoutes.get('/history', async (c) => {
     prisma.washSession.findMany({
       where: { userId },
       include: {
-        branch: { select: { name: true } },
-        package: { select: { name: true } },
+        branch: { select: { id: true, name: true } },
+        machine: { select: { id: true, name: true, type: true, status: true, espDeviceId: true } },
+        package: { select: { id: true, name: true, description: true, vehicleType: true, steps: true, stepDuration: true, image: true } },
+        payment: {
+          select: {
+            id: true,
+            sessionId: true,
+            userId: true,
+            branchId: true,
+            method: true,
+            status: true,
+            currency: true,
+            amount: true,
+            reference: true,
+            expiresAt: true,
+            confirmedAt: true,
+            qrPayload: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -253,5 +222,26 @@ sessionRoutes.get('/history', async (c) => {
     prisma.washSession.count({ where: { userId } }),
   ]);
 
-  return c.json({ data: sessions, total, page, limit });
+  return c.json({
+    data: sessions.map((session) => mapCustomerSession(session)),
+    total,
+    page,
+    limit,
+  });
+});
+
+sessionRoutes.get('/:id', async (c) => {
+  const userId = c.get('userId');
+  const sessionId = c.req.param('id');
+
+  const session = await prisma.washSession.findFirst({
+    where: { id: sessionId, userId },
+  });
+
+  if (!session) {
+    return c.json({ message: 'Session not found' }, 404);
+  }
+
+  const detail = await getSessionDetail(session.id);
+  return c.json({ data: detail });
 });
