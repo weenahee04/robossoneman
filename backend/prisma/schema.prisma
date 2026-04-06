@@ -331,7 +331,7 @@ model WashSession {
   branchId              String            @map("branch_id")
   machineId             String            @map("machine_id")
   packageId             String            @map("package_id")
-  scanTokenId           String            @unique @map("scan_token_id")
+  scanTokenId           String?           @unique @map("scan_token_id")
   paymentConfigId       String?           @map("payment_config_id")
   paymentRoutingMode    String?           @map("payment_routing_mode")
   branchPackageConfigId String?           @map("branch_package_config_id")
