@@ -207,7 +207,7 @@ export async function createWashSession(params: {
       if (isStale || isSameUser) {
         await prisma.washSession.update({
           where: { id: bs.id },
-          data: { status: 'cancelled' },
+          data: { status: 'cancelled', scanTokenId: null },
         });
         await prisma.machine.update({
           where: { id: params.machineId },
@@ -830,6 +830,7 @@ export async function cancelWashSession(params: { sessionId: string; userId: str
       data: {
         status: 'cancelled',
         cancelledAt: new Date(),
+        scanTokenId: null,
       },
     });
 
