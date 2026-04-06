@@ -36,3 +36,4 @@ backend/.env
 .cursor/
 .claude/
 .vercel
+.env*.local

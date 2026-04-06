@@ -29,7 +29,7 @@ function normalizeApiBaseUrl(rawBaseUrl?: string) {
   return rawBaseUrl.endsWith('/api') ? rawBaseUrl : `${rawBaseUrl.replace(/\/+$/, '')}/api`;
 }
 
-const API_BASE_URL = normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+const API_BASE_URL = normalizeApiBaseUrl((import.meta.env.VITE_API_URL || '').trim());
 const ACCESS_TOKEN_STORAGE_KEY = 'roboss_token';
 const REFRESH_TOKEN_STORAGE_KEY = 'roboss_refresh_token';
 
