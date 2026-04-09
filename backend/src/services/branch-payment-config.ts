@@ -201,6 +201,8 @@ export function resolveBranchPaymentAdapterName(provider: string) {
       return 'mock_promptpay';
     case 'stripe':
       return 'stripe';
+    case 'ksher':
+      return 'ksher';
     case 'custom':
       return process.env.PAYMENT_PROVIDER_NAME || 'generic_rest';
     default:

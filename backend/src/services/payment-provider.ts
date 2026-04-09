@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import Stripe from 'stripe';
 import { z } from 'zod';
+import { KsherPaymentProvider } from './ksher-provider.js';
 import { resolveManualConfirmEnabled } from '../lib/config.js';
 
 type ProviderHeaders = Record<string, string | undefined>;
@@ -768,6 +769,7 @@ const providerFactories = {
   mock_promptpay: () => new MockPromptPayProvider(),
   generic_rest: () => new GenericRestPaymentProvider(),
   stripe: () => new StripePaymentProvider(),
+  ksher: () => new KsherPaymentProvider(),
 } satisfies Record<string, () => PaymentProvider>;
 
 export function getSupportedPaymentProviderNames() {

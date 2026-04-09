@@ -94,6 +94,10 @@ function isStripeProvider(providerName: string) {
   return providerName === 'stripe';
 }
 
+function isKsherProvider(providerName: string) {
+  return providerName === 'ksher';
+}
+
 export function resolveManualConfirmEnabled(env: RuntimeEnv) {
   const explicit = env.PAYMENT_ALLOW_MANUAL_CONFIRM;
   if (explicit === 'true') {
@@ -290,6 +294,7 @@ export function validateRuntimeEnv(env: RuntimeEnv) {
   if (
     providerName !== 'mock_promptpay' &&
     !isStripeProvider(providerName) &&
+    !isKsherProvider(providerName) &&
     !env.PAYMENT_PROVIDER_CREATE_URL?.trim()
   ) {
     issues.push({
@@ -302,6 +307,7 @@ export function validateRuntimeEnv(env: RuntimeEnv) {
   if (
     providerName !== 'mock_promptpay' &&
     !isStripeProvider(providerName) &&
+    !isKsherProvider(providerName) &&
     isPlaceholderValue(env.PAYMENT_PROVIDER_CREATE_URL)
   ) {
     issues.push({
@@ -314,6 +320,7 @@ export function validateRuntimeEnv(env: RuntimeEnv) {
   if (
     providerName !== 'mock_promptpay' &&
     !isStripeProvider(providerName) &&
+    !isKsherProvider(providerName) &&
     env.PAYMENT_PROVIDER_VERIFY_URL?.trim() &&
     isPlaceholderValue(env.PAYMENT_PROVIDER_VERIFY_URL)
   ) {
