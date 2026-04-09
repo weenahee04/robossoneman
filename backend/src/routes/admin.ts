@@ -180,7 +180,7 @@ const branchPaymentCredentialInputSchema = z.object({
 const createBranchPaymentConfigSchema = z.object({
   branchId: z.string().min(1),
   mode: z.enum(['hq_managed', 'branch_managed', 'manual_promptpay']),
-  provider: z.enum(['promptpay_manual', 'opn', 'stripe', 'bank_qr', 'custom']),
+  provider: z.enum(['promptpay_manual', 'opn', 'stripe', 'bank_qr', 'ksher', 'custom']),
   isActive: z.boolean().optional(),
   displayName: z.string().min(1),
   statementName: z.string().nullable().optional(),
@@ -192,7 +192,7 @@ const createBranchPaymentConfigSchema = z.object({
 const updateBranchPaymentConfigSchema = z
   .object({
     mode: z.enum(['hq_managed', 'branch_managed', 'manual_promptpay']).optional(),
-    provider: z.enum(['promptpay_manual', 'opn', 'stripe', 'bank_qr', 'custom']).optional(),
+    provider: z.enum(['promptpay_manual', 'opn', 'stripe', 'bank_qr', 'ksher', 'custom']).optional(),
     isActive: z.boolean().optional(),
     displayName: z.string().min(1).optional(),
     statementName: z.string().nullable().optional(),
@@ -456,7 +456,7 @@ type AdminBranchPaymentConfigRecord = {
   id: string;
   branchId: string;
   mode: 'hq_managed' | 'branch_managed' | 'manual_promptpay';
-  provider: 'promptpay_manual' | 'opn' | 'stripe' | 'bank_qr' | 'custom';
+  provider: 'promptpay_manual' | 'opn' | 'stripe' | 'bank_qr' | 'ksher' | 'custom';
   isActive: boolean;
   isLocked: boolean;
   approvalStatus: 'draft' | 'pending_review' | 'approved' | 'rejected';

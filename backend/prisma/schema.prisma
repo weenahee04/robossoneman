@@ -44,6 +44,7 @@ enum BranchPaymentProvider {
   opn
   stripe
   bank_qr
+  ksher
   custom
 }
 
