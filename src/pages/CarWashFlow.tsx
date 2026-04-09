@@ -676,14 +676,15 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     }
   }, [currentStep]);
 
-  // Auto-poll Stripe payment verification when payment is pending
+  // Auto-poll payment verification when payment is pending (Stripe / Ksher)
   useEffect(() => {
+    const providerName = session?.payment?.provider;
     if (
       currentStep !== 'payment' ||
       !HAS_API_BASE_URL ||
       !session?.payment?.id ||
       session.payment.status !== 'pending' ||
-      session.payment.provider !== 'stripe'
+      (providerName !== 'stripe' && providerName !== 'ksher')
     ) {
       return;
     }
