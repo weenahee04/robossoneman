@@ -255,11 +255,24 @@ export class KsherPaymentProvider implements PaymentProvider {
 
     const successData = data as KsherDataSuccess;
 
-    // The QR payload can be:
-    //   - `imgdat`: base64 encoded PNG image (data:image/png;base64,...)
-    //   - `code_url`: raw QR content for PromptPay (EMVCo format)
-    // We prefer code_url for PromptPay since it's more compact.
-    const qrPayload = successData.code_url || successData.imgdat || null;
+    // Ksher returns QR data in two possible fields:
+    //   - `imgdat`: pre-rendered base64 PNG image of the QR code (already a displayable image)
+    //   - `code_url`: raw EMVCo/PromptPay payload string (needs to be encoded into QR by frontend)
+    //
+    // For PromptPay, Ksher typically returns `imgdat`.
+    // If imgdat is present, we send it as a pre-rendered QR image via metadata.qrContext.qrImageUrl
+    // (same path Stripe uses), so the frontend displays it directly.
+    // If only code_url is present, we use it as qrPayload for the frontend to encode.
+
+    const hasImgdat = !!successData.imgdat;
+    const imgdatUrl = hasImgdat
+      ? (successData.imgdat!.startsWith('data:')
+          ? successData.imgdat!
+          : `data:image/png;base64,${successData.imgdat}`)
+      : null;
+
+    // qrPayload: only use code_url (not imgdat) — code_url is a scannable string
+    const qrPayload = successData.code_url || null;
 
     return {
       providerName: this.name,
@@ -271,9 +284,11 @@ export class KsherPaymentProvider implements PaymentProvider {
       metadata: {
         ksher_order_no: successData.ksher_order_no,
         trade_type: successData.trade_type,
-        imgdat: successData.imgdat ? '(base64 image present)' : null,
         code_url: successData.code_url,
         PaymentCode: successData.PaymentCode,
+        // qrContext matches the shape that frontend resolveStripeQrImage() reads:
+        //   metadata.paymentQrContext.qrImageUrl
+        qrContext: imgdatUrl ? { qrImageUrl: imgdatUrl } : null,
       },
     };
   }
