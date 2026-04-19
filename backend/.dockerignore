@@ -5,4 +5,8 @@ dist
 backend-dev.log
 npm-debug.log*
 test
-scripts
+scripts/smoke.ts
+scripts/system-verification.ts
+scripts/verify-env.ts
+scripts/production-readiness.ts
+scripts/payment-provider-smoke.ts
