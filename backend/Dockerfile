@@ -12,12 +12,15 @@ COPY prisma ./prisma
 RUN npm ci
 
 COPY src ./src
+COPY scripts ./scripts
 
 RUN npm run build
+
+RUN chmod +x scripts/start.sh
 
 ENV NODE_ENV=staging
 ENV PORT=3002
 
 EXPOSE 3002
 
-CMD ["npm", "run", "start"]
+CMD ["sh", "scripts/start.sh"]
