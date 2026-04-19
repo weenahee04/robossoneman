@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma migrate deploy && prisma generate && tsc --noCheck",
-    "start": "node dist/index.js",
+    "build": "prisma generate && tsc --noCheck",
+    "start": "prisma migrate deploy && node dist/index.js",
     "test": "tsx --test test/**/*.test.ts",
     "verify:system": "tsx scripts/system-verification.ts",
     "verify:system:local": "prisma generate && tsx scripts/system-verification.ts",
