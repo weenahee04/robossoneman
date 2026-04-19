@@ -187,7 +187,7 @@ function parsePromptPayPayload(payload?: string | null) {
   }
 }
 
-function resolveStripeQrImage(payment?: WashSession['payment'] | null) {
+function resolveProviderQrImage(payment?: WashSession['payment'] | null) {
   if (!payment?.metadata || typeof payment.metadata !== 'object') {
     return null;
   }
@@ -633,19 +633,28 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
 
   useEffect(() => {
     let cancelled = false;
-    const stripeQrImage = currentStep === 'payment' ? resolveStripeQrImage(session?.payment) : null;
+    const providerQrImage = currentStep === 'payment' ? resolveProviderQrImage(session?.payment) : null;
+    const payloadValue = session?.payment?.qrPayload;
 
-    if (currentStep !== 'payment' || !session?.payment?.qrPayload) {
-      setPaymentQrImage(stripeQrImage);
+    if (currentStep !== 'payment' || !payloadValue) {
+      setPaymentQrImage(providerQrImage);
       return;
     }
 
-    if (stripeQrImage) {
-      setPaymentQrImage(stripeQrImage);
+    // Provider returned a pre-rendered QR image (e.g. Stripe hosted image, Ksher imgdat)
+    if (providerQrImage) {
+      setPaymentQrImage(providerQrImage);
       return;
     }
 
-    void QRCode.toDataURL(session.payment.qrPayload, {
+    // qrPayload is already a data-URI image (Ksher imgdat fallback) — use directly
+    if (payloadValue.startsWith('data:image/')) {
+      setPaymentQrImage(payloadValue);
+      return;
+    }
+
+    // qrPayload is a scannable string (e.g. EMVCo code_url) — render into QR image
+    void QRCode.toDataURL(payloadValue, {
       margin: 1,
       width: 320,
       color: {
@@ -1287,7 +1296,9 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     const paymentProvider = paymentPayload?.provider ?? payment?.provider ?? 'promptpay';
     const paymentExpiresAt = paymentPayload?.expiresAt ?? payment?.expiresAt ?? null;
     const isStripeProvider = payment?.provider === 'stripe' || paymentProvider === 'stripe';
-    const stripeQrImage = resolveStripeQrImage(payment);
+    const isKsherProvider = payment?.provider === 'ksher' || paymentProvider === 'ksher';
+    const isGatewayProvider = isStripeProvider || isKsherProvider;
+    const providerQrImage = resolveProviderQrImage(payment);
 
     return (
       <motion.div
@@ -1324,9 +1335,9 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             <div className="text-center mb-4">
               <p className="text-gray-600 text-sm font-medium">โอนเงินผ่าน</p>
               <p className="text-blue-700 font-bold text-lg">
-                {isStripeProvider ? 'Stripe PromptPay' : 'พร้อมเพย์'}
+                {isKsherProvider ? 'Ksher PromptPay' : isStripeProvider ? 'Stripe PromptPay' : 'พร้อมเพย์'}
               </p>
-              {isStripeProvider && (
+              {isGatewayProvider && (
                 <span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold rounded-full uppercase tracking-wider">
                   Live Mode
                 </span>
@@ -1336,11 +1347,11 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             {/* QR Image — single QR only */}
             <div className="relative w-full aspect-square bg-gray-50 rounded-2xl border-2 border-blue-100 mb-4 overflow-hidden p-4">
               <div className="w-full h-full rounded-2xl border border-blue-100 bg-white flex flex-col items-center justify-center gap-3 text-center px-4 py-4">
-                {isStripeProvider && stripeQrImage ? (
+                {isGatewayProvider && providerQrImage ? (
                   <>
                     <img
-                      src={stripeQrImage}
-                      alt="Stripe PromptPay QR"
+                      src={providerQrImage}
+                      alt={`${isKsherProvider ? 'Ksher' : 'Stripe'} PromptPay QR`}
                       className="w-full max-w-[260px] rounded-xl"
                     />
                     <p className="text-gray-500 text-xs leading-relaxed">
@@ -1377,13 +1388,15 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
               <p className="text-3xl font-black text-gray-900">{paymentAmount} <span className="text-base font-normal text-gray-500">บาท</span></p>
             </div>
 
-            {/* Payee info — show only for manual PromptPay, hide for Stripe */}
-            {isStripeProvider ? (
+            {/* Payee info — show only for manual PromptPay, hide for gateway providers */}
+            {isGatewayProvider ? (
               <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 space-y-1">
-                <p className="text-blue-700 text-xs font-bold text-center">รายการนี้ใช้ Stripe PromptPay แบบ dynamic QR</p>
+                <p className="text-blue-700 text-xs font-bold text-center">
+                  รายการนี้ใช้ {isKsherProvider ? 'Ksher' : 'Stripe'} PromptPay แบบ dynamic QR
+                </p>
                 <p className="text-gray-500 text-[10px] text-center leading-relaxed">
                   ชื่อผู้รับ/เลขพร้อมเพย์ที่แสดงในแอปธนาคารอาจไม่ตรงกับ
-                  ร้านค้าโดยตรง เนื่องจากเป็นการชำระผ่านระบบ Stripe
+                  ร้านค้าโดยตรง เนื่องจากเป็นการชำระผ่านระบบ {isKsherProvider ? 'Ksher' : 'Stripe'}
                 </p>
                 {paymentReference !== '-' && (
                   <div className="flex items-center justify-between text-[11px] pt-1 border-t border-blue-100">

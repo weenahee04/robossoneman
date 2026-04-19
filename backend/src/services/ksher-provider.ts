@@ -271,8 +271,11 @@ export class KsherPaymentProvider implements PaymentProvider {
           : `data:image/png;base64,${successData.imgdat}`)
       : null;
 
-    // qrPayload: only use code_url (not imgdat) — code_url is a scannable string
-    const qrPayload = successData.code_url || null;
+    // qrPayload priority:
+    //   1. code_url — a scannable PromptPay/EMVCo string the frontend can render into a QR
+    //   2. imgdat data-URI — so the frontend qrPayload null-check still passes and
+    //      resolveStripeQrImage() will pick up the image from qrContext
+    const qrPayload = successData.code_url || imgdatUrl || null;
 
     return {
       providerName: this.name,
@@ -285,6 +288,7 @@ export class KsherPaymentProvider implements PaymentProvider {
         ksher_order_no: successData.ksher_order_no,
         trade_type: successData.trade_type,
         code_url: successData.code_url,
+        imgdat: successData.imgdat ? '[present]' : null,
         PaymentCode: successData.PaymentCode,
         // qrContext matches the shape that frontend resolveStripeQrImage() reads:
         //   metadata.paymentQrContext.qrImageUrl

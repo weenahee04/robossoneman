@@ -48,11 +48,17 @@ services:
       - key: PAYMENT_ALLOW_MANUAL_CONFIRM
         value: "false"
       - key: PAYMENT_PROVIDER_NAME
-        value: stripe
+        value: ksher
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
+      - key: KSHER_APP_ID
+        sync: false
+      - key: KSHER_PRIVATE_KEY
+        sync: false
+      - key: KSHER_NOTIFY_URL
+        value: https://roboss-backend-staging.onrender.com/api/payments/webhook/provider
       - key: PAYMENT_PROVIDER_WEBHOOK_SECRET
         generateValue: true
 

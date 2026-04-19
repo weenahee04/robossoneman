@@ -525,17 +525,10 @@ async function upsertBranchPackageConfigs() {
 }
 
 async function upsertBranchPaymentConfigs() {
-  // branch_c01 (รามอินทรา 109) uses Stripe PromptPay; others use manual promptpay
-  const STRIPE_BRANCH_ID = 'branch_c01';
-
+  // All branches use Ksher PromptPay gateway
   for (const branch of branches) {
-    const isStripeBranch = branch.id === STRIPE_BRANCH_ID;
-    const mode = isStripeBranch
-      ? 'branch_managed'
-      : branch.ownershipType === 'company_owned'
-        ? 'hq_managed'
-        : 'manual_promptpay';
-    const provider = isStripeBranch ? 'stripe' : 'promptpay_manual';
+    const mode = branch.ownershipType === 'company_owned' ? 'hq_managed' : 'branch_managed';
+    const provider = 'ksher';
     const settlementOwnerType = branch.ownershipType === 'company_owned' ? 'hq' : 'franchisee';
 
     const config = await prisma.branchPaymentConfig.upsert({
@@ -547,9 +540,7 @@ async function upsertBranchPaymentConfigs() {
         mode,
         provider,
         isActive: true,
-        displayName: isStripeBranch
-          ? `${branch.shortName || branch.name} Stripe PromptPay`
-          : `${branch.shortName || branch.name} PromptPay`,
+        displayName: `${branch.shortName || branch.name} Ksher PromptPay`,
         statementName: branch.promptPayName,
         settlementOwnerType,
       },
@@ -559,9 +550,7 @@ async function upsertBranchPaymentConfigs() {
         mode,
         provider,
         isActive: true,
-        displayName: isStripeBranch
-          ? `${branch.shortName || branch.name} Stripe PromptPay`
-          : `${branch.shortName || branch.name} PromptPay`,
+        displayName: `${branch.shortName || branch.name} Ksher PromptPay`,
         statementName: branch.promptPayName,
         settlementOwnerType,
       },
@@ -603,26 +592,27 @@ async function upsertBranchPaymentConfigs() {
       });
     }
 
+    // Ksher supports webhook, polling, dynamic QR, reference binding, and refund
     await prisma.branchPaymentCapability.upsert({
       where: {
         branchPaymentConfigId: config.id,
       },
       update: {
-        supportsWebhook: isStripeBranch,
-        supportsPolling: isStripeBranch,
-        supportsDynamicQr: isStripeBranch,
+        supportsWebhook: true,
+        supportsPolling: true,
+        supportsDynamicQr: true,
         supportsReferenceBinding: true,
-        supportsRefund: isStripeBranch,
-        supportsSliplessConfirmation: isStripeBranch,
+        supportsRefund: true,
+        supportsSliplessConfirmation: true,
       },
       create: {
         branchPaymentConfigId: config.id,
-        supportsWebhook: isStripeBranch,
-        supportsPolling: isStripeBranch,
-        supportsDynamicQr: isStripeBranch,
+        supportsWebhook: true,
+        supportsPolling: true,
+        supportsDynamicQr: true,
         supportsReferenceBinding: true,
-        supportsRefund: isStripeBranch,
-        supportsSliplessConfirmation: isStripeBranch,
+        supportsRefund: true,
+        supportsSliplessConfirmation: true,
       },
     });
   }
