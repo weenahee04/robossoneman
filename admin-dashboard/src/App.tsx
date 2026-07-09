@@ -3,12 +3,14 @@ import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { BranchesPage } from './pages/BranchesPage';
+import { CashierPage } from './pages/CashierPage';
 import { CouponsPage } from './pages/CouponsPage';
 import { CustomersPage } from './pages/CustomersPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { FeedbackInboxPage } from './pages/FeedbackInboxPage';
 import { LoginPage } from './pages/LoginPage';
 import { MachinesPage } from './pages/MachinesPage';
+import { MembershipsPage } from './pages/MembershipsPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 import { PackagesPage } from './pages/PackagesPage';
 import { PaymentsPage } from './pages/PaymentsPage';
@@ -18,6 +20,7 @@ import { PromotionsPage } from './pages/PromotionsPage';
 import { RevenuePage } from './pages/RevenuePage';
 import { RewardsPage } from './pages/RewardsPage';
 import { SessionsPage } from './pages/SessionsPage';
+import { StampManagementPage } from './pages/StampManagementPage';
 import api, { type AdminMeta, type AdminUser, type BranchOption } from './services/api';
 
 export type PageName =
@@ -30,8 +33,11 @@ export type PageName =
   | 'promotions'
   | 'notifications'
   | 'packages'
+  | 'cashier'
   | 'payments'
   | 'rewards'
+  | 'stamps'
+  | 'memberships'
   | 'machines'
   | 'sessions'
   | 'customers'
@@ -42,17 +48,92 @@ export type ThemeMode = 'dark' | 'light';
 
 const ADMIN_THEME_STORAGE_KEY = 'roboss-admin-theme';
 
+const pageMeta: Record<PageName, { title: string; description: string }> = {
+  dashboard: {
+    title: 'ภาพรวมระบบ',
+    description: 'ติดตามสถานะสาขา เครื่องล้าง รายได้ และการเติบโตในภาพรวม',
+  },
+  branches: {
+    title: 'สาขา',
+    description: 'จัดการข้อมูลสาขา พื้นที่ให้บริการ และการตั้งค่าการปฏิบัติการ',
+  },
+  admins: {
+    title: 'ผู้ดูแลระบบ',
+    description: 'กำหนดบัญชีผู้ดูแล สิทธิ์ และขอบเขตการเข้าถึงของแต่ละสาขา',
+  },
+  policies: {
+    title: 'นโยบาย',
+    description: 'ควบคุมมาตรฐานกลางและค่าตั้งต้นที่ใช้กับสาขาในเครือ',
+  },
+  coupons: {
+    title: 'คูปอง',
+    description: 'สร้าง ตรวจสอบ และควบคุมสิทธิ์ส่วนลดตามเงื่อนไขจริง',
+  },
+  promotions: {
+    title: 'โปรโมชั่น',
+    description: 'บริหารแคมเปญและข้อเสนอทางการตลาดรายสาขา',
+  },
+  notifications: {
+    title: 'การแจ้งเตือน',
+    description: 'ส่งข้อความและประกาศถึงลูกค้าตามกลุ่มเป้าหมาย',
+  },
+  packages: {
+    title: 'แพ็กเกจ',
+    description: 'จัดการบริการ ราคา ขั้นตอนล้าง และการเปิดขายในแต่ละสาขา',
+  },
+  cashier: {
+    title: 'แคชเชียร์',
+    description: 'รับเงินสดหรือสลิปหน้าร้าน คีย์ยอด และยืนยันเข้าระบบทันที',
+  },
+  'payment-setup': {
+    title: 'ตั้งค่าชำระเงิน',
+    description: 'จัดการผู้ให้บริการชำระเงิน บัญชีรับเงิน และสถานะอนุมัติ',
+  },
+  payments: {
+    title: 'การชำระเงิน',
+    description: 'ตรวจสอบรายการชำระเงิน การยืนยัน และรายการที่ต้องทบทวน',
+  },
+  rewards: {
+    title: 'ของรางวัล',
+    description: 'กำหนดของรางวัลและสิทธิประโยชน์ที่ลูกค้าแลกได้',
+  },
+  stamps: {
+    title: 'แสตมลูกค้า',
+    description: 'ติดตามบัตรสะสมแสตม ประวัติ และการปรับสิทธิ์แบบมี audit log',
+  },
+  memberships: {
+    title: 'Active Members',
+    description: 'Manage active member packages, bundles, remaining credits, Graphene usage, and payment references',
+  },
+  machines: {
+    title: 'เครื่องล้าง',
+    description: 'ดูสถานะเครื่อง คำสั่งควบคุม และข้อมูลสุขภาพของอุปกรณ์',
+  },
+  sessions: {
+    title: 'หน้าจอพนักงาน',
+    description: 'คิวบริการหน้าร้านแบบเรียลไทม์ พร้อม service checklist และ history log',
+  },
+  revenue: {
+    title: 'รายได้',
+    description: 'วิเคราะห์ยอดขาย สาขา แพ็กเกจ และแนวโน้มทางการเงิน',
+  },
+  customers: {
+    title: 'ลูกค้า',
+    description: 'ดูฐานลูกค้า ประวัติการใช้งาน รถที่ลงทะเบียน และมูลค่าสะสม',
+  },
+  feedback: {
+    title: 'ข้อเสนอแนะ',
+    description: 'ติดตามเสียงจากลูกค้าและสถานะการแก้ไขปัญหา',
+  },
+};
+
 function getInitialTheme(): ThemeMode {
   if (typeof window === 'undefined') {
-    return 'dark';
+    return 'light';
   }
 
-  const savedTheme = window.localStorage.getItem(ADMIN_THEME_STORAGE_KEY);
-  if (savedTheme === 'dark' || savedTheme === 'light') {
-    return savedTheme;
-  }
-
-  return 'dark';
+  window.localStorage.setItem(ADMIN_THEME_STORAGE_KEY, 'light');
+  return 'light';
 }
 
 function getDefaultBranchSelection(admin: AdminUser | null, branches: BranchOption[]) {
@@ -126,7 +207,7 @@ export function App() {
   }, [currentUser, meta?.branches, selectedBranchId]);
 
   if (isBootstrapping) {
-    return <div className="min-h-screen bg-[linear-gradient(180deg,#050505_0%,#140808_100%)]" />;
+    return <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f7_0%,#f8fafc_100%)]" />;
   }
 
   if (!currentUser || !meta) {
@@ -170,12 +251,18 @@ export function App() {
         return <NotificationsPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
       case 'packages':
         return <PackagesPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
+      case 'cashier':
+        return <CashierPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
       case 'payments':
         return <PaymentsPage admin={currentUser} branchId={selectedBranchId} />;
       case 'payment-setup':
         return <PaymentSetupPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
       case 'rewards':
         return <RewardsPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
+      case 'stamps':
+        return <StampManagementPage admin={currentUser} branchId={selectedBranchId} />;
+      case 'memberships':
+        return <MembershipsPage admin={currentUser} branchId={selectedBranchId} />;
       case 'machines':
         return <MachinesPage admin={currentUser} branchId={selectedBranchId} realtimeBranchIds={visibleBranchIds} />;
       case 'sessions':
@@ -192,7 +279,7 @@ export function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,#050505_0%,#140808_100%)] lg:flex lg:h-screen lg:overflow-hidden">
+    <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff8f7_0%,#f8fafc_100%)] text-slate-900 md:flex md:h-screen md:overflow-hidden">
       <Sidebar
         currentPage={currentPage}
         onNavigate={(page) => {
@@ -205,12 +292,14 @@ export function App() {
         onCloseMobile={() => setMobileSidebarOpen(false)}
         user={currentUser}
       />
-      <div className="flex min-w-0 flex-1 flex-col lg:overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
         <TopBar
           theme={theme}
           user={currentUser}
           branches={meta.branches}
           selectedBranchId={selectedBranchId}
+          pageTitle={pageMeta[currentPage].title}
+          pageDescription={pageMeta[currentPage].description}
           onSelectBranch={setSelectedBranchId}
           onToggleTheme={() => setTheme((currentTheme) => (currentTheme === 'dark' ? 'light' : 'dark'))}
           onLogout={() => {
@@ -221,7 +310,7 @@ export function App() {
           }}
           onToggleSidebar={() => setMobileSidebarOpen((current) => !current)}
         />
-        <main className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5 lg:p-6">{renderPage()}</main>
+        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-5 sm:py-5 lg:p-6">{renderPage()}</main>
       </div>
     </div>
   );

@@ -34,11 +34,11 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(153,27,27,0.18),transparent_28%),linear-gradient(180deg,#050505_0%,#140808_100%)]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[linear-gradient(180deg,#fff8f7_0%,#f8fafc_100%)]">
       <button
         type="button"
         onClick={onToggleTheme}
-        className="absolute right-4 top-4 z-10 inline-flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-sm text-gray-200 backdrop-blur-sm transition-colors hover:bg-white/10 hover:text-white"
+        className="absolute right-4 top-4 z-10 inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600 shadow-sm shadow-slate-200/60 backdrop-blur-sm transition-colors hover:bg-red-50 hover:text-red-700"
         aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
       >
         {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -49,7 +49,7 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
       <div className="pointer-events-none absolute bottom-[-5%] right-[10%] h-[480px] w-[480px] rounded-full bg-red-700/10 blur-[140px]" />
 
       <div className="relative mx-4 grid w-full max-w-5xl gap-8 lg:grid-cols-[1.15fr_0.85fr]">
-        <div className="hidden rounded-[32px] border border-white/5 bg-white/[0.03] p-10 lg:block">
+        <div className="hidden rounded-[28px] border border-slate-200 bg-white/90 p-10 shadow-[0_24px_80px_rgba(148,163,184,0.16)] lg:block">
           <div className="mb-10 flex items-center gap-4">
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 shadow-lg shadow-red-500/20">
               <Droplets className="h-7 w-7 text-white" />
@@ -66,7 +66,7 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
               ['ควบคุมสาขา', 'สร้าง แก้ไข เปิดใช้งาน และปรับตั้งค่าการปฏิบัติการของแต่ละสาขาได้จริง'],
               ['สิทธิ์ผู้ดูแล', 'จัดการผู้ดูแล HQ และสาขาพร้อมกำหนดสิทธิ์ตามขอบเขตการเข้าถึง'],
             ].map(([title, description]) => (
-              <div key={title} className="rounded-2xl border border-white/5 bg-black/20 p-5">
+              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50/80 p-5">
                 <ShieldCheck className="mb-4 h-5 w-5 text-red-300" />
                 <h2 className="font-semibold text-white">{title}</h2>
                 <p className="mt-2 text-sm leading-6 text-gray-400">{description}</p>
@@ -92,7 +92,7 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
                   type="email"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
-                  className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 text-sm text-white placeholder-gray-500 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
                   placeholder="name@example.com"
                   required
                 />
@@ -104,14 +104,14 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
-                    className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 pr-12 text-sm text-white placeholder-gray-500 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
+                    className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 pr-12 text-sm text-slate-900 placeholder:text-slate-400 transition-all focus:border-red-500/50 focus:outline-none focus:ring-1 focus:ring-red-500/20"
                     placeholder="********"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-red-700"
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -129,7 +129,7 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
               </button>
             </form>
 
-            <div className="mt-6 grid gap-2 rounded-2xl border border-white/5 bg-black/20 p-4 text-[11px] text-gray-500">
+            <div className="mt-6 grid gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 text-[11px] text-slate-500">
               <p>เดโม HQ: `admin@roboss.co.th` / `admin123`</p>
               <p>เดโมสาขา: `rama.manager@roboss.co.th` / `manager123`</p>
             </div>

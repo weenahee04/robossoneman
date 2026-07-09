@@ -7,6 +7,7 @@ import { getIconUrl, type IconName } from '../services/icons';
 import { branches } from '../services/mockData';
 import { createSession, confirmPayment, listenToSession, rateSession } from '../services/washSession';
 import { addPoints, calculatePoints, formatPoints, getUserPoints } from '../services/points';
+import { addLocalStamps } from '../services/stamps';
 import api from '../services/api';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { usePointsBalance } from '@/hooks/useApi';
@@ -15,7 +16,7 @@ import { ALLOW_DEV_API_FAILURE_FALLBACK, HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBAC
 import { getSessionWashStage } from '../lib/session';
 import { useBranch } from '../services/branchContext';
 import type { Branch, ResolvedScan, WashSession } from '../types';
-import type { WashFlowIntentCoupon, WashFlowIntentPromotion } from '@/services/washFlowIntent';
+import type { WashFlowIntentCoupon } from '@/services/washFlowIntent';
 import { consumeWashFlowIntent } from '@/services/washFlowIntent';
 
 // Reusable Icons8 icon component - renders monochrome PNG with brightness filter for dark theme
@@ -30,23 +31,6 @@ function I8Icon({ name, size = 24, className = '' }: { name: IconName; size?: nu
       style={{ filter: 'invert(1) brightness(1.1)' }}
       draggable={false}
     />
-  );
-}
-
-// Colored variant (with custom filter)
-function I8IconColored({ name, size = 24, color, className = '' }: { name: IconName; size?: number; color?: string; className?: string }) {
-  return (
-    <div className={`inline-flex items-center justify-center ${className}`} style={{ width: size, height: size }}>
-      <img
-        src={getIconUrl(name, size * 2)}
-        alt={name}
-        width={size}
-        height={size}
-        className="inline-block"
-        style={{ filter: 'invert(1) brightness(1.1)' }}
-        draggable={false}
-      />
-    </div>
   );
 }
 
@@ -201,6 +185,14 @@ function resolveProviderQrImage(payment?: WashSession['payment'] | null) {
   return typeof imageUrl === 'string' && imageUrl ? imageUrl : null;
 }
 
+function buildLocalPaymentReference(branch: Branch, machineId: string, sessionId: string) {
+  const branchCode = (branch.shortName ?? branch.id).replace(/[^a-z0-9]/gi, '').slice(0, 6).toUpperCase() || 'LOCAL';
+  const machineCode = machineId.replace(/[^a-z0-9]/gi, '').slice(-4).toUpperCase() || 'M001';
+  const sessionCode = sessionId.slice(-4).toUpperCase();
+
+  return `RB-${branchCode}-${machineCode}-${sessionCode}`;
+}
+
 export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const { user: authUser, refreshUser } = useAuth();
   const { branch: currentBranch, setBranch: setCurrentBranch } = useBranch();
@@ -214,7 +206,6 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const [selectedMachineId, setSelectedMachineId] = useState<string>('');
   const [resolvedScanTokenId, setResolvedScanTokenId] = useState<string | null>(null);
   const [selectedCoupon, setSelectedCoupon] = useState<WashFlowIntentCoupon | null>(null);
-  const [selectedPromotion, setSelectedPromotion] = useState<WashFlowIntentPromotion | null>(null);
 
   // Package selection state
   const [selectedPackageIndex, setSelectedPackageIndex] = useState(0);
@@ -241,11 +232,22 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
   const [animatedPoints, setAnimatedPoints] = useState(0);
 
   // WebSocket for real-time progress (API mode only)
-  const wsHandlerRef = useRef<(data: unknown) => void>(() => {});
+  const wsHandlerRef = useRef<(data: unknown) => void>((data) => {
+    void data;
+  });
   const { connected: wsConnected, subscribeSession } = useWebSocket({
     onMessage: (data) => wsHandlerRef.current(data),
     autoReconnect: HAS_API_BASE_URL,
   });
+
+  // Navigate to next step
+  const goToStep = useCallback((step: Step) => {
+    const stepOrder: Step[] = ['scan', 'select', 'payment', 'warning', 'working', 'complete'];
+    const currentIdx = stepOrder.indexOf(currentStep);
+    const nextIdx = stepOrder.indexOf(step);
+    setDirection(nextIdx > currentIdx ? 1 : -1);
+    setCurrentStep(step);
+  }, [currentStep]);
 
   useEffect(() => {
     wsHandlerRef.current = (data: unknown) => {
@@ -350,15 +352,6 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     setAddVacuum(false);
   }, [selectedBranch?.id, selectedMachineId]);
 
-  // Navigate to next step
-  function goToStep(step: Step) {
-    const stepOrder: Step[] = ['scan', 'select', 'payment', 'warning', 'working', 'complete'];
-    const currentIdx = stepOrder.indexOf(currentStep);
-    const nextIdx = stepOrder.indexOf(step);
-    setDirection(nextIdx > currentIdx ? 1 : -1);
-    setCurrentStep(step);
-  }
-
   const resolvePreferredBranch = useCallback(async (preferredBranchId?: string) => {
     if (HAS_API_BASE_URL) {
       const branchList = preferredBranchId
@@ -419,6 +412,103 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     }, 1500);
   }, [applyResolvedBranchSelection, currentBranch.id, goToStep, resolvePreferredBranch]);
 
+  const createLocalPaymentSession = useCallback(() => {
+    if (!selectedBranch || !selectedPackage) {
+      return null;
+    }
+
+    const createdSession = createSession({
+      branchId: selectedBranch.id,
+      machineId: selectedMachineId,
+      userId: 'line_user_001',
+      vehicleType: selectedBranch.type === 'bike' ? 'motorcycle' : 'car',
+      packageId: selectedPackage.id,
+      carSize,
+      addons: addVacuum && vacuumPackage ? [vacuumPackage.id] : [],
+      totalPrice,
+    });
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000);
+    const reference = buildLocalPaymentReference(selectedBranch, selectedMachineId, createdSession.id);
+    const qrParams = new URLSearchParams({
+      provider: 'mock_promptpay',
+      recipient: selectedBranch.promptPayId,
+      recipientName: selectedBranch.promptPayName,
+      amount: totalPrice.toFixed(2),
+      currency: 'THB',
+      reference,
+      expiresAt: expiresAt.toISOString(),
+    });
+
+    return normalizeSession({
+      ...(createdSession as unknown as WashSession),
+      branchId: selectedBranch.id,
+      machineId: selectedMachineId,
+      packageId: selectedPackage.id,
+      subtotalPrice,
+      discountAmount,
+      totalPrice,
+      status: 'pending_payment',
+      startedAt: null,
+      completedAt: null,
+      createdAt: createdSession.createdAt.toISOString(),
+      updatedAt: now.toISOString(),
+      branch: {
+        id: selectedBranch.id,
+        name: selectedBranch.name,
+        shortName: selectedBranch.shortName,
+        promptPayId: selectedBranch.promptPayId,
+        promptPayName: selectedBranch.promptPayName,
+      },
+      machine: selectedMachine ?? undefined,
+      package: {
+        id: selectedPackage.id,
+        name: selectedPackage.name,
+        description: selectedPackage.description,
+        vehicleType: selectedPackage.vehicleType,
+        steps: selectedPackage.steps,
+        stepDuration: selectedPackage.stepDuration,
+        image: selectedPackage.image,
+      },
+      payment: {
+        id: `pay_${createdSession.id}`,
+        sessionId: createdSession.id,
+        userId: 'line_user_001',
+        branchId: selectedBranch.id,
+        method: 'promptpay',
+        status: 'pending',
+        currency: 'THB',
+        amount: totalPrice,
+        provider: 'mock_promptpay',
+        providerRef: null,
+        providerStatus: 'pending',
+        providerConfirmedAt: null,
+        reference,
+        qrPayload: `promptpay://pay?${qrParams.toString()}`,
+        expiresAt: expiresAt.toISOString(),
+        confirmedAt: null,
+        failedAt: null,
+        cancelledAt: null,
+        refundedAt: null,
+        metadata: null,
+        attempts: [],
+        createdAt: now.toISOString(),
+        updatedAt: now.toISOString(),
+      },
+    });
+  }, [
+    selectedBranch,
+    selectedPackage,
+    selectedMachineId,
+    selectedMachine,
+    carSize,
+    addVacuum,
+    vacuumPackage,
+    subtotalPrice,
+    discountAmount,
+    totalPrice,
+  ]);
+
   useEffect(() => {
     const intent = consumeWashFlowIntent();
     if (!intent) {
@@ -426,7 +516,6 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     }
 
     setSelectedCoupon(intent.coupon ?? null);
-    setSelectedPromotion(intent.promotion ?? null);
 
     const preferredBranchId = intent.branchId || currentBranch.id || undefined;
     let isCancelled = false;
@@ -495,9 +584,19 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
       return;
     }
 
+    const localSession = createLocalPaymentSession();
+    if (!localSession) {
+      setIsPreparingPayment(false);
+      return;
+    }
+    setSession(localSession);
+    setSelectedSlipFile(null);
+    setSlipVerifyError(null);
+    setSlipVerifySuccess(null);
+    setPaymentQrImage(null);
     setIsPreparingPayment(false);
     goToStep('payment');
-  }, [selectedBranch, selectedPackage, selectedMachineId, resolvedScanTokenId, carSize, addVacuum, vacuumPackage, session, goToStep, selectedCoupon, discountAmount, subtotalPrice]);
+  }, [selectedBranch, selectedPackage, selectedMachineId, resolvedScanTokenId, carSize, addVacuum, vacuumPackage, session, goToStep, selectedCoupon, discountAmount, subtotalPrice, createLocalPaymentSession]);
 
   // Called when user taps "ตรวจสอบเรียบร้อยแล้ว" on the warning page
   const handleConfirmPayment = useCallback(async () => {
@@ -524,20 +623,31 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
       return;
     }
 
-    const newSession = createSession({
-      branchId: selectedBranch.id,
-      machineId: selectedMachineId,
-      userId: 'line_user_001',
-      vehicleType: selectedBranch.type === 'bike' ? 'motorcycle' : 'car',
-      packageId: selectedPackage.id,
-      carSize,
-      addons: addVacuum ? ['vacuum'] : [],
-      totalPrice,
-    });
-    setSession(normalizeSession(newSession as unknown as WashSession));
+    const activeSession = session ?? createLocalPaymentSession();
+    if (!activeSession) {
+      setIsConfirmingPayment(false);
+      return;
+    }
+
+    const confirmedAt = new Date().toISOString();
+    setSession(normalizeSession({
+      ...activeSession,
+      status: 'ready_to_wash',
+      updatedAt: confirmedAt,
+      payment: activeSession.payment
+        ? {
+            ...activeSession.payment,
+            status: 'confirmed',
+            providerStatus: 'confirmed',
+            providerConfirmedAt: confirmedAt,
+            confirmedAt,
+            updatedAt: confirmedAt,
+          }
+        : activeSession.payment,
+    }));
     goToStep('warning');
     setIsConfirmingPayment(false);
-  }, [selectedBranch, selectedPackage, selectedMachineId, carSize, addVacuum, totalPrice, session, goToStep, selectedCoupon, discountAmount, subtotalPrice, vacuumPackage]);
+  }, [selectedBranch, selectedPackage, session, goToStep, createLocalPaymentSession]);
 
   const handleStartWash = useCallback(async () => {
     if (!session || !selectedBranch || !selectedPackage) return;
@@ -567,6 +677,9 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
     listenToSession(session.id, (updated) => {
       setSession(normalizeSession(updated as unknown as WashSession));
       if (getSessionWashStage(updated as unknown as WashSession) === 'completed') {
+        if ((updated.totalPrice ?? 0) > 0) {
+          addLocalStamps(selectedPackage.id || selectedPackage.name);
+        }
         addPoints(updated.pointsEarned, `${selectedPackage.name} ไซส์ ${carSize} — ${selectedBranch.name}`, updated.id);
         setTimeout(() => {
           goToStep('complete');
@@ -966,7 +1079,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
             <div key={i} className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border ${i === 0 ? 'bg-app-red/10 border-app-red/20' : 'bg-white/[0.02] border-white/5'}`}>
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${i === 0 ? 'bg-app-red/20' : 'bg-black border border-white/10'}`}>
                 <img
-                  src={`${getIconUrl('qrCode', 32).replace(/id=\d+/, `id=${item.icon}`)}`}
+                  src={getIconUrl(i === 0 ? 'qrCode' : i === 1 ? 'carService' : 'checkmark', 32)}
                   width={16} height={16} alt=""
                   className="inline-block"
                   style={{ filter: 'invert(1) brightness(1.1)' }}

@@ -783,6 +783,78 @@ export async function createPaymentForSession(params: { sessionId: string; userI
     }
   }
 
+  if (session.totalPrice <= 0) {
+    const now = new Date();
+    const reference = await createUniquePaymentReference({
+      branchCode: session.branch.code,
+      machineCode: session.machine.code,
+      sessionId: session.id,
+    });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.washSession.update({
+        where: { id: session.id },
+        data: { status: 'ready_to_wash' },
+      });
+
+      const paymentData = {
+        scanTokenId: session.scanTokenId,
+        provider: 'coupon_free_wash',
+        status: 'confirmed' as const,
+        amount: 0,
+        reference,
+        qrPayload: null,
+        paymentQrType: 'none',
+        paymentConfirmedSource: 'coupon_free_wash',
+        expiresAt: null,
+        confirmedAt: now,
+        failedAt: null,
+        cancelledAt: null,
+        refundedAt: null,
+        providerConfirmedAt: now,
+        providerStatus: 'confirmed',
+        providerRef: null,
+        metadata: {
+          createdFrom: 'stamp_reward_coupon',
+          reason: 'zero_amount_after_coupon_discount',
+        },
+      };
+
+      const payment = session.payment
+        ? await tx.payment.update({
+            where: { id: session.payment.id },
+            data: paymentData,
+          })
+        : await tx.payment.create({
+            data: {
+              sessionId: session.id,
+              userId: session.userId,
+              branchId: session.branchId,
+              method: 'manual',
+              currency: 'THB',
+              ...paymentData,
+            },
+          });
+
+      await createPaymentAttemptSafe(tx, {
+        paymentId: payment.id,
+        status: 'confirmed',
+        source: 'system',
+        action: 'auto_confirm_zero_amount',
+        providerStatus: 'confirmed',
+        note: 'payment auto-confirmed because coupon covered full amount',
+      });
+    });
+
+    const detail = await requireSessionDetail(session.id);
+    publishSessionRealtimeEvent({
+      eventType: 'payment_state_changed',
+      source: 'system',
+      session: detail,
+    });
+    return detail;
+  }
+
   const paymentConfig = await resolveActiveBranchPaymentConfig(session.branchId);
   if (!paymentConfig) {
     throw new Error('Branch payment config is not set up');

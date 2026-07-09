@@ -169,6 +169,8 @@ export interface Coupon {
   minSpend: number;
   maxUses: number;
   usedCount: number;
+  isPurchasable?: boolean;
+  purchasePrice?: number;
   branchIds?: string[];
   packageIds?: string[];
   validFrom: string;
@@ -183,6 +185,38 @@ export interface UserCoupon {
   isUsed: boolean;
   status?: 'claimed' | 'redeemed' | 'expired' | 'cancelled';
   usedAt?: string;
+}
+
+export interface CouponPurchase {
+  id: string;
+  userId: string;
+  couponId: string;
+  branchId: string;
+  issuedUserCouponId?: string | null;
+  status: 'pending_transfer' | 'pending_review' | 'confirmed' | 'rejected' | 'expired' | 'cancelled';
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  reference: string;
+  transferTargetId?: string | null;
+  transferTargetName?: string | null;
+  slipUploadedAt?: string | null;
+  customerNote?: string | null;
+  adminNote?: string | null;
+  confirmedAt?: string | null;
+  rejectedAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  coupon?: Coupon | null;
+  branch?: {
+    id: string;
+    code: string;
+    name: string;
+    shortName?: string | null;
+    promptPayId?: string | null;
+    promptPayName?: string | null;
+  } | null;
 }
 
 export interface PointsTransaction {
@@ -202,6 +236,87 @@ export interface Stamp {
   targetCount: number;
   rewardClaimed: boolean;
   lastStampAt?: string;
+}
+
+export interface StampTransaction {
+  id: string;
+  stampId: string;
+  sessionId: string;
+  branchId: string;
+  packageId: string;
+  stampCount: number;
+  rawStampCount: number;
+  reason: 'wash_completed' | 'stamp_card_full' | 'free_wash_no_stamp' | string;
+  metadata?: Record<string, unknown> | null;
+  voidedAt?: string | null;
+  createdAt: string;
+}
+
+export interface MembershipPlan {
+  id: string;
+  code: string;
+  name: string;
+  headline?: string;
+  description?: string | null;
+  price: number;
+  currency: string;
+  washLimit: number;
+  grapheneLimit: number;
+  freeVacuumPerVisit: boolean;
+  vipFastLane: boolean;
+  group?: 'best_seller' | 'membership' | 'bundle' | 'motorcycle' | string;
+  groupLabel?: string;
+  termLabel?: string;
+  badge?: string;
+  sortOrder?: number;
+  active?: boolean;
+  membership?: UserMembership | null;
+  benefits?: MembershipBenefit[];
+}
+
+export interface UserMembership {
+  id: string;
+  status: 'pending' | 'active' | 'expired' | 'cancelled';
+  washUsed: number;
+  grapheneUsed: number;
+  washRemaining: number;
+  grapheneRemaining: number;
+  paymentAmount: number;
+  paymentCurrency: string;
+  paymentStatus: string;
+  paymentReference?: string | null;
+  activatedAt?: string | null;
+  expiresAt?: string | null;
+  cancelledAt?: string | null;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MembershipBenefit {
+  key: 'washes' | 'graphene_shield' | 'free_vacuum' | 'vip_fast_lane' | string;
+  title: string;
+  description: string;
+  used: number;
+  limit: number | null;
+  remaining: number | null;
+  enabled: boolean;
+}
+
+export interface MembershipOverview {
+  plan: MembershipPlan;
+  membership: UserMembership | null;
+  active: boolean;
+  benefits: MembershipBenefit[];
+  plans?: MembershipPlan[];
+  memberships?: UserMembership[];
+  groups?: Array<{ key: string; label: string; description: string }>;
+  promoPlaybook?: {
+    traffic: string[];
+    profit: string[];
+    margin: string[];
+    loyalty: string[];
+  };
 }
 
 export interface Notification {

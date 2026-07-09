@@ -272,28 +272,14 @@ export function SettingsPage({ onBack }: { onBack: () => void }) {
               </div>
 
               <Card className="p-0 overflow-hidden border-white/5">
-                {section.items.map((item, itemIndex) => (
-                  <div key={item.key}>
-                    {itemIndex > 0 && <div className="mx-3 h-[1px] bg-white/[0.04]" />}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (item.type === 'toggle') {
-                          void handleToggle(item.key as ToggleKey);
-                          return;
-                        }
-                        if (item.type === 'link') {
-                          handleLinkAction(item.key);
-                          return;
-                        }
-                        void handleDangerAction(item.key);
-                      }}
-                      className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.02] transition-colors"
-                    >
+                {section.items.map((item, itemIndex) => {
+                  const isToggle = item.type === 'toggle';
+                  const rowContent = (
+                    <>
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                         item.type === 'danger'
                           ? 'bg-app-red/10 border border-app-red/15'
-                          : item.type === 'toggle' && toggles[item.key as ToggleKey]
+                          : isToggle && toggles[item.key as ToggleKey]
                             ? 'bg-app-red/10 border border-app-red/15'
                             : 'bg-black border border-white/10'
                       }`}>
@@ -307,7 +293,7 @@ export function SettingsPage({ onBack }: { onBack: () => void }) {
                         )}
                       </div>
 
-                      {item.type === 'toggle' && (
+                      {isToggle && (
                         <Switch
                           checked={toggles[item.key as ToggleKey] ?? false}
                           onClick={(event) => event.stopPropagation()}
@@ -330,9 +316,45 @@ export function SettingsPage({ onBack }: { onBack: () => void }) {
                           <path d="m9 18 6-6-6-6"/>
                         </svg>
                       )}
-                    </button>
-                  </div>
-                ))}
+                    </>
+                  );
+
+                  return (
+                    <div key={item.key}>
+                      {itemIndex > 0 && <div className="mx-3 h-[1px] bg-white/[0.04]" />}
+                      {isToggle ? (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => void handleToggle(item.key as ToggleKey)}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              void handleToggle(item.key as ToggleKey);
+                            }
+                          }}
+                          className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.02] transition-colors"
+                        >
+                          {rowContent}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.type === 'link') {
+                              handleLinkAction(item.key);
+                              return;
+                            }
+                            void handleDangerAction(item.key);
+                          }}
+                          className="w-full flex items-center gap-3 px-3.5 py-3 text-left active:bg-white/[0.02] transition-colors"
+                        >
+                          {rowContent}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </Card>
             </motion.div>
           ))}

@@ -6,6 +6,7 @@ import { isMqttReady, publishWashCommand } from './mqtt.js';
 import { expireSessionIfNeeded } from './payment-flow.js';
 import { getValidScanTokenForSession } from './scan-tokens.js';
 import { getSessionDetail, requireSessionDetail } from './session-details.js';
+import { getStampEarnCount, STAMP_TARGET_COUNT } from './stamp-rules.js';
 import {
   publishLegacySessionProgress,
   publishMachineRealtimeEvent,
@@ -23,6 +24,11 @@ const ACTIVE_SESSION_STATUSES: WashSessionStatus[] = [
 
 function toJsonInput(value: Record<string, unknown>) {
   return value as Prisma.InputJsonValue;
+}
+
+function shouldConsumeGrapheneShield(packageInfo: { code?: string | null; name?: string | null } | null | undefined) {
+  const text = `${packageInfo?.code ?? ''} ${packageInfo?.name ?? ''}`.toLowerCase();
+  return text.includes('graphene');
 }
 
 async function createSystemAuditLog(params: {
@@ -670,7 +676,9 @@ export async function completeWashSession(sessionId: string) {
     where: { id: sessionId },
     include: {
       branch: { include: { settings: true } },
+      package: { select: { code: true, name: true } },
       payment: true,
+      couponRedemption: true,
     },
   });
 
@@ -692,19 +700,18 @@ export async function completeWashSession(sessionId: string) {
 
   const pointsRate = session.branch.settings?.pointsEarnRate ?? DEFAULT_POINTS_RATE;
   const pointsEarned = session.totalPrice * pointsRate;
+  const isFreeWashSession = session.totalPrice <= 0 || session.discountAmount >= session.subtotalPrice;
+  const rawStampsEarned = isFreeWashSession ? 0 : getStampEarnCount(session.packageId);
   const now = new Date();
 
-  const updatedSession = await prisma.$transaction(async (tx) => {
-    const wallet = await tx.pointWallet.upsert({
-      where: { userId: session.userId },
-      update: {},
-      create: { userId: session.userId },
-    });
-
-    const nextBalance = wallet.balance + pointsEarned;
-
-    await tx.washSession.update({
-      where: { id: session.id },
+  let updatedSession;
+  try {
+    updatedSession = await prisma.$transaction(async (tx) => {
+    const completion = await tx.washSession.updateMany({
+      where: {
+        id: session.id,
+        status: { in: ['in_progress', 'ready_to_wash'] },
+      },
       data: {
         status: 'completed',
         progress: 100,
@@ -713,6 +720,18 @@ export async function completeWashSession(sessionId: string) {
         completedAt: now,
       },
     });
+
+    if (completion.count === 0) {
+      throw new Error('Wash session has already been completed');
+    }
+
+    const wallet = await tx.pointWallet.upsert({
+      where: { userId: session.userId },
+      update: {},
+      create: { userId: session.userId },
+    });
+
+    const nextBalance = wallet.balance + pointsEarned;
 
     await tx.pointsTransaction.create({
       data: {
@@ -761,13 +780,147 @@ export async function completeWashSession(sessionId: string) {
       data: { status: 'idle' },
     });
 
-    await tx.stamp.updateMany({
-      where: { userId: session.userId, rewardClaimed: false },
-      data: {
-        currentCount: { increment: 1 },
-        lastStampAt: now,
+    const activeMemberships = await tx.userMembership.findMany({
+      where: {
+        userId: session.userId,
+        status: 'active',
       },
+      include: { plan: true },
+      orderBy: { createdAt: 'desc' },
     });
+    const activeMembership =
+      activeMemberships.find(
+        (membership) =>
+          membership.washUsed < membership.plan.washLimit ||
+          (shouldConsumeGrapheneShield(session.package) &&
+            membership.grapheneUsed < membership.plan.grapheneLimit)
+      ) ?? null;
+
+    if (activeMembership) {
+      const canUseWashCredit = activeMembership.washUsed < activeMembership.plan.washLimit;
+      const canUseGrapheneCredit =
+        shouldConsumeGrapheneShield(session.package) &&
+        activeMembership.grapheneUsed < activeMembership.plan.grapheneLimit;
+
+      if (canUseWashCredit || canUseGrapheneCredit) {
+        await tx.userMembership.update({
+          where: { id: activeMembership.id },
+          data: {
+            washUsed: canUseWashCredit ? { increment: 1 } : undefined,
+            grapheneUsed: canUseGrapheneCredit ? { increment: 1 } : undefined,
+            lastUsedAt: now,
+            metadata: toJsonInput({
+              ...(typeof activeMembership.metadata === 'object' && activeMembership.metadata !== null && !Array.isArray(activeMembership.metadata)
+                ? activeMembership.metadata
+                : {}),
+              lastConsumedSessionId: session.id,
+              lastConsumedBranchId: session.branchId,
+              lastConsumedPackageId: session.packageId,
+              lastConsumedAt: now.toISOString(),
+              washCreditConsumed: canUseWashCredit,
+              grapheneCreditConsumed: canUseGrapheneCredit,
+            }),
+          },
+        });
+
+        await tx.auditLog.create({
+          data: {
+            actorType: 'system',
+            branchId: session.branchId,
+            action: 'membership_credit_consumed',
+            entityType: 'user_membership',
+            entityId: activeMembership.id,
+            metadata: toJsonInput({
+              userId: session.userId,
+              sessionId: session.id,
+              planCode: activeMembership.plan.code,
+              washCreditConsumed: canUseWashCredit,
+              grapheneCreditConsumed: canUseGrapheneCredit,
+              washUsedBefore: activeMembership.washUsed,
+              grapheneUsedBefore: activeMembership.grapheneUsed,
+            }),
+          },
+        });
+      }
+    }
+
+    if (rawStampsEarned > 0) {
+      const activeStamp = await tx.stamp.findFirst({
+        where: { userId: session.userId, rewardClaimed: false },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const stampCard =
+        activeStamp ??
+        (await tx.stamp.create({
+          data: {
+            userId: session.userId,
+            targetCount: STAMP_TARGET_COUNT,
+          },
+        }));
+      const remainingStamps = Math.max(stampCard.targetCount - stampCard.currentCount, 0);
+      const appliedStamps = Math.min(rawStampsEarned, remainingStamps);
+
+      await tx.stampTransaction.create({
+        data: {
+          userId: session.userId,
+          stampId: stampCard.id,
+          sessionId: session.id,
+          branchId: session.branchId,
+          packageId: session.packageId,
+          stampCount: appliedStamps,
+          rawStampCount: rawStampsEarned,
+          reason: appliedStamps > 0 ? 'wash_completed' : 'stamp_card_full',
+          metadata: toJsonInput({
+            carSize: session.carSize,
+            subtotalPrice: session.subtotalPrice,
+            discountAmount: session.discountAmount,
+            totalPrice: session.totalPrice,
+            paymentId: session.payment.id,
+            paymentProvider: session.payment.provider,
+            couponRedemptionId: session.couponRedemption?.id ?? null,
+          }),
+        },
+      });
+
+      if (appliedStamps > 0) {
+        await tx.stamp.update({
+          where: { id: stampCard.id },
+          data: {
+            currentCount: stampCard.currentCount + appliedStamps,
+            lastStampAt: now,
+          },
+        });
+      }
+    }
+
+    if (rawStampsEarned === 0 && isFreeWashSession) {
+      const activeStamp = await tx.stamp.findFirst({
+        where: { userId: session.userId, rewardClaimed: false },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (activeStamp) {
+        await tx.stampTransaction.create({
+          data: {
+            userId: session.userId,
+            stampId: activeStamp.id,
+            sessionId: session.id,
+            branchId: session.branchId,
+            packageId: session.packageId,
+            stampCount: 0,
+            rawStampCount: 0,
+            reason: 'free_wash_no_stamp',
+            metadata: toJsonInput({
+              subtotalPrice: session.subtotalPrice,
+              discountAmount: session.discountAmount,
+              totalPrice: session.totalPrice,
+              couponRedemptionId: session.couponRedemption?.id ?? null,
+            }),
+          },
+        });
+      }
+    }
 
     return tx.washSession.findUnique({
       where: { id: session.id },
@@ -778,7 +931,16 @@ export async function completeWashSession(sessionId: string) {
         payment: true,
       },
     });
-  });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Wash session has already been completed') {
+      return requireSessionDetail(session.id);
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return requireSessionDetail(session.id);
+    }
+    throw error;
+  }
 
   const detail = await requireSessionDetail(session.id);
   publishSessionRealtimeEvent({

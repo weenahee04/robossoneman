@@ -19,7 +19,14 @@ export interface RuntimeConfig {
   authRateLimitMax: number;
 }
 
-const DEFAULT_LOCAL_ORIGINS = ['http://localhost:5173'];
+const DEFAULT_LOCAL_ORIGINS = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  'http://localhost:5180',
+  'http://127.0.0.1:5180',
+];
 const PLACEHOLDER_PATTERNS = [
   'change-me',
   'replace-with-',
@@ -367,7 +374,7 @@ export function getRuntimeConfig(env: RuntimeEnv = process.env): RuntimeConfig {
 
   const allowPreviewOrigins = nodeEnv !== 'production';
   const resolvedCorsOrigins = allowPreviewOrigins
-    ? Array.from(new Set([...corsOrigins, 'https://*.vercel.app']))
+    ? Array.from(new Set([...DEFAULT_LOCAL_ORIGINS, ...corsOrigins, 'https://*.vercel.app']))
     : corsOrigins;
 
   return {

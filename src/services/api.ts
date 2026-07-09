@@ -5,9 +5,11 @@ import type {
   WashSession,
   UserCoupon,
   Coupon,
+  CouponPurchase,
   PointsTransaction,
   Stamp,
-  Notification,
+  StampTransaction,
+  MembershipOverview,
   LoginResponse,
   ApiResponse,
   PaginatedResponse,
@@ -15,7 +17,6 @@ import type {
   Vehicle,
   Reward,
   Promotion,
-  Machine,
   AuthConfig,
   UserSettings,
   ResolvedScan,
@@ -432,6 +433,33 @@ class ApiClient {
     return this.request<UserCoupon>({ method: 'POST', url: '/coupons/claim', data: { code } });
   }
 
+  async getCouponPurchases(): Promise<CouponPurchase[]> {
+    return this.request<CouponPurchase[]>({ method: 'GET', url: '/coupons/purchases' });
+  }
+
+  async createCouponPurchase(couponId: string, data: { branchId: string; customerNote?: string }): Promise<CouponPurchase> {
+    return this.request<CouponPurchase>({
+      method: 'POST',
+      url: `/coupons/${couponId}/purchase`,
+      data,
+    });
+  }
+
+  async uploadCouponPurchaseSlip(purchaseId: string, file: File, customerNote?: string): Promise<CouponPurchase> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (customerNote?.trim()) {
+      formData.append('customerNote', customerNote.trim());
+    }
+
+    return this.request<CouponPurchase>({
+      method: 'POST',
+      url: `/coupons/purchases/${purchaseId}/slip`,
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
   async useCoupon(couponId: string, sessionId: string): Promise<UserCoupon> {
     return this.request<UserCoupon>({
       method: 'POST',
@@ -444,8 +472,28 @@ class ApiClient {
     return this.request<Stamp>({ method: 'GET', url: '/stamps' });
   }
 
+  async getStampHistory(limit = 50): Promise<StampTransaction[]> {
+    return this.request<StampTransaction[]>({
+      method: 'GET',
+      url: '/stamps/history',
+      params: { limit },
+    });
+  }
+
   async claimStampReward(): Promise<Stamp> {
     return this.request<Stamp>({ method: 'POST', url: '/stamps/claim-reward' });
+  }
+
+  async getMembership(): Promise<MembershipOverview> {
+    return this.request<MembershipOverview>({ method: 'GET', url: '/memberships/me' });
+  }
+
+  async activateMembership(planCode?: string): Promise<MembershipOverview> {
+    return this.request<MembershipOverview>({
+      method: 'POST',
+      url: '/memberships/activate',
+      data: planCode ? { planCode } : {},
+    });
   }
 
   async getNotifications(page = 1, limit = 20): Promise<NotificationsResponse> {

@@ -1,19 +1,26 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarRange,
+  Banknote,
   CheckCircle2,
   CircleOff,
+  Clock3,
   Plus,
   Save,
   Search,
   Store,
   TicketPercent,
+  XCircle,
 } from 'lucide-react';
 import api, {
   type AdminCouponRecord,
+  type AdminCouponPaymentAccountRecord,
+  type AdminCouponPurchaseRecord,
   type AdminPackageRecord,
   type AdminUser,
   type BranchOption,
+  type CouponPaymentAccountType,
+  type CouponPurchaseStatus,
   type CouponScope,
   type CouponStatus,
   type DiscountType,
@@ -37,11 +44,61 @@ type Couponฉบับร่าง = {
   minSpend: string;
   maxUses: string;
   maxUsesPerUser: string;
+  isPurchasable: boolean;
+  purchasePrice: string;
   validFrom: string;
   validUntil: string;
   branchIds: string[];
   packageIds: string[];
 };
+
+type PaymentAccountDraft = {
+  id?: string;
+  code: string;
+  displayName: string;
+  accountType: CouponPaymentAccountType;
+  branchId: string;
+  promptPayId: string;
+  promptPayName: string;
+  bankName: string;
+  accountName: string;
+  accountNumber: string;
+  isActive: boolean;
+  isDefault: boolean;
+};
+
+function createEmptyPaymentAccountDraft(defaultBranchId?: string | null): PaymentAccountDraft {
+  return {
+    code: '',
+    displayName: '',
+    accountType: defaultBranchId ? 'branch' : 'hq',
+    branchId: defaultBranchId ?? '',
+    promptPayId: '',
+    promptPayName: '',
+    bankName: '',
+    accountName: '',
+    accountNumber: '',
+    isActive: true,
+    isDefault: true,
+  };
+}
+
+function toPaymentAccountDraft(account: AdminCouponPaymentAccountRecord): PaymentAccountDraft {
+  return {
+    id: account.id,
+    code: account.code,
+    displayName: account.displayName,
+    accountType: account.accountType,
+    branchId: account.branchId ?? '',
+    promptPayId: account.promptPayId,
+    promptPayName: account.promptPayName,
+    bankName: account.bankName ?? '',
+    accountName: account.accountName ?? '',
+    accountNumber: account.accountNumber ?? '',
+    isActive: account.isActive,
+    isDefault: account.isDefault,
+  };
+}
 
 function toDateTimeInput(value?: string | null) {
   if (!value) return '';
@@ -70,6 +127,8 @@ function createEmptyฉบับร่าง(defaultBranchId?: string | null): C
     minSpend: '0',
     maxUses: '0',
     maxUsesPerUser: '1',
+    isPurchasable: false,
+    purchasePrice: '0',
     validFrom: toDateTimeInput(now.toISOString()),
     validUntil: toDateTimeInput(tomorrow.toISOString()),
     branchIds: defaultBranchId ? [defaultBranchId] : [],
@@ -90,6 +149,8 @@ function toฉบับร่าง(coupon: AdminCouponRecord): Couponฉบั�
     minSpend: String(coupon.minSpend),
     maxUses: String(coupon.maxUses),
     maxUsesPerUser: String(coupon.maxUsesPerUser),
+    isPurchasable: coupon.isPurchasable,
+    purchasePrice: String(coupon.purchasePrice),
     validFrom: toDateTimeInput(coupon.validFrom),
     validUntil: toDateTimeInput(coupon.validUntil),
     branchIds: coupon.branchIds,
@@ -117,6 +178,27 @@ function getCouponStatusLabel(status: CouponStatus | 'all') {
       return 'ปิดใช้งาน';
     case 'archived':
       return 'เก็บถาวร';
+    default:
+      return status;
+  }
+}
+
+function getPurchaseStatusLabel(status: CouponPurchaseStatus | 'all') {
+  switch (status) {
+    case 'all':
+      return 'ทุกสถานะ';
+    case 'pending_transfer':
+      return 'รอโอน';
+    case 'pending_review':
+      return 'รอตรวจสลิป';
+    case 'confirmed':
+      return 'อนุมัติแล้ว';
+    case 'rejected':
+      return 'ปฏิเสธ';
+    case 'expired':
+      return 'หมดเวลา';
+    case 'cancelled':
+      return 'ยกเลิก';
     default:
       return status;
   }
@@ -164,14 +246,23 @@ function normalizeฉบับร่างForScope(
 
 export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
   const [coupons, setCoupons] = useState<AdminCouponRecord[]>([]);
+  const [paymentAccounts, setPaymentAccounts] = useState<AdminCouponPaymentAccountRecord[]>([]);
+  const [accountDraft, setAccountDraft] = useState<PaymentAccountDraft>(createEmptyPaymentAccountDraft(branchId));
+  const [couponPurchases, setCouponPurchases] = useState<AdminCouponPurchaseRecord[]>([]);
   const [packages, setแพ็กเกจ] = useState<AdminPackageRecord[]>([]);
   const [selectedId, setSelectedId] = useState<string | 'new' | null>('new');
   const [draft, setฉบับร่าง] = useState<Couponฉบับร่าง>(createEmptyฉบับร่าง(branchId));
   const [statusFilter, setStatusFilter] = useState<CouponStatus | 'all'>('all');
+  const [purchaseStatusFilter, setPurchaseStatusFilter] = useState<CouponPurchaseStatus | 'all'>('pending_review');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [savingAccount, setSavingAccount] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [purchaseActionId, setPurchaseActionId] = useState<string | null>(null);
+  const [purchaseChecks, setPurchaseChecks] = useState<
+    Record<string, { amountMatches: boolean; referenceMatches: boolean; accountMatches: boolean }>
+  >({});
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
@@ -215,7 +306,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
   }, [admin.role]);
 
   async function reloadCoupons(nextSelectedId?: string | 'new' | null) {
-    const [couponResponse, packageResponse] = await Promise.all([
+    const [couponResponse, packageResponse, purchaseResponse, accountResponse] = await Promise.all([
       api.fetchAdminCoupons({
         branchId,
         status: statusFilter,
@@ -223,10 +314,18 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
         includeArchived: true,
       }),
       api.fetchAdminPackages({ branchId, includeInactive: true }),
+      api.fetchAdminCouponPurchases({
+        branchId,
+        status: purchaseStatusFilter,
+        search: search.trim() || undefined,
+      }),
+      api.fetchAdminCouponPaymentAccounts({ branchId }),
     ]);
 
     setCoupons(couponResponse);
     setแพ็กเกจ(packageResponse);
+    setCouponPurchases(purchaseResponse);
+    setPaymentAccounts(accountResponse);
 
     const preferred =
       (nextSelectedId && nextSelectedId !== 'new' ? couponResponse.find((item) => item.id === nextSelectedId) : undefined) ??
@@ -251,7 +350,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
 
     (async () => {
       try {
-        const [couponResponse, packageResponse] = await Promise.all([
+        const [couponResponse, packageResponse, purchaseResponse, accountResponse] = await Promise.all([
           api.fetchAdminCoupons({
             branchId,
             status: statusFilter,
@@ -259,6 +358,12 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
             includeArchived: true,
           }),
           api.fetchAdminPackages({ branchId, includeInactive: true }),
+          api.fetchAdminCouponPurchases({
+            branchId,
+            status: purchaseStatusFilter,
+            search: search.trim() || undefined,
+          }),
+          api.fetchAdminCouponPaymentAccounts({ branchId }),
         ]);
 
         if (cancelled) {
@@ -267,6 +372,8 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
 
         setCoupons(couponResponse);
         setแพ็กเกจ(packageResponse);
+        setCouponPurchases(purchaseResponse);
+        setPaymentAccounts(accountResponse);
         setError(null);
 
         const preferred =
@@ -295,13 +402,17 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [branchId, statusFilter, search]);
+  }, [branchId, statusFilter, purchaseStatusFilter, search]);
 
   useEffect(() => {
     if (selectedId === 'new') {
       setฉบับร่าง((current) => normalizeฉบับร่างForScope(current, current.scope, scopedBranchIds, branchId));
     }
   }, [branchId, scopedBranchIds.join('|'), selectedId]);
+
+  useEffect(() => {
+    setAccountDraft(createEmptyPaymentAccountDraft(branchId));
+  }, [branchId]);
 
   async function saveCoupon() {
     setSaving(true);
@@ -320,6 +431,8 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
         minSpend: Number(draft.minSpend),
         maxUses: Number(draft.maxUses),
         maxUsesPerUser: Number(draft.maxUsesPerUser),
+        isPurchasable: draft.isPurchasable,
+        purchasePrice: draft.isPurchasable ? Number(draft.purchasePrice) : 0,
         packageIds: draft.packageIds,
         branchIds: draft.scope === 'all_branches' ? [] : draft.branchIds,
         validFrom: toIsoString(draft.validFrom),
@@ -358,6 +471,123 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
     }
   }
 
+  async function savePaymentAccount() {
+    setSavingAccount(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const payload = {
+        code: accountDraft.code.trim() || undefined,
+        displayName: accountDraft.displayName.trim(),
+        accountType: accountDraft.accountType,
+        branchId: accountDraft.accountType === 'branch' ? accountDraft.branchId || branchId || null : null,
+        promptPayId: accountDraft.promptPayId.trim(),
+        promptPayName: accountDraft.promptPayName.trim(),
+        bankName: accountDraft.bankName.trim() || null,
+        accountName: accountDraft.accountName.trim() || null,
+        accountNumber: accountDraft.accountNumber.trim() || null,
+        isActive: accountDraft.isActive,
+        isDefault: accountDraft.isDefault,
+      };
+
+      if (accountDraft.id) {
+        await api.updateAdminCouponPaymentAccount(accountDraft.id, payload);
+        setSuccess('อัปเดตบัญชีรับเงินคูปองสำเร็จ');
+      } else {
+        await api.createAdminCouponPaymentAccount(payload);
+        setSuccess('สร้างบัญชีรับเงินคูปองสำเร็จ');
+      }
+
+      setAccountDraft(createEmptyPaymentAccountDraft(branchId));
+      await reloadCoupons(selectedId);
+    } catch (err: any) {
+      setError(err.message || 'บันทึกบัญชีรับเงินคูปองไม่สำเร็จ');
+    } finally {
+      setSavingAccount(false);
+    }
+  }
+
+  async function togglePaymentAccount(account: AdminCouponPaymentAccountRecord) {
+    setSavingAccount(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await api.updateAdminCouponPaymentAccount(account.id, { isActive: !account.isActive });
+      setSuccess(account.isActive ? 'ปิดบัญชีรับเงินแล้ว' : 'เปิดบัญชีรับเงินแล้ว');
+      await reloadCoupons(selectedId);
+    } catch (err: any) {
+      setError(err.message || 'อัปเดตบัญชีรับเงินไม่สำเร็จ');
+    } finally {
+      setSavingAccount(false);
+    }
+  }
+
+  function setPurchaseCheck(
+    purchaseId: string,
+    key: 'amountMatches' | 'referenceMatches' | 'accountMatches',
+    value: boolean
+  ) {
+    setPurchaseChecks((current) => {
+      const previous = current[purchaseId] ?? {
+        amountMatches: false,
+        referenceMatches: false,
+        accountMatches: false,
+      };
+
+      return {
+        ...current,
+        [purchaseId]: {
+          ...previous,
+          [key]: value,
+        },
+      };
+    });
+  }
+
+  async function approvePurchase(purchase: AdminCouponPurchaseRecord) {
+    const note = window.prompt('หมายเหตุการอนุมัติ (เว้นว่างได้)', '');
+    const checks = purchaseChecks[purchase.id] ?? {
+      amountMatches: false,
+      referenceMatches: false,
+      accountMatches: false,
+    };
+    setPurchaseActionId(purchase.id);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await api.approveAdminCouponPurchase(purchase.id, {
+        adminNote: note?.trim() || undefined,
+        ...checks,
+      });
+      setSuccess('อนุมัติรายการซื้อคูปองและออกคูปองให้ลูกค้าแล้ว');
+      await reloadCoupons(selectedId);
+    } catch (err: any) {
+      setError(err.message || 'อนุมัติรายการซื้อคูปองไม่สำเร็จ');
+    } finally {
+      setPurchaseActionId(null);
+    }
+  }
+
+  async function rejectPurchase(purchase: AdminCouponPurchaseRecord) {
+    const note = window.prompt('เหตุผลที่ปฏิเสธ (แนะนำให้กรอก)', '');
+    setPurchaseActionId(purchase.id);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      await api.rejectAdminCouponPurchase(purchase.id, note?.trim() || undefined);
+      setSuccess('ปฏิเสธรายการซื้อคูปองแล้ว');
+      await reloadCoupons(selectedId);
+    } catch (err: any) {
+      setError(err.message || 'ปฏิเสธรายการซื้อคูปองไม่สำเร็จ');
+    } finally {
+      setPurchaseActionId(null);
+    }
+  }
+
   function toggleBranchAssignment(targetBranchId: string, enabled: boolean) {
     setฉบับร่าง((current) => {
       if (current.scope === 'branch_only') {
@@ -383,6 +613,11 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
         ? current.packageIds.filter((id) => id !== packageId)
         : [...current.packageIds, packageId],
     }));
+  }
+
+  function purchaseChecksComplete(purchaseId: string) {
+    const checks = purchaseChecks[purchaseId];
+    return Boolean(checks?.amountMatches && checks.referenceMatches && checks.accountMatches);
   }
 
   return (
@@ -418,7 +653,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>}
       {success && <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">{success}</div>}
 
-      <div className="grid gap-4 rounded-[24px] border border-white/5 bg-white/[0.03] p-4 xl:grid-cols-[minmax(0,1fr)_220px]">
+      <div className="grid gap-4 rounded-[24px] border border-white/5 bg-white/[0.03] p-4 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
         <label className="flex items-center gap-3 rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-sm text-gray-300">
           <Search className="h-4 w-4 text-gray-500" />
           <input
@@ -440,7 +675,287 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           <option value="inactive">ปิดใช้งาน</option>
           <option value="archived">เก็บถาวร</option>
         </select>
+
+        <select
+          value={purchaseStatusFilter}
+          onChange={(event) => setPurchaseStatusFilter(event.target.value as CouponPurchaseStatus | 'all')}
+          className="rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-sm text-white outline-none"
+        >
+          <option value="pending_review">รายการรอตรวจ</option>
+          <option value="pending_transfer">รายการรอโอน</option>
+          <option value="confirmed">อนุมัติแล้ว</option>
+          <option value="rejected">ปฏิเสธ</option>
+          <option value="expired">หมดเวลา</option>
+          <option value="all">ทุกสถานะซื้อ</option>
+        </select>
       </div>
+
+      <section className="rounded-[28px] border border-white/5 bg-white/[0.03] p-5">
+        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Store className="h-5 w-5 text-red-300" />
+              <h3 className="text-lg font-bold text-white">บัญชีรับเงินคูปอง</h3>
+            </div>
+            <p className="mt-1 text-sm text-gray-500">
+              ตั้งบัญชี PromptPay สำหรับคูปองแบบโอนเงิน: บัญชีสาขาจะใช้ก่อน ถ้าไม่มีจะใช้บัญชีกลาง HQ
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAccountDraft(createEmptyPaymentAccountDraft(branchId))}
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-white/5"
+          >
+            <Plus className="h-4 w-4" />
+            เพิ่มบัญชีใหม่
+          </button>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {paymentAccounts.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-5 text-sm text-gray-400 md:col-span-2 xl:col-span-3">
+                ยังไม่มีบัญชีรับเงินคูปอง ระบบจะ fallback ไปใช้ PromptPay ของสาขาเดิมจนกว่าจะตั้งบัญชีนี้
+              </div>
+            ) : (
+              paymentAccounts.map((account) => (
+                <div key={account.id} className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-bold text-white">{account.displayName}</p>
+                      <p className="mt-1 text-xs text-gray-500">
+                        {account.accountType === 'hq' ? 'บัญชีกลาง HQ' : account.branch?.shortName || account.branch?.name || 'บัญชีสาขา'}
+                      </p>
+                    </div>
+                    <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${account.isActive ? 'bg-emerald-500/15 text-emerald-200' : 'bg-white/10 text-gray-400'}`}>
+                      {account.isActive ? 'ACTIVE' : 'OFF'}
+                    </span>
+                  </div>
+
+                  <div className="mt-3 space-y-1 text-xs text-gray-400">
+                    <p>PromptPay: <span className="font-semibold text-white">{account.promptPayId}</span></p>
+                    <p>ชื่อบัญชี: <span className="font-semibold text-white">{account.promptPayName}</span></p>
+                    {account.isDefault && <p className="text-red-200">Default account</p>}
+                    <p className="text-gray-600">ใช้แล้ว {account.purchaseCount.toLocaleString()} รายการ</p>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setAccountDraft(toPaymentAccountDraft(account))}
+                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-white/5"
+                    >
+                      แก้ไข
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void togglePaymentAccount(account)}
+                      disabled={savingAccount}
+                      className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-gray-200 hover:bg-white/5 disabled:opacity-50"
+                    >
+                      {account.isActive ? 'ปิด' : 'เปิด'}
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+
+          <div className="rounded-2xl border border-white/5 bg-black/25 p-4">
+            <p className="text-sm font-semibold text-white">{accountDraft.id ? 'แก้ไขบัญชีรับเงิน' : 'สร้างบัญชีรับเงิน'}</p>
+            <div className="mt-4 grid gap-3">
+              <Field label="ชื่อเรียกบัญชี" value={accountDraft.displayName} onChange={(value) => setAccountDraft((current) => ({ ...current, displayName: value }))} />
+              <div className="grid gap-3 md:grid-cols-2">
+                <SelectField
+                  label="ประเภทบัญชี"
+                  value={accountDraft.accountType}
+                  onChange={(value) =>
+                    setAccountDraft((current) => ({
+                      ...current,
+                      accountType: value as CouponPaymentAccountType,
+                      branchId: value === 'branch' ? current.branchId || branchId || scopedBranchIds[0] || '' : '',
+                    }))
+                  }
+                  options={[
+                    { value: 'hq', label: 'บัญชีกลาง HQ' },
+                    { value: 'branch', label: 'บัญชีรายสาขา' },
+                  ]}
+                />
+                {accountDraft.accountType === 'branch' ? (
+                  <SelectField
+                    label="สาขา"
+                    value={accountDraft.branchId}
+                    onChange={(value) => setAccountDraft((current) => ({ ...current, branchId: value }))}
+                    options={scopedสาขา.map((item) => ({ value: item.id, label: `${item.name} (${item.code})` }))}
+                  />
+                ) : (
+                  <Field label="รหัสบัญชี (optional)" value={accountDraft.code} onChange={(value) => setAccountDraft((current) => ({ ...current, code: value.toUpperCase() }))} />
+                )}
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="PromptPay ID" value={accountDraft.promptPayId} onChange={(value) => setAccountDraft((current) => ({ ...current, promptPayId: value }))} />
+                <Field label="ชื่อ PromptPay" value={accountDraft.promptPayName} onChange={(value) => setAccountDraft((current) => ({ ...current, promptPayName: value }))} />
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <Field label="ธนาคาร" value={accountDraft.bankName} onChange={(value) => setAccountDraft((current) => ({ ...current, bankName: value }))} />
+                <Field label="ชื่อบัญชีธนาคาร" value={accountDraft.accountName} onChange={(value) => setAccountDraft((current) => ({ ...current, accountName: value }))} />
+                <Field label="เลขบัญชี" value={accountDraft.accountNumber} onChange={(value) => setAccountDraft((current) => ({ ...current, accountNumber: value }))} />
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm text-gray-300">
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={accountDraft.isDefault} onChange={(event) => setAccountDraft((current) => ({ ...current, isDefault: event.target.checked }))} />
+                  ตั้งเป็น default
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={accountDraft.isActive} onChange={(event) => setAccountDraft((current) => ({ ...current, isActive: event.target.checked }))} />
+                  เปิดใช้งาน
+                </label>
+              </div>
+              <button
+                type="button"
+                onClick={() => void savePaymentAccount()}
+                disabled={savingAccount}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-60"
+              >
+                <Save className="h-4 w-4" />
+                {savingAccount ? 'กำลังบันทึก...' : accountDraft.id ? 'บันทึกบัญชี' : 'สร้างบัญชี'}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-[28px] border border-red-500/15 bg-red-500/[0.06] p-5">
+        <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Banknote className="h-5 w-5 text-red-300" />
+              <h3 className="text-lg font-bold text-white">รายการซื้อคูปองด้วยการโอน</h3>
+            </div>
+            <p className="mt-1 text-sm text-gray-400">
+              ตรวจยอดโอน เลขอ้างอิง และสลิปก่อนอนุมัติ ระบบจะออกคูปองเข้าบัญชีลูกค้าอัตโนมัติหลังอนุมัติ
+            </p>
+          </div>
+          <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+            {getPurchaseStatusLabel(purchaseStatusFilter)} {couponPurchases.length.toLocaleString()} รายการ
+          </span>
+        </div>
+
+        {couponPurchases.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-5 text-sm text-gray-400">
+            ยังไม่มีรายการซื้อคูปองตามตัวกรองนี้
+          </div>
+        ) : (
+          <div className="grid gap-4 xl:grid-cols-2">
+            {couponPurchases.map((purchase) => (
+              <div key={purchase.id} className="rounded-2xl border border-white/5 bg-black/30 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white">{purchase.coupon.title}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {purchase.coupon.code} • {purchase.branch.shortName || purchase.branch.name}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                      purchase.status === 'pending_review'
+                        ? 'bg-amber-500/15 text-amber-200'
+                        : purchase.status === 'confirmed'
+                          ? 'bg-emerald-500/15 text-emerald-200'
+                          : purchase.status === 'rejected'
+                            ? 'bg-red-500/15 text-red-200'
+                            : 'bg-white/10 text-gray-300'
+                    }`}
+                  >
+                    {getPurchaseStatusLabel(purchase.status)}
+                  </span>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-[120px_minmax(0,1fr)]">
+                  <div className="min-h-[110px] overflow-hidden rounded-xl border border-white/5 bg-white/[0.03]">
+                    {purchase.slipImage ? (
+                      <img src={purchase.slipImage} alt="slip" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex h-full min-h-[110px] items-center justify-center text-xs text-gray-500">ยังไม่มีสลิป</div>
+                    )}
+                  </div>
+
+                  <div className="grid gap-2 text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <InfoBox label="ยอดโอน" value={`${purchase.amount.toLocaleString()} ${purchase.currency}`} />
+                      <InfoBox label="อ้างอิง" value={purchase.reference} mono />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <InfoBox label="ลูกค้า" value={purchase.user.displayName || purchase.user.lineUserId || purchase.user.id} />
+                      <InfoBox label="พร้อมเพย์" value={purchase.transferTargetId || purchase.branch.promptPayId || '-'} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <InfoBox label="บัญชีรับเงิน" value={purchase.paymentAccount?.displayName || purchase.transferTargetName || 'Fallback สาขา'} />
+                      <InfoBox label="Hash สลิป" value={purchase.slipImageHash || '-'} mono />
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <Clock3 className="h-3.5 w-3.5" />
+                      <span>สร้างเมื่อ {new Date(purchase.createdAt).toLocaleString()}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {['pending_transfer', 'pending_review'].includes(purchase.status) && (
+                  <div className="mt-4 grid gap-2 rounded-2xl border border-white/5 bg-white/[0.03] p-3 text-xs text-gray-300 md:grid-cols-3">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={purchaseChecks[purchase.id]?.amountMatches ?? false}
+                        onChange={(event) => setPurchaseCheck(purchase.id, 'amountMatches', event.target.checked)}
+                      />
+                      ยอดตรงกับ {purchase.amount.toLocaleString()} {purchase.currency}
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={purchaseChecks[purchase.id]?.referenceMatches ?? false}
+                        onChange={(event) => setPurchaseCheck(purchase.id, 'referenceMatches', event.target.checked)}
+                      />
+                      เลขอ้างอิงตรง
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={purchaseChecks[purchase.id]?.accountMatches ?? false}
+                        onChange={(event) => setPurchaseCheck(purchase.id, 'accountMatches', event.target.checked)}
+                      />
+                      บัญชีปลายทางตรง
+                    </label>
+                  </div>
+                )}
+
+                <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+                  {purchase.status !== 'confirmed' && (
+                    <button
+                      onClick={() => void rejectPurchase(purchase)}
+                      disabled={purchaseActionId === purchase.id}
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-gray-200 hover:bg-white/5 disabled:opacity-50"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      ปฏิเสธ
+                    </button>
+                  )}
+                  {['pending_transfer', 'pending_review'].includes(purchase.status) && (
+                    <button
+                      onClick={() => void approvePurchase(purchase)}
+                      disabled={purchaseActionId === purchase.id || !purchase.slipUploadedAt || !purchaseChecksComplete(purchase.id)}
+                      className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-3 py-2 text-xs font-semibold text-white hover:bg-red-600 disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-4 w-4" />
+                      อนุมัติออกคูปอง
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="space-y-4">
@@ -600,6 +1115,36 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
                 options={availableสถานะOptions.map((item) => ({ value: item, label: getCouponStatusLabel(item) }))}
               />
             </div>
+
+            <section className="grid gap-4 rounded-3xl border border-red-500/10 bg-red-500/[0.04] p-5 md:grid-cols-[minmax(0,1fr)_220px]">
+              <label className="flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={draft.isPurchasable}
+                  onChange={(event) =>
+                    setฉบับร่าง((current) => ({
+                      ...current,
+                      isPurchasable: event.target.checked,
+                      purchasePrice: event.target.checked ? current.purchasePrice || '0' : '0',
+                    }))
+                  }
+                  className="mt-1 h-4 w-4 rounded border-white/10 bg-transparent text-red-500"
+                />
+                <span>
+                  <span className="block text-sm font-semibold text-white">ต้องซื้อคูปองก่อนรับสิทธิ์</span>
+                  <span className="mt-1 block text-xs text-gray-500">
+                    ลูกค้าจะเห็นปุ่มซื้อ โอนเงินพร้อมเลขอ้างอิง อัปสลิป แล้วรอหลังบ้านอนุมัติ
+                  </span>
+                </span>
+              </label>
+
+              <Field
+                label="ราคาขายคูปอง"
+                type="number"
+                value={draft.purchasePrice}
+                onChange={(value) => setฉบับร่าง((current) => ({ ...current, purchasePrice: value }))}
+              />
+            </section>
 
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
               <Field label="เริ่มใช้ได้" type="datetime-local" value={draft.validFrom} onChange={(value) => setฉบับร่าง((current) => ({ ...current, validFrom: value }))} />
@@ -793,6 +1338,15 @@ function SelectField({
         ))}
       </select>
     </label>
+  );
+}
+
+function InfoBox({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2">
+      <p className="text-[10px] uppercase tracking-wide text-gray-500">{label}</p>
+      <p className={`mt-1 truncate text-xs font-semibold text-white ${mono ? 'font-mono' : ''}`}>{value}</p>
+    </div>
   );
 }
 

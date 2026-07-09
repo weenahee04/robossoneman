@@ -5,7 +5,14 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { useAvailableCoupons, useClaimCoupon, useCoupons } from '@/hooks/useApi';
+import {
+  useAvailableCoupons,
+  useClaimCoupon,
+  useCouponPurchases,
+  useCoupons,
+  useCreateCouponPurchase,
+  useUploadCouponPurchaseSlip,
+} from '@/hooks/useApi';
 import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 import { setWashFlowIntent } from '@/services/washFlowIntent';
 import { useBranch } from '../services/branchContext';
@@ -67,6 +74,16 @@ interface CouponCardItem {
   packageIds?: string[];
   source: 'claimed' | 'available';
   couponId?: string;
+  isPurchasable?: boolean;
+  purchasePrice?: number;
+  purchaseId?: string;
+  purchaseStatus?: 'pending_transfer' | 'pending_review' | 'confirmed' | 'rejected' | 'expired' | 'cancelled';
+  purchaseReference?: string;
+  purchaseAmount?: number;
+  transferTargetId?: string | null;
+  transferTargetName?: string | null;
+  slipUploadedAt?: string | null;
+  expiresAt?: string | null;
 }
 
 const filterTabs: { value: TabType; label: string; iconId: number }[] = [
@@ -100,11 +117,28 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
   const { branch } = useBranch();
   const { data: apiCoupons } = useCoupons(branch.id);
   const { data: availableCoupons } = useAvailableCoupons(branch.id);
+  const { data: couponPurchases } = useCouponPurchases();
   const claimCouponMutation = useClaimCoupon();
+  const createPurchaseMutation = useCreateCouponPurchase();
+  const uploadSlipMutation = useUploadCouponPurchaseSlip();
 
   const [activeTab, setActiveTab] = useState<TabType>('available');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [slipFiles, setSlipFiles] = useState<Record<string, File | null>>({});
+
+  const purchaseByCouponId = useMemo(() => {
+    const map = new Map<string, NonNullable<typeof couponPurchases>[number]>();
+    for (const purchase of couponPurchases ?? []) {
+      if (['cancelled', 'expired', 'rejected'].includes(purchase.status)) {
+        continue;
+      }
+      if (!map.has(purchase.couponId)) {
+        map.set(purchase.couponId, purchase);
+      }
+    }
+    return map;
+  }, [couponPurchases]);
 
   const couponsData: CouponCardItem[] = useMemo(() => {
     if (HAS_API_BASE_URL && apiCoupons) {
@@ -129,10 +163,14 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
           branchIds: coupon?.branchIds,
           packageIds: coupon?.packageIds,
           source: 'claimed',
+          isPurchasable: coupon?.isPurchasable,
+          purchasePrice: coupon?.purchasePrice,
         } satisfies CouponCardItem;
       });
 
-      const available = (availableCoupons ?? []).map((coupon) => ({
+      const available = (availableCoupons ?? []).map((coupon) => {
+        const purchase = purchaseByCouponId.get(coupon.id);
+        return ({
         id: coupon.id,
         couponId: coupon.id,
         title: coupon.title || 'คูปอง',
@@ -148,7 +186,18 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
         branchIds: coupon.branchIds,
         packageIds: coupon.packageIds,
         source: 'available',
-      } satisfies CouponCardItem));
+        isPurchasable: coupon.isPurchasable,
+        purchasePrice: coupon.purchasePrice,
+        purchaseId: purchase?.id,
+        purchaseStatus: purchase?.status,
+        purchaseReference: purchase?.reference,
+        purchaseAmount: purchase?.amount,
+        transferTargetId: purchase?.transferTargetId,
+        transferTargetName: purchase?.transferTargetName,
+        slipUploadedAt: purchase?.slipUploadedAt,
+        expiresAt: purchase?.expiresAt,
+      } satisfies CouponCardItem);
+      });
 
       return [...claimed, ...available];
     }
@@ -162,7 +211,7 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
     }
 
     return [];
-  }, [apiCoupons, availableCoupons, branch.id]);
+  }, [apiCoupons, availableCoupons, branch.id, purchaseByCouponId]);
 
   const filtered = couponsData.filter((coupon) => coupon.status === activeTab);
   const availableCount = couponsData.filter((coupon) => coupon.status === 'available').length;
@@ -175,7 +224,7 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
       branchName: branch.name,
       branchType: branch.type,
       coupon: {
-        id: coupon.couponId || coupon.id,
+        id: coupon.id,
         code: coupon.code,
         title: coupon.title,
         discountType: coupon.discountType === 'amount' ? 'fixed' : coupon.discountType,
@@ -188,9 +237,49 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
     navigate('/carwash');
   };
 
+  const handleCreatePurchase = async (coupon: CouponCardItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!coupon.couponId) return;
+
+    try {
+      setClaimError(null);
+      const purchase = await createPurchaseMutation.mutateAsync({
+        couponId: coupon.couponId,
+        branchId: branch.id,
+      });
+      setExpandedId(coupon.id);
+      setSlipFiles((current) => ({ ...current, [purchase.id]: current[purchase.id] ?? null }));
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : 'ไม่สามารถสร้างรายการซื้อคูปองได้');
+    }
+  };
+
+  const handleUploadSlip = async (coupon: CouponCardItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!coupon.purchaseId) return;
+    const file = slipFiles[coupon.purchaseId];
+    if (!file) {
+      setClaimError('กรุณาเลือกไฟล์สลิปก่อนส่งตรวจ');
+      return;
+    }
+
+    try {
+      setClaimError(null);
+      await uploadSlipMutation.mutateAsync({ purchaseId: coupon.purchaseId, file });
+      setSlipFiles((current) => ({ ...current, [coupon.purchaseId as string]: null }));
+    } catch (error) {
+      setClaimError(error instanceof Error ? error.message : 'อัปโหลดสลิปไม่สำเร็จ');
+    }
+  };
+
   const handleClaimCoupon = async (coupon: CouponCardItem, e: React.MouseEvent) => {
     e.stopPropagation();
     if (coupon.source !== 'available') return;
+
+    if (coupon.isPurchasable) {
+      await handleCreatePurchase(coupon, e);
+      return;
+    }
 
     try {
       setClaimError(null);
@@ -361,17 +450,82 @@ export function CouponPage({ onBack }: { onBack: () => void }) {
                             >
                               ใช้คูปอง
                             </Button>
+                          ) : coupon.isPurchasable ? (
+                            <Button
+                              size="sm"
+                              onClick={(e) => void handleClaimCoupon(coupon, e)}
+                              disabled={createPurchaseMutation.isPending || Boolean(coupon.purchaseId)}
+                              className="text-xs h-8 rounded-full px-4 bg-white text-black hover:bg-white/90 disabled:opacity-50"
+                            >
+                              {coupon.purchaseId
+                                ? coupon.purchaseStatus === 'pending_review'
+                                  ? 'รอตรวจสลิป'
+                                  : 'รอชำระเงิน'
+                                : createPurchaseMutation.isPending
+                                  ? 'กำลังสร้าง...'
+                                  : `ซื้อ ${coupon.purchasePrice ?? 0}฿`}
+                            </Button>
                           ) : (
                             <Button
                               size="sm"
                               onClick={(e) => void handleClaimCoupon(coupon, e)}
-                              disabled={claimCouponMutation.isPending}
+                              disabled={claimCouponMutation.isPending || createPurchaseMutation.isPending || Boolean(coupon.purchaseId)}
                               className="text-xs h-8 rounded-full px-4 bg-white text-black hover:bg-white/90 disabled:opacity-50"
                             >
                               {claimCouponMutation.isPending ? 'กำลังรับ...' : 'รับคูปอง'}
                             </Button>
                           )}
                         </div>
+                        {!canUseNow && coupon.isPurchasable && coupon.purchaseId && (
+                          <div className="border-t border-white/5 px-4 py-3 space-y-3 bg-black/20">
+                            <div className="grid grid-cols-2 gap-2 text-[11px]">
+                              <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                                <p className="text-white/35">ยอดโอน</p>
+                                <p className="mt-1 text-lg font-black text-white">
+                                  {(coupon.purchaseAmount ?? coupon.purchasePrice ?? 0).toLocaleString()}฿
+                                </p>
+                              </div>
+                              <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                                <p className="text-white/35">เลขอ้างอิง</p>
+                                <p className="mt-1 font-mono text-[12px] font-bold text-white">{coupon.purchaseReference}</p>
+                              </div>
+                            </div>
+                            <div className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-[11px] text-white/55">
+                              <p>
+                                โอนเข้าพร้อมเพย์: <span className="font-bold text-white">{coupon.transferTargetId || '-'}</span>
+                              </p>
+                              <p className="mt-1">
+                                ชื่อบัญชี: <span className="font-bold text-white">{coupon.transferTargetName || branch.name}</span>
+                              </p>
+                              <p className="mt-1 text-white/30">ใส่เลขอ้างอิงนี้ในโน้ต/สลิปเพื่อให้หลังบ้านตรวจเร็วขึ้น</p>
+                            </div>
+                            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                disabled={coupon.purchaseStatus === 'pending_review' || uploadSlipMutation.isPending}
+                                onClick={(event) => event.stopPropagation()}
+                                onChange={(event) => {
+                                  const file = event.target.files?.[0] ?? null;
+                                  setSlipFiles((current) => ({ ...current, [coupon.purchaseId as string]: file }));
+                                }}
+                                className="w-full rounded-xl border border-white/5 bg-black/30 px-3 py-2 text-[11px] text-white/60 file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-bold file:text-black"
+                              />
+                              <Button
+                                size="sm"
+                                onClick={(e) => void handleUploadSlip(coupon, e)}
+                                disabled={coupon.purchaseStatus === 'pending_review' || uploadSlipMutation.isPending}
+                                className="h-9 rounded-xl bg-app-red px-4 text-xs hover:bg-red-600 disabled:opacity-50"
+                              >
+                                {coupon.purchaseStatus === 'pending_review'
+                                  ? 'ส่งแล้ว'
+                                  : uploadSlipMutation.isPending
+                                    ? 'กำลังส่ง...'
+                                    : 'ส่งสลิป'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </AnimatePresence>

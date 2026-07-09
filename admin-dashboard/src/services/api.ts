@@ -7,6 +7,14 @@ export type MachineStatus = 'idle' | 'reserved' | 'washing' | 'maintenance' | 'o
 export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded' | 'expired';
 export type CouponScope = 'all_branches' | 'selected_branches' | 'branch_only';
 export type CouponStatus = 'draft' | 'active' | 'inactive' | 'archived';
+export type CouponPurchaseStatus =
+  | 'pending_transfer'
+  | 'pending_review'
+  | 'confirmed'
+  | 'rejected'
+  | 'expired'
+  | 'cancelled';
+export type CouponPaymentAccountType = 'hq' | 'branch';
 export type DiscountType = 'percent' | 'fixed';
 export type SessionStatus =
   | 'pending_payment'
@@ -123,6 +131,9 @@ export interface SessionRecord {
   totalSteps: number;
   progress: number;
   carSize: string;
+  addons?: unknown;
+  subtotalPrice?: number;
+  discountAmount?: number;
   totalPrice: number;
   rating: number | null;
   createdAt: string;
@@ -136,16 +147,22 @@ export interface SessionRecord {
   };
   machine: {
     id: string;
+    code?: string | null;
     name: string;
     status: MachineStatus;
   };
   package: {
     id: string;
+    code?: string;
     name: string;
+    steps?: unknown;
+    features?: unknown;
   };
   user: {
     id: string;
     displayName: string;
+    phone?: string | null;
+    lineUserId?: string | null;
   };
   payment?: {
     id: string;
@@ -154,6 +171,74 @@ export interface SessionRecord {
     reference?: string | null;
     confirmedAt?: string | null;
   } | null;
+  serviceTasks?: ServiceTaskRecord[];
+  membership?: {
+    active: boolean;
+    planCode?: string;
+    planName?: string;
+    washUsed?: number;
+    washLimit?: number;
+    grapheneUsed?: number;
+    grapheneLimit?: number;
+    vipFastLane?: boolean;
+    freeVacuumPerVisit?: boolean;
+  };
+}
+
+export interface ServiceTaskRecord {
+  key: string;
+  title: string;
+  detail: string;
+  status: 'waiting' | 'todo' | 'doing' | 'done' | 'blocked' | string;
+  priority: 'high' | 'normal' | string;
+}
+
+export interface AdminSessionTimelineItem {
+  type: string;
+  title: string;
+  at: string;
+  detail?: string | null;
+  metadata?: unknown;
+}
+
+export interface AdminSessionAuditLog {
+  id: string;
+  actorType: 'system' | 'customer' | 'admin';
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  branchId?: string | null;
+  metadata?: unknown;
+  createdAt: string;
+  adminUser: {
+    id: string;
+    name: string;
+    email: string;
+    role: AdminRole;
+  } | null;
+}
+
+export interface AdminSessionLogs {
+  session: {
+    id: string;
+    status: SessionStatus;
+    progress: number;
+    branch: { id: string; name: string; shortName?: string | null };
+    machine: { id: string; code?: string | null; name: string; status: MachineStatus };
+    package: { id: string; code?: string; name: string };
+    user: { id: string; displayName: string; phone?: string | null; lineUserId?: string | null };
+    payment?: {
+      id: string;
+      status: PaymentStatus;
+      amount: number;
+      currency: string;
+      provider: string;
+      reference?: string | null;
+      confirmedAt?: string | null;
+    } | null;
+  };
+  timeline: AdminSessionTimelineItem[];
+  auditLogs: AdminSessionAuditLog[];
 }
 
 export interface PaymentAttemptRecord {
@@ -285,9 +370,160 @@ export interface CustomerVehicleRecord {
   createdAt: string;
 }
 
+export type MembershipStatus = 'pending' | 'active' | 'expired' | 'cancelled';
+
+export interface AdminMembershipRecord {
+  id: string;
+  status: MembershipStatus;
+  washUsed: number;
+  grapheneUsed: number;
+  washRemaining: number;
+  grapheneRemaining: number;
+  paymentAmount: number;
+  paymentCurrency: string;
+  paymentStatus: string;
+  paymentReference?: string | null;
+  activatedAt?: string | null;
+  expiresAt?: string | null;
+  cancelledAt?: string | null;
+  lastUsedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  plan: {
+    id: string;
+    code: string;
+    name: string;
+    price: number;
+    currency: string;
+    washLimit: number;
+    grapheneLimit: number;
+    freeVacuumPerVisit: boolean;
+    vipFastLane: boolean;
+  };
+  user: {
+    id: string;
+    lineUserId: string;
+    displayName: string;
+    avatarUrl?: string | null;
+    phone?: string | null;
+    tier: string;
+    totalWashes: number;
+    createdAt: string;
+  };
+}
+
+export interface AdminMembershipSummary {
+  totalMembers: number;
+  activeMembers: number;
+  pendingMembers: number;
+  expiredMembers: number;
+  cancelledMembers: number;
+  totalRevenue: number;
+  availableWashCredits: number;
+  availableGrapheneCredits: number;
+}
+
+export interface AdminStampTransactionRecord {
+  id: string;
+  stampId: string;
+  sessionId: string;
+  stampCount: number;
+  rawStampCount: number;
+  reason: string;
+  metadata?: unknown;
+  voidedAt?: string | null;
+  createdAt: string;
+  branch: {
+    id: string;
+    name: string;
+    shortName?: string | null;
+  };
+  package: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  session: {
+    id: string;
+    completedAt?: string | null;
+    totalPrice: number;
+  };
+}
+
+export interface AdminStampAuditRecord {
+  id: string;
+  actorType: 'system' | 'customer' | 'admin';
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  branchId?: string | null;
+  metadata?: any;
+  createdAt: string;
+  adminUser: {
+    id: string;
+    name: string;
+    email: string;
+    role: AdminRole;
+  } | null;
+}
+
+export interface AdminStampCustomerRecord {
+  user: {
+    id: string;
+    lineUserId: string;
+    displayName: string;
+    avatarUrl?: string | null;
+    phone?: string | null;
+    points: number;
+    memberTier: 'bronze' | 'silver' | 'gold' | 'platinum';
+    memberSince: string;
+  };
+  stamp: {
+    id: string;
+    currentCount: number;
+    targetCount: number;
+    rewardClaimed: boolean;
+    lastStampAt?: string | null;
+    createdAt: string;
+  } | null;
+  currentCount: number;
+  targetCount: number;
+  progressPercent: number;
+  readyToClaim: boolean;
+  claimedRewards: number;
+  earnedInScope: number;
+  totalWashesInScope: number;
+  totalSpendInScope: number;
+  lastWash?: string | null;
+  recentTransactions: AdminStampTransactionRecord[];
+}
+
+export interface AdminStampSummary {
+  totalCustomers: number;
+  activeCards: number;
+  readyToClaim: number;
+  totalCurrentStamps: number;
+  totalEarnedInScope: number;
+}
+
+export interface AdminStampHistory {
+  user: {
+    id: string;
+    displayName: string;
+    lineUserId: string;
+    phone?: string | null;
+  };
+  transactions: AdminStampTransactionRecord[];
+  adjustments: AdminStampAuditRecord[];
+}
+
 export interface RevenuePoint {
   date: string;
   total: number;
+  grossTotal?: number;
+  discountAmount?: number;
+  refundedAmount?: number;
+  netTotal?: number;
   sessions: number;
   avgTicket: number;
 }
@@ -343,11 +579,66 @@ export interface DashboardData {
 export interface RevenueData {
   period: number;
   totalRevenue: number;
+  grossSales?: number;
+  discountAmount?: number;
+  refundedAmount?: number;
+  netRevenue?: number;
+  previousNetRevenue?: number;
+  revenueGrowthPercent?: number;
   sessionCount: number;
+  completedSessions?: number;
+  completionRate?: number;
+  pendingAmount?: number;
+  pendingCount?: number;
+  failedCount?: number;
+  refundCount?: number;
+  manualReviewCount?: number;
+  activeBranchCount?: number;
+  branchCount?: number;
   avgTicket: number;
   dailyRevenue: RevenuePoint[];
-  branchTotals: Array<{ branchId: string; name: string; total: number; sessions: number }>;
-  packageBreakdown: Array<{ packageId: string; name: string; total: number; sessions: number }>;
+  branchTotals: Array<{
+    branchId: string;
+    code?: string;
+    name: string;
+    ownershipType?: string;
+    grossSales?: number;
+    discountAmount?: number;
+    refundedAmount?: number;
+    total: number;
+    netSales?: number;
+    sessions: number;
+    completedSessions?: number;
+    pendingAmount?: number;
+    pendingCount?: number;
+    refundCount?: number;
+    cashSales?: number;
+    onlineSales?: number;
+    avgTicket?: number;
+    completionRate?: number;
+    revenueShare?: number;
+  }>;
+  packageBreakdown: Array<{
+    packageId: string;
+    code?: string;
+    name: string;
+    grossSales?: number;
+    discountAmount?: number;
+    total: number;
+    sessions: number;
+    avgTicket?: number;
+    revenueShare?: number;
+  }>;
+  paymentMethodBreakdown?: Array<{ method: string; total: number; sessions: number; share: number }>;
+  providerBreakdown?: Array<{ provider: string; total: number; sessions: number; share: number }>;
+  statusBreakdown?: Array<{ status: string; count: number; amount: number }>;
+  salesLogic?: {
+    revenueBasis: string;
+    timezone: string;
+    includedStatuses: string[];
+    refundedStatusIsSubtracted: boolean;
+    pendingIsTrackedOutsideRevenue: boolean;
+  };
 }
 
 export interface AdminMeta {
@@ -436,6 +727,8 @@ export interface AdminCouponRecord {
   maxUses: number;
   maxUsesPerUser: number;
   usedCount: number;
+  isPurchasable: boolean;
+  purchasePrice: number;
   packageIds: string[];
   branchIds: string[];
   validFrom: string;
@@ -444,6 +737,109 @@ export interface AdminCouponRecord {
   updatedAt: string;
   branches: BranchOption[];
   usage: CouponUsageSummary;
+}
+
+export interface AdminCouponPurchaseRecord {
+  id: string;
+  userId: string;
+  couponId: string;
+  branchId: string;
+  paymentAccountId?: string | null;
+  issuedUserCouponId?: string | null;
+  status: CouponPurchaseStatus;
+  amount: number;
+  currency: string;
+  paymentMethod: string;
+  reference: string;
+  transferTargetId?: string | null;
+  transferTargetName?: string | null;
+  slipImage?: string | null;
+  slipImageHash?: string | null;
+  slipFileName?: string | null;
+  slipMimeType?: string | null;
+  slipUploadedAt?: string | null;
+  customerNote?: string | null;
+  adminNote?: string | null;
+  reviewedByAdminId?: string | null;
+  reviewChecklist?: unknown;
+  confirmedAt?: string | null;
+  rejectedAt?: string | null;
+  expiresAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  user: {
+    id: string;
+    displayName: string;
+    phone?: string | null;
+    lineUserId?: string | null;
+    avatarUrl?: string | null;
+  };
+  branch: {
+    id: string;
+    code: string;
+    name: string;
+    shortName?: string | null;
+    promptPayId?: string | null;
+    promptPayName?: string | null;
+  };
+  paymentAccount?: {
+    id: string;
+    code: string;
+    displayName: string;
+    accountType: CouponPaymentAccountType;
+    branchId?: string | null;
+    promptPayId: string;
+    promptPayName: string;
+    bankName?: string | null;
+    accountName?: string | null;
+    accountNumber?: string | null;
+    isActive?: boolean;
+    isDefault?: boolean;
+  } | null;
+  coupon: {
+    id: string;
+    code: string;
+    title: string;
+    description?: string | null;
+    scope: CouponScope;
+    status: CouponStatus;
+    discountType: DiscountType;
+    discountValue: number;
+    minSpend: number;
+    maxUses: number;
+    usedCount: number;
+    isPurchasable: boolean;
+    purchasePrice: number;
+    branchIds: string[];
+    packageIds: string[];
+    validFrom: string;
+    validUntil: string;
+  };
+  issuedUserCoupon?: {
+    id: string;
+    status: string;
+    claimedAt: string;
+    redeemedAt?: string | null;
+  } | null;
+}
+
+export interface AdminCouponPaymentAccountRecord {
+  id: string;
+  code: string;
+  displayName: string;
+  accountType: CouponPaymentAccountType;
+  branchId?: string | null;
+  promptPayId: string;
+  promptPayName: string;
+  bankName?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  isActive: boolean;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+  purchaseCount: number;
+  branch?: BranchOption | null;
 }
 
 export interface AdminPromotionRecord {
@@ -811,6 +1207,13 @@ export async function fetchSessions(params?: {
   );
 }
 
+export async function fetchSessionLogs(sessionId: string, branchId?: string | null) {
+  const response = await request<{ data: AdminSessionLogs }>(
+    withBranch(`/api/admin/sessions/${sessionId}/logs`, branchId)
+  );
+  return response.data;
+}
+
 export async function fetchRevenue(days = 30, branchId?: string | null) {
   const response = await request<{ data: RevenueData }>(withBranch('/api/admin/revenue', branchId, { days }));
   return response.data;
@@ -829,6 +1232,80 @@ export async function fetchCustomers(params?: {
       search: params?.search,
     })
   );
+}
+
+export async function fetchAdminMemberships(params?: {
+  branchId?: string | null;
+  page?: number;
+  limit?: number;
+  search?: string;
+  status?: MembershipStatus | 'all';
+}) {
+  return request<{
+    data: AdminMembershipRecord[];
+    total: number;
+    page: number;
+    limit: number;
+    summary: AdminMembershipSummary;
+  }>(
+    withBranch('/api/admin/memberships', params?.branchId, {
+      page: params?.page,
+      limit: params?.limit,
+      search: params?.search,
+      status: params?.status && params.status !== 'all' ? params.status : undefined,
+    })
+  );
+}
+
+export async function fetchAdminStamps(params?: {
+  branchId?: string | null;
+  page?: number;
+  limit?: number;
+  search?: string;
+}) {
+  return request<{
+    data: AdminStampCustomerRecord[];
+    total: number;
+    page: number;
+    limit: number;
+    summary: AdminStampSummary;
+  }>(
+    withBranch('/api/admin/stamps', params?.branchId, {
+      page: params?.page,
+      limit: params?.limit,
+      search: params?.search,
+    })
+  );
+}
+
+export async function fetchAdminStampHistory(userId: string, branchId?: string | null) {
+  const response = await request<{ data: AdminStampHistory }>(withBranch(`/api/admin/stamps/${userId}/history`, branchId));
+  return response.data;
+}
+
+export async function adjustAdminStamp(
+  userId: string,
+  payload: {
+    delta: number;
+    reason: string;
+  },
+  branchId?: string | null
+) {
+  const response = await request<{
+    data: {
+      message: string;
+      beforeCount: number;
+      afterCount: number;
+      stamp: NonNullable<AdminStampCustomerRecord['stamp']> & {
+        userId: string;
+        updatedAt: string;
+      };
+    };
+  }>(withBranch(`/api/admin/stamps/${userId}/adjust`, branchId), {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return response.data;
 }
 
 export async function fetchPayments(params?: {
@@ -881,6 +1358,26 @@ export async function reconcileAdminPayment(
   const response = await request<{ data: SessionRecord }>(`/api/admin/payments/${paymentId}/reconcile`, {
     method: 'POST',
     body: JSON.stringify(payload ?? {}),
+  });
+  return response.data;
+}
+
+export async function createCashierPayment(payload: {
+  branchId: string;
+  machineId: string;
+  packageId: string;
+  carSize: 'S' | 'M' | 'L';
+  amount: number;
+  paymentMethod: 'cash' | 'manual';
+  customerName?: string;
+  customerPhone?: string;
+  lineUserId?: string;
+  receiptImage?: string;
+  note?: string;
+}) {
+  const response = await request<{ data: PaymentRecord }>('/api/admin/cashier/payments', {
+    method: 'POST',
+    body: JSON.stringify(payload),
   });
   return response.data;
 }
@@ -1067,6 +1564,8 @@ export async function createAdminCoupon(payload: {
   minSpend: number;
   maxUses: number;
   maxUsesPerUser: number;
+  isPurchasable: boolean;
+  purchasePrice: number;
   packageIds: string[];
   branchIds: string[];
   validFrom: string;
@@ -1092,6 +1591,8 @@ export async function updateAdminCoupon(
     minSpend: number;
     maxUses: number;
     maxUsesPerUser: number;
+    isPurchasable: boolean;
+    purchasePrice: number;
     packageIds: string[];
     branchIds: string[];
     validFrom: string;
@@ -1110,6 +1611,103 @@ export async function setAdminCouponActivation(couponId: string, isActive: boole
     method: 'PATCH',
     body: JSON.stringify({ isActive }),
   });
+  return response.data;
+}
+
+export async function fetchAdminCouponPaymentAccounts(params?: { branchId?: string | null }) {
+  const response = await request<{ data: AdminCouponPaymentAccountRecord[] }>(
+    withBranch('/api/admin/coupon-payment-accounts', params?.branchId)
+  );
+  return response.data;
+}
+
+export async function createAdminCouponPaymentAccount(payload: {
+  code?: string;
+  displayName: string;
+  accountType: CouponPaymentAccountType;
+  branchId?: string | null;
+  promptPayId: string;
+  promptPayName: string;
+  bankName?: string | null;
+  accountName?: string | null;
+  accountNumber?: string | null;
+  isActive?: boolean;
+  isDefault?: boolean;
+}) {
+  const response = await request<{ data: AdminCouponPaymentAccountRecord }>('/api/admin/coupon-payment-accounts', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+  return response.data;
+}
+
+export async function updateAdminCouponPaymentAccount(
+  accountId: string,
+  payload: Partial<{
+    code: string;
+    displayName: string;
+    accountType: CouponPaymentAccountType;
+    branchId: string | null;
+    promptPayId: string;
+    promptPayName: string;
+    bankName: string | null;
+    accountName: string | null;
+    accountNumber: string | null;
+    isActive: boolean;
+    isDefault: boolean;
+  }>
+) {
+  const response = await request<{ data: AdminCouponPaymentAccountRecord }>(
+    `/api/admin/coupon-payment-accounts/${accountId}`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }
+  );
+  return response.data;
+}
+
+export async function fetchAdminCouponPurchases(params?: {
+  branchId?: string | null;
+  status?: CouponPurchaseStatus | 'all';
+  search?: string;
+}) {
+  const response = await request<{ data: AdminCouponPurchaseRecord[] }>(
+    withBranch('/api/admin/coupon-purchases', params?.branchId, {
+      status: params?.status && params.status !== 'all' ? params.status : undefined,
+      search: params?.search,
+    })
+  );
+  return response.data;
+}
+
+export async function approveAdminCouponPurchase(
+  purchaseId: string,
+  payload?: {
+    adminNote?: string;
+    amountMatches?: boolean;
+    referenceMatches?: boolean;
+    accountMatches?: boolean;
+  }
+) {
+  const response = await request<{ data: AdminCouponPurchaseRecord }>(
+    `/api/admin/coupon-purchases/${purchaseId}/approve`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload ?? {}),
+    }
+  );
+  return response.data;
+}
+
+export async function rejectAdminCouponPurchase(purchaseId: string, adminNote?: string) {
+  const response = await request<{ data: AdminCouponPurchaseRecord }>(
+    `/api/admin/coupon-purchases/${purchaseId}/reject`,
+    {
+      method: 'POST',
+      body: JSON.stringify(adminNote ? { adminNote } : {}),
+    }
+  );
   return response.data;
 }
 
@@ -1394,10 +1992,15 @@ const api = {
   fetchSessions,
   fetchRevenue,
   fetchCustomers,
+  fetchAdminMemberships,
+  fetchAdminStamps,
+  fetchAdminStampHistory,
+  adjustAdminStamp,
   fetchPayments,
   fetchPaymentDetail,
   verifyAdminPayment,
   reconcileAdminPayment,
+  createCashierPayment,
   fetchAdminUsers,
   createAdminUser,
   updateAdminUser,
@@ -1412,6 +2015,12 @@ const api = {
   createAdminCoupon,
   updateAdminCoupon,
   setAdminCouponActivation,
+  fetchAdminCouponPaymentAccounts,
+  createAdminCouponPaymentAccount,
+  updateAdminCouponPaymentAccount,
+  fetchAdminCouponPurchases,
+  approveAdminCouponPurchase,
+  rejectAdminCouponPurchase,
   fetchAdminPromotions,
   createAdminPromotion,
   updateAdminPromotion,
@@ -1432,6 +2041,7 @@ const api = {
   updatePaymentConfigGovernance,
   fetchPaymentConfigAudit,
   sendMachineCommand,
+  fetchSessionLogs,
   USE_API,
 };
 

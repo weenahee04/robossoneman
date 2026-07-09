@@ -69,6 +69,13 @@ enum PaymentStatus {
   expired
 }
 
+enum MembershipStatus {
+  pending
+  active
+  expired
+  cancelled
+}
+
 enum WashSessionStatus {
   pending_payment
   payment_failed
@@ -95,6 +102,20 @@ enum CouponStatus {
   active
   inactive
   archived
+}
+
+enum CouponPurchaseStatus {
+  pending_transfer
+  pending_review
+  confirmed
+  rejected
+  expired
+  cancelled
+}
+
+enum CouponPaymentAccountType {
+  hq
+  branch
 }
 
 enum UserCouponStatus {
@@ -150,9 +171,12 @@ model User {
   sessions         WashSession[]
   payments         Payment[]
   coupons          UserCoupon[]
+  couponPurchases  CouponPurchase[]
   couponRedemptions CouponRedemption[]
   points           PointsTransaction[]
   stamps           Stamp[]
+  stampTransactions StampTransaction[]
+  memberships      UserMembership[]
   notifications    Notification[]
   feedback         Feedback[]
   piggyBank        PiggyBank?
@@ -207,7 +231,10 @@ model Branch {
   paymentConfigs    BranchPaymentConfig[]
   packageConfigs   BranchPackageConfig[]
   couponBranches   CouponBranchLink[]
+  couponPurchases  CouponPurchase[]
+  couponPaymentAccounts CouponPaymentAccount[]
   couponRedemptions CouponRedemption[]
+  stampTransactions StampTransaction[]
   scanTokens       MachineScanToken[]
   adminScopes      AdminBranchScope[]
   auditLogs        AuditLog[]
@@ -300,6 +327,7 @@ model WashPackage {
 
   branchConfigs BranchPackageConfig[]
   sessions      WashSession[]
+  stampTransactions StampTransaction[]
 
   @@map("wash_packages")
 }
@@ -367,6 +395,7 @@ model WashSession {
   payment         Payment?
   couponRedemption CouponRedemption?
   points          PointsTransaction[]
+  stampTransaction StampTransaction?
 
   @@map("wash_sessions")
 }
@@ -495,6 +524,54 @@ model PaymentAttempt {
   @@map("payment_attempts")
 }
 
+model MembershipPlan {
+  id                 String   @id @default(uuid())
+  code               String   @unique
+  name               String
+  description        String?
+  price              Int
+  currency           String   @default("THB")
+  washLimit          Int      @default(10) @map("wash_limit")
+  grapheneLimit      Int      @default(2) @map("graphene_limit")
+  freeVacuumPerVisit Boolean  @default(true) @map("free_vacuum_per_visit")
+  vipFastLane        Boolean  @default(true) @map("vip_fast_lane")
+  isActive           Boolean  @default(true) @map("is_active")
+  sortOrder          Int      @default(0) @map("sort_order")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  memberships UserMembership[]
+
+  @@map("membership_plans")
+}
+
+model UserMembership {
+  id               String           @id @default(uuid())
+  userId           String           @map("user_id")
+  planId           String           @map("plan_id")
+  status           MembershipStatus @default(pending)
+  washUsed         Int              @default(0) @map("wash_used")
+  grapheneUsed     Int              @default(0) @map("graphene_used")
+  paymentAmount    Int              @default(0) @map("payment_amount")
+  paymentCurrency  String           @default("THB") @map("payment_currency")
+  paymentStatus    String           @default("mock_confirmed") @map("payment_status")
+  paymentReference String?          @unique @map("payment_reference")
+  activatedAt      DateTime?        @map("activated_at")
+  expiresAt        DateTime?        @map("expires_at")
+  cancelledAt      DateTime?        @map("cancelled_at")
+  lastUsedAt       DateTime?        @map("last_used_at")
+  metadata         Json?
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan MembershipPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([userId, status])
+  @@index([planId, status])
+  @@map("user_memberships")
+}
+
 model Coupon {
   id              String        @id @default(uuid())
   code            String        @unique
@@ -508,6 +585,8 @@ model Coupon {
   maxUses         Int           @default(0) @map("max_uses")
   maxUsesPerUser  Int           @default(1) @map("max_uses_per_user")
   usedCount       Int           @default(0) @map("used_count")
+  isPurchasable   Boolean       @default(false) @map("is_purchasable")
+  purchasePrice   Int           @default(0) @map("purchase_price")
   packageIds      String[]      @default([]) @map("package_ids")
   validFrom       DateTime      @map("valid_from")
   validUntil      DateTime      @map("valid_until")
@@ -516,6 +595,7 @@ model Coupon {
 
   branches     CouponBranchLink[]
   users        UserCoupon[]
+  purchases    CouponPurchase[]
   redemptions  CouponRedemption[]
 
   @@map("coupons")
@@ -545,9 +625,77 @@ model UserCoupon {
   user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   coupon     Coupon            @relation(fields: [couponId], references: [id], onDelete: Cascade)
   redemption CouponRedemption?
+  purchase   CouponPurchase?
 
   @@unique([userId, couponId])
   @@map("user_coupons")
+}
+
+model CouponPurchase {
+  id                 String               @id @default(uuid())
+  userId             String               @map("user_id")
+  couponId           String               @map("coupon_id")
+  branchId           String               @map("branch_id")
+  paymentAccountId   String?              @map("payment_account_id")
+  issuedUserCouponId String?              @unique @map("issued_user_coupon_id")
+  status             CouponPurchaseStatus @default(pending_transfer)
+  amount             Int
+  currency           String               @default("THB")
+  paymentMethod      String               @default("bank_transfer") @map("payment_method")
+  reference          String               @unique
+  transferTargetId   String?              @map("transfer_target_id")
+  transferTargetName String?              @map("transfer_target_name")
+  slipImage          String?              @map("slip_image")
+  slipImageHash      String?              @unique @map("slip_image_hash")
+  slipFileName       String?              @map("slip_file_name")
+  slipMimeType       String?              @map("slip_mime_type")
+  slipUploadedAt     DateTime?            @map("slip_uploaded_at")
+  customerNote       String?              @map("customer_note")
+  adminNote          String?              @map("admin_note")
+  reviewedByAdminId  String?              @map("reviewed_by_admin_id")
+  reviewChecklist    Json?                @map("review_checklist")
+  confirmedAt        DateTime?            @map("confirmed_at")
+  rejectedAt         DateTime?            @map("rejected_at")
+  expiresAt          DateTime?            @map("expires_at")
+  metadata           Json?
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  user             User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  coupon           Coupon      @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  branch           Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  paymentAccount   CouponPaymentAccount? @relation(fields: [paymentAccountId], references: [id], onDelete: SetNull)
+  issuedUserCoupon UserCoupon? @relation(fields: [issuedUserCouponId], references: [id], onDelete: SetNull)
+
+  @@index([userId, status])
+  @@index([couponId, status])
+  @@index([branchId, status])
+  @@index([paymentAccountId, status])
+  @@map("coupon_purchases")
+}
+
+model CouponPaymentAccount {
+  id            String                   @id @default(uuid())
+  code          String                   @unique
+  displayName   String                   @map("display_name")
+  accountType   CouponPaymentAccountType @default(hq) @map("account_type")
+  branchId      String?                  @map("branch_id")
+  promptPayId   String                   @map("promptpay_id")
+  promptPayName String                   @map("promptpay_name")
+  bankName      String?                  @map("bank_name")
+  accountName   String?                  @map("account_name")
+  accountNumber String?                  @map("account_number")
+  isActive      Boolean                  @default(true) @map("is_active")
+  isDefault     Boolean                  @default(false) @map("is_default")
+  createdAt     DateTime                 @default(now()) @map("created_at")
+  updatedAt     DateTime                 @updatedAt @map("updated_at")
+
+  branch    Branch?          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  purchases CouponPurchase[]
+
+  @@index([accountType, isActive, isDefault])
+  @@index([branchId, isActive, isDefault])
+  @@map("coupon_payment_accounts")
 }
 
 model CouponRedemption {
@@ -616,8 +764,35 @@ model Stamp {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions StampTransaction[]
 
   @@map("stamps")
+}
+
+model StampTransaction {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  stampId       String    @map("stamp_id")
+  sessionId     String    @unique @map("session_id")
+  branchId      String    @map("branch_id")
+  packageId     String    @map("package_id")
+  stampCount    Int       @map("stamp_count")
+  rawStampCount Int       @map("raw_stamp_count")
+  reason        String    @default("wash_completed")
+  metadata      Json?
+  voidedAt      DateTime? @map("voided_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stamp   Stamp       @relation(fields: [stampId], references: [id], onDelete: Cascade)
+  session WashSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  branch  Branch      @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  package WashPackage @relation(fields: [packageId], references: [id], onDelete: Restrict)
+
+  @@index([userId, createdAt])
+  @@index([stampId, createdAt])
+  @@index([branchId, createdAt])
+  @@map("stamp_transactions")
 }
 
 model Notification {

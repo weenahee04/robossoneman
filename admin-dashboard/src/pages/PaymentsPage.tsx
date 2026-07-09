@@ -291,7 +291,7 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
   const canRunกระทบยอด = !!selectedPayment && actionBusy === null;
 
   return (
-    <div className="max-w-[1480px] space-y-6">
+    <div className="w-full max-w-[1480px] space-y-4 sm:space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">การชำระเงิน</h2>
@@ -299,7 +299,7 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
             การจัดการการชำระเงินจริงสำหรับ {admin.role === 'hq_admin' ? 'มองเห็นทุกสาขา' : 'ขอบเขตสาขาที่ได้รับมอบหมาย'}.
           </p>
         </div>
-        <div className="grid gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
             <p className="text-xs uppercase tracking-[0.2em] text-gray-500">การชำระเงิน</p>
             <p className="mt-2 text-2xl font-black text-white">{summary.total.toLocaleString()}</p>
@@ -322,8 +322,8 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
 
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
-        <section className="space-y-4">
+      <div className="grid min-w-0 grid-cols-1 gap-4 lg:gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+        <section className="min-w-0 space-y-4">
           <div className="gradient-card rounded-2xl p-4">
             <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
               <div className="relative">
@@ -365,7 +365,44 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
             </div>
           </div>
 
-          <div className="gradient-card overflow-hidden rounded-2xl">
+          <div className="space-y-3 lg:hidden">
+            {payments.map((payment) => {
+              const isActive = payment.id === selectedPaymentId;
+              return (
+                <button
+                  key={payment.id}
+                  type="button"
+                  onClick={() => setSelectedPaymentId(payment.id)}
+                  className={`w-full rounded-2xl border p-4 text-left transition ${
+                    isActive ? 'border-red-200 bg-red-50 shadow-sm' : 'border-slate-200 bg-white/90 hover:border-red-200'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-black text-slate-950">{payment.reference || payment.id.slice(0, 8)}</p>
+                      <p className="mt-1 truncate text-xs text-slate-500">{payment.branch.shortName || payment.branch.name}</p>
+                    </div>
+                    <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide ${getสถานะTone(payment.status)}`}>
+                      {formatสถานะLabel(payment.status)}
+                    </span>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                    <MobilePaymentInfo label="ลูกค้า" value={payment.session.user.displayName} />
+                    <MobilePaymentInfo label="เครื่อง" value={payment.session.machine.name} />
+                    <MobilePaymentInfo label="ผู้ให้บริการ" value={payment.provider} />
+                    <MobilePaymentInfo label="ยอดเงิน" value={`${payment.amount.toLocaleString()} ${payment.currency}`} strong />
+                  </div>
+                  {payment.needsManualReview && (
+                    <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
+                      ต้องตรวจสอบรายการนี้
+                    </p>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="gradient-card hidden overflow-hidden rounded-2xl lg:block">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -434,8 +471,8 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
           </div>
         </section>
 
-        <section className="space-y-4">
-          <div className="gradient-card rounded-2xl p-5">
+        <section className="min-w-0 space-y-4">
+          <div className="gradient-card rounded-2xl p-4 sm:p-5">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h3 className="font-semibold text-white">รายละเอียดการชำระเงิน</h3>
@@ -454,7 +491,7 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
               <div className="space-y-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-lg font-semibold text-white">{selectedPayment.reference || selectedPayment.id}</p>
+                    <p className="break-all text-base font-semibold text-white sm:text-lg">{selectedPayment.reference || selectedPayment.id}</p>
                     <p className="text-sm text-gray-500">
                       {selectedPayment.branch.shortName || selectedPayment.branch.name} - รอบล้าง {selectedPayment.session.id}
                     </p>
@@ -469,7 +506,7 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {[
                     ['ยอดเงิน', `${selectedPayment.amount.toLocaleString()} ${selectedPayment.currency}`],
                     ['สถานะจากผู้ให้บริการ', selectedPayment.providerStatus || 'ไม่มีข้อมูล'],
@@ -671,6 +708,15 @@ export function PaymentsPage({ admin, branchId }: PaymentsPageProps) {
           </div>
         </section>
       </div>
+    </div>
+  );
+}
+
+function MobilePaymentInfo({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
+  return (
+    <div className="min-w-0 rounded-xl bg-slate-50 px-3 py-2.5">
+      <p className="text-[11px] font-bold uppercase tracking-wide text-slate-500">{label}</p>
+      <p className={`mt-1 truncate text-sm ${strong ? 'font-black text-slate-950' : 'font-semibold text-slate-800'}`}>{value}</p>
     </div>
   );
 }

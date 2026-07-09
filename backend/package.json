@@ -12,6 +12,7 @@
     "verify:system:local": "prisma generate && tsx scripts/system-verification.ts",
     "verify:env": "tsx scripts/verify-env.ts",
     "verify:production": "tsx scripts/production-readiness.ts",
+    "line:rich-menu": "tsx scripts/line-rich-menu.ts",
     "smoke": "tsx scripts/smoke.ts",
     "smoke:payment-provider": "tsx scripts/payment-provider-smoke.ts",
     "db:generate": "prisma generate",

@@ -10,6 +10,7 @@ export default defineConfig({
     },
   },
   server: {
+    allowedHosts: ['.trycloudflare.com', '.loca.lt'],
     proxy: {
       '/api': {
         target: 'http://localhost:3001',

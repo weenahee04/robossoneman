@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useBranch } from '../services/branchContext';
 import { getPromotionsForBranch } from '../services/branchOffers';
-import { usePromotions as useApiPromotions } from '@/hooks/useApi';
+import { useActivateMembership, useMembership, usePromotions as useApiPromotions } from '@/hooks/useApi';
 import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -32,6 +32,8 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
   const navigate = useNavigate();
   const { branch } = useBranch();
   const { data: apiPromotions } = useApiPromotions(branch.id);
+  const { data: membershipOverview } = useMembership(HAS_API_BASE_URL);
+  const activateMembership = useActivateMembership();
 
   const promotions: Promotion[] = useMemo(() => {
     if (HAS_API_BASE_URL && apiPromotions) {
@@ -56,6 +58,7 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
   }, [apiPromotions, branch.id]);
 
   const [selectedPromo, setSelectedPromo] = useState<Promotion | null>(null);
+  const memberPlans = membershipOverview?.plans ?? [];
 
   const handleUsePromotion = (promotion: Promotion) => {
     setWashFlowIntent({
@@ -71,6 +74,11 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
     });
     setSelectedPromo(null);
     navigate('/carwash');
+  };
+
+  const handleBuyMemberPackage = async (planCode: string) => {
+    await activateMembership.mutateAsync(planCode);
+    navigate('/member');
   };
 
   return (
@@ -89,8 +97,96 @@ export function PromotionPage({ onBack }: PromotionPageProps) {
 
       {/* Banner List */}
       <div className="flex-1 overflow-y-auto no-scrollbar px-4 py-5 space-y-4 pb-10">
+        <section className="space-y-3">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-app-red">Member Packages</p>
+              <h2 className="mt-1 text-xl font-black text-white">ซื้อแพ็กเพื่อเปิด Active Member</h2>
+              <p className="mt-1 text-xs text-white/35">ซื้อจากหน้านี้ก่อน แล้วแพ็กจะไปขึ้นในหน้า Member</p>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => navigate('/member')}
+              className="h-9 rounded-full px-3 text-xs text-white/60 hover:text-white"
+            >
+              ดู Member
+            </Button>
+          </div>
+
+          <div className="space-y-3">
+            {memberPlans.map((plan) => {
+              const isActive = Boolean(plan.active || plan.membership?.status === 'active');
+              const isBuying = activateMembership.isPending;
+
+              return (
+                <motion.div
+                  key={plan.code}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className={`rounded-2xl border p-4 ${
+                    isActive
+                      ? 'border-app-red/30 bg-gradient-to-br from-[#170607] via-[#101010] to-black'
+                      : 'border-white/5 bg-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase ${isActive ? 'bg-app-red text-white' : 'bg-white/5 text-white/35'}`}>
+                          {isActive ? 'ACTIVE' : 'ยังไม่ซื้อ'}
+                        </span>
+                        <span className="text-[9px] font-black uppercase tracking-wide text-app-red">{plan.badge || plan.groupLabel}</span>
+                      </div>
+                      <h3 className="mt-2 text-base font-black text-white">{plan.name}</h3>
+                      <p className="mt-1 text-xs text-white/45">{plan.headline || plan.description}</p>
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="text-lg font-black text-white">{plan.price.toLocaleString()}</p>
+                      <p className="text-[9px] font-bold uppercase text-white/30">THB</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-white/5 bg-black/20 p-2">
+                      <p className="text-[10px] text-white/30">Wash credit</p>
+                      <p className="mt-0.5 text-sm font-black text-white">{plan.membership?.washUsed ?? 0}/{plan.washLimit}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/5 bg-black/20 p-2">
+                      <p className="text-[10px] text-white/30">Graphene</p>
+                      <p className="mt-0.5 text-sm font-black text-white">{plan.membership?.grapheneUsed ?? 0}/{plan.grapheneLimit}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/5 bg-black/20 p-2">
+                      <p className="text-[10px] text-white/30">Vacuum</p>
+                      <p className="mt-0.5 text-sm font-black text-white">{plan.freeVacuumPerVisit ? 'YES' : 'NO'}</p>
+                    </div>
+                    <div className="rounded-xl border border-white/5 bg-black/20 p-2">
+                      <p className="text-[10px] text-white/30">Priority</p>
+                      <p className="mt-0.5 text-sm font-black text-white">{plan.vipFastLane ? 'YES' : 'NO'}</p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <p className="text-[10px] text-white/35">{plan.termLabel || 'Package'} · ซื้อแล้วไปขึ้นหน้า Member</p>
+                    <Button
+                      type="button"
+                      disabled={isActive || isBuying}
+                      onClick={() => void handleBuyMemberPackage(plan.code)}
+                      className={`h-10 rounded-full px-4 text-xs font-black ${
+                        isActive ? 'bg-white/10 text-white/45' : 'bg-app-red text-white hover:bg-red-600'
+                      }`}
+                    >
+                      {isActive ? 'ACTIVE' : isBuying ? 'BUYING...' : 'BUY PACKAGE'}
+                    </Button>
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+        </section>
+
         {promotions.length === 0 && (
-          <div className="text-center py-16 text-white/30 text-sm">ยังไม่มีโปรโมชั่นสำหรับสาขานี้</div>
+          <div className="text-center py-8 text-white/30 text-sm">ยังไม่มีโปรโมชั่นส่วนลดสำหรับสาขานี้</div>
         )}
         {promotions.map((promo, index) =>
         <motion.button

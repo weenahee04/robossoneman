@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import Lottie from 'lottie-react';
 import fireAnimation from '../Fire.json';
@@ -9,10 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { getIconUrl, type IconName } from '../services/icons';
 import { listenToUser, formatPoints } from '../services/points';
+import { STAMP_TARGET_COUNT, addLocalStamps, readLocalStampCount, writeLocalStampCount } from '../services/stamps';
 import type { User as MockUser } from '../services/mockData';
 import { useAuth } from '@/contexts/AuthContext';
-import { useSessionHistory, useStamps, usePointsBalance } from '@/hooks/useApi';
+import { useSessionHistory, useStamps, usePointsBalance, useMembership } from '@/hooks/useApi';
 import { HAS_API_BASE_URL, USE_LOCAL_DEV_FALLBACK } from '@/lib/runtime';
+import type { MembershipOverview, MembershipPlan } from '@/types';
 
 const ICONS8_BASE = 'https://img.icons8.com/?format=png&size=';
 
@@ -32,8 +35,9 @@ function IconBox({ id, size = 14, boxSize = 'w-9 h-9' }: { id: string | number; 
   );
 }
 
-const TOTAL_STAMPS = 10;
-const STORAGE_KEY = 'roboss_stamps';
+const TOTAL_STAMPS = STAMP_TARGET_COUNT;
+const GRAPHENE_MEMBERSHIP_STORAGE_KEY = 'roboss_graphene_membership_active';
+const DEFAULT_MEMBER_PLAN_CODE = 'GRAPHENE_MEMBERSHIP';
 
 const memberTiers = [
   { name: 'Bronze', min: 0, max: 5000 },
@@ -55,17 +59,190 @@ const fallbackTransactions = [
   { id: 3, service: 'QUICK & CLEAN', branch: 'สาขาบางนา', date: '10 มี.ค.', points: '+990', iconId: 25107 },
 ];
 
+const localMemberPlans: MembershipPlan[] = [
+  {
+    id: 'plan_graphene_1290',
+    code: DEFAULT_MEMBER_PLAN_CODE,
+    name: 'ROBOSS Graphene Bundle',
+    headline: '10 Washes + 2 Graphene Shield',
+    description: '10 washes, 2x Graphene Shield, free vacuum, VIP Fast Lane',
+    price: 1290,
+    currency: 'THB',
+    washLimit: 10,
+    grapheneLimit: 2,
+    freeVacuumPerVisit: true,
+    vipFastLane: true,
+    group: 'best_seller',
+    groupLabel: 'Best Seller',
+    termLabel: 'Valid 12 months',
+    badge: 'Best conversion',
+    sortOrder: 1,
+  },
+  {
+    id: 'plan_quick_pass_777',
+    code: 'QUICK_PASS_777',
+    name: 'Quick Pass 777',
+    headline: 'Unlimited Quick Wash',
+    description: 'Fair-use 30 Quick washes per month',
+    price: 777,
+    currency: 'THB',
+    washLimit: 30,
+    grapheneLimit: 0,
+    freeVacuumPerVisit: false,
+    vipFastLane: false,
+    group: 'membership',
+    groupLabel: 'Monthly Membership',
+    termLabel: 'Monthly',
+    badge: 'Traffic driver',
+    sortOrder: 2,
+  },
+  {
+    id: 'plan_black_card_1499',
+    code: 'BLACK_CARD_1499',
+    name: 'ROBOSS Black Card',
+    headline: 'Quick + Vacuum + Priority',
+    description: 'Premium monthly active member card',
+    price: 1499,
+    currency: 'THB',
+    washLimit: 30,
+    grapheneLimit: 0,
+    freeVacuumPerVisit: true,
+    vipFastLane: true,
+    group: 'membership',
+    groupLabel: 'Monthly Membership',
+    termLabel: 'Monthly',
+    badge: 'VIP',
+    sortOrder: 3,
+  },
+  {
+    id: 'plan_buy_10_get_2_999',
+    code: 'BUY_10_GET_2_999',
+    name: 'Buy 10 Get 2',
+    headline: '12 wash credits',
+    description: 'Prepaid bundle for repeat customers',
+    price: 999,
+    currency: 'THB',
+    washLimit: 12,
+    grapheneLimit: 0,
+    freeVacuumPerVisit: false,
+    vipFastLane: false,
+    group: 'bundle',
+    groupLabel: 'Prepaid Bundle',
+    termLabel: 'Valid 6 months',
+    badge: 'Bundle',
+    sortOrder: 7,
+  },
+];
+
+function buildPlanBenefits(plan: MembershipPlan, active: boolean) {
+  return [
+    {
+      key: 'washes',
+      title: `${plan.washLimit} Washes`,
+      description: plan.washLimit > 0 ? 'Wash credits unlocked after activation' : 'No wash credits',
+      used: 0,
+      limit: plan.washLimit,
+      remaining: active ? plan.washLimit : 0,
+      enabled: active && plan.washLimit > 0,
+    },
+    {
+      key: 'graphene_shield',
+      title: `${plan.grapheneLimit}x Graphene`,
+      description: plan.grapheneLimit > 0 ? 'Graphene Shield upgrade credits' : 'No Graphene credits',
+      used: 0,
+      limit: plan.grapheneLimit,
+      remaining: active ? plan.grapheneLimit : 0,
+      enabled: active && plan.grapheneLimit > 0,
+    },
+    {
+      key: 'free_vacuum',
+      title: 'Free Vacuum',
+      description: 'Included every eligible visit',
+      used: 0,
+      limit: plan.washLimit || null,
+      remaining: active ? plan.washLimit : 0,
+      enabled: active && plan.freeVacuumPerVisit,
+    },
+    {
+      key: 'vip_fast_lane',
+      title: 'VIP Fast Lane',
+      description: 'Priority service queue',
+      used: 0,
+      limit: null,
+      remaining: null,
+      enabled: active && plan.vipFastLane,
+    },
+  ];
+}
+
+function buildLocalMembershipOverview(activePlanCodes: string[]): MembershipOverview {
+  const now = new Date().toISOString();
+  const plans = localMemberPlans.map((plan) => {
+    const active = activePlanCodes.includes(plan.code);
+    return {
+      ...plan,
+      active,
+      benefits: buildPlanBenefits(plan, active),
+      membership: active
+        ? {
+            id: `local_${plan.code.toLowerCase()}`,
+            status: 'active' as const,
+            washUsed: 0,
+            grapheneUsed: 0,
+            washRemaining: plan.washLimit,
+            grapheneRemaining: plan.grapheneLimit,
+            paymentAmount: plan.price,
+            paymentCurrency: plan.currency,
+            paymentStatus: 'local_confirmed',
+            paymentReference: `LOCAL-${plan.code}`,
+            activatedAt: now,
+            expiresAt: null,
+            cancelledAt: null,
+            lastUsedAt: null,
+            createdAt: now,
+            updatedAt: now,
+          }
+        : null,
+    };
+  });
+  const featured = plans.find((plan) => plan.code === DEFAULT_MEMBER_PLAN_CODE) ?? plans[0];
+
+  return {
+    plan: featured,
+    membership: featured.membership ?? null,
+    active: Boolean(featured.active),
+    benefits: featured.benefits ?? [],
+    plans,
+    memberships: plans.map((plan) => plan.membership).filter(Boolean) as MembershipOverview['memberships'],
+    groups: [
+      { key: 'best_seller', label: 'Best Seller', description: 'ตัวหลักที่ขายง่ายและคุม margin ได้ดี' },
+      { key: 'membership', label: 'Monthly Membership', description: 'รายได้ประจำและสิทธิ์ active member' },
+      { key: 'bundle', label: 'Prepaid Bundle', description: 'เติมเงินล่วงหน้า ใช้เครดิตเป็นครั้ง' },
+    ],
+  };
+}
+
 export function MemberCard({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
   const { user: authUser } = useAuth();
   const sessionHistoryQuery = useSessionHistory();
   const { data: apiStamps } = useStamps();
   const { data: apiPoints } = usePointsBalance();
+  const { data: apiMembership } = useMembership(Boolean(authUser));
   const [mockUser, setMockUser] = useState<MockUser | null>(null);
-
-  const [stamps, setStamps] = useState<number>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? parseInt(saved, 10) : 0;
+  const [localActivePlanCodes] = useState<string[]>(() => {
+    if (typeof window === 'undefined') return [];
+    const stored = window.localStorage.getItem(GRAPHENE_MEMBERSHIP_STORAGE_KEY);
+    if (stored === 'true') return [DEFAULT_MEMBER_PLAN_CODE];
+    try {
+      const parsed = stored ? JSON.parse(stored) : [];
+      return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+    } catch {
+      return [];
+    }
   });
+
+  const [stamps, setStamps] = useState<number>(readLocalStampCount);
   const [animating, setAnimating] = useState<number | null>(null);
   const [showReward, setShowReward] = useState(false);
 
@@ -97,22 +274,22 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     if (USE_LOCAL_DEV_FALLBACK) {
-      localStorage.setItem(STORAGE_KEY, String(stamps));
+      writeLocalStampCount(stamps);
     }
-    if (stamps === TOTAL_STAMPS) setTimeout(() => setShowReward(true), 400);
+    if (stamps >= TOTAL_STAMPS) setTimeout(() => setShowReward(true), 400);
   }, [stamps]);
 
   const addStamp = () => {
     if (!USE_LOCAL_DEV_FALLBACK) return;
     if (stamps >= TOTAL_STAMPS) return;
-    const next = stamps + 1;
-    setAnimating(next - 1);
-    setStamps(next);
+    const { total } = addLocalStamps('quick');
+    setAnimating(total - 1);
+    setStamps(total);
     setTimeout(() => setAnimating(null), 800);
   };
   const reset = () => {
     if (!USE_LOCAL_DEV_FALLBACK) return;
-    setStamps(0);
+    setStamps(writeLocalStampCount(0));
     setShowReward(false);
   };
 
@@ -136,6 +313,27 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
 
     return USE_LOCAL_DEV_FALLBACK ? fallbackTransactions : [];
   }, [sessionHistoryQuery.data]);
+
+  const membershipOverview = useMemo(() => {
+    if (HAS_API_BASE_URL && apiMembership) {
+      return apiMembership;
+    }
+    return buildLocalMembershipOverview(localActivePlanCodes);
+  }, [apiMembership, localActivePlanCodes]);
+
+  const membershipPlan = membershipOverview.plan;
+  const memberPlans = membershipOverview.plans?.length ? membershipOverview.plans : [membershipPlan];
+  const activeMemberPlans = memberPlans.filter((plan) => plan.active || plan.membership?.status === 'active');
+  const activeMemberCount = activeMemberPlans.length;
+  const activeTotals = activeMemberPlans.reduce(
+    (totals, plan) => ({
+      washes: totals.washes + (plan.membership?.washRemaining ?? (plan.washLimit || 0)),
+      graphene: totals.graphene + (plan.membership?.grapheneRemaining ?? (plan.grapheneLimit || 0)),
+      vip: totals.vip || Boolean(plan.vipFastLane),
+      vacuum: totals.vacuum || Boolean(plan.freeVacuumPerVisit),
+    }),
+    { washes: 0, graphene: 0, vip: false, vacuum: false }
+  );
 
   const currentTier = memberTiers.find(t => (user?.points || 0) >= t.min && (user?.points || 0) < t.max) || memberTiers[0];
   const nextTier = memberTiers[memberTiers.indexOf(currentTier) + 1];
@@ -264,6 +462,131 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
                 </div>
               </div>
             </div>
+          </motion.div>
+
+          {/* Active Member Packages */}
+          <motion.div variants={itemVariants}>
+            <Card className="overflow-hidden border border-white/5 bg-white/[0.03]">
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-[0.18em] text-app-red">Active Member Wallet</p>
+                    <h2 className="mt-1 text-lg font-black leading-tight text-white">MY ACTIVE PACKAGES</h2>
+                    <p className="mt-1 text-xs text-white/45">
+                      {activeMemberCount ? `${activeMemberCount} active package${activeMemberCount > 1 ? 's' : ''}` : 'ยังไม่มีแพ็ก Active ให้ไปซื้อที่หน้าโปรโมชั่นก่อน'}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-app-red px-3 py-2 text-right text-white">
+                    <p className="text-[10px] font-bold uppercase tracking-wide">Source</p>
+                    <p className="text-base font-black">PROMO</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid grid-cols-4 gap-2">
+                  <div className="rounded-xl border border-white/5 bg-black/25 p-2">
+                    <p className="text-[9px] font-bold uppercase text-white/25">Packages</p>
+                    <p className="mt-1 text-base font-black text-white">{activeMemberCount}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-black/25 p-2">
+                    <p className="text-[9px] font-bold uppercase text-white/25">Wash left</p>
+                    <p className="mt-1 text-base font-black text-white">{activeTotals.washes}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-black/25 p-2">
+                    <p className="text-[9px] font-bold uppercase text-white/25">Graphene</p>
+                    <p className="mt-1 text-base font-black text-white">{activeTotals.graphene}</p>
+                  </div>
+                  <div className="rounded-xl border border-white/5 bg-black/25 p-2">
+                    <p className="text-[9px] font-bold uppercase text-white/25">VIP</p>
+                    <p className="mt-1 text-base font-black text-white">{activeTotals.vip ? 'ON' : 'OFF'}</p>
+                  </div>
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {!activeMemberPlans.length && (
+                    <div className="rounded-2xl border border-white/5 bg-black/20 p-4 text-center">
+                      <p className="text-sm font-bold text-white/75">ยังไม่มีแพ็กสมาชิก</p>
+                      <p className="mt-1 text-xs text-white/35">ซื้อแพ็กจากหน้าโปรโมชั่นก่อน แล้วรายการจะมาแสดงที่นี่เป็น Active</p>
+                      <Button
+                        type="button"
+                        onClick={() => navigate('/promotion')}
+                        className="mt-4 h-10 rounded-full bg-app-red px-5 text-xs font-black text-white hover:bg-red-600"
+                      >
+                        ไปซื้อแพ็กที่โปรโมชั่น
+                      </Button>
+                    </div>
+                  )}
+
+                  {activeMemberPlans.map((plan) => {
+                    const planBenefits = plan.benefits ?? buildPlanBenefits(plan, true);
+                    const primaryCredit = plan.grapheneLimit > 0 && plan.washLimit === 0
+                      ? `Graphene ${plan.membership?.grapheneUsed ?? 0}/${plan.grapheneLimit}`
+                      : `Wash ${plan.membership?.washUsed ?? 0}/${plan.washLimit}`;
+
+                    return (
+                      <div
+                        key={plan.code}
+                        className="rounded-2xl border border-app-red/30 bg-gradient-to-br from-[#170607] via-[#101010] to-black p-3"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded-full bg-app-red px-2 py-0.5 text-[9px] font-black uppercase text-white">
+                                ACTIVE
+                              </span>
+                              <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-black uppercase text-white/60">
+                                {plan.groupLabel || plan.group}
+                              </span>
+                              {plan.badge && <span className="text-[9px] font-bold uppercase tracking-wide text-app-red">{plan.badge}</span>}
+                            </div>
+                            <h3 className="mt-2 text-sm font-black text-white">{plan.name}</h3>
+                            <p className="mt-0.5 text-xs text-white/50">{plan.headline || plan.description}</p>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <p className="text-base font-black text-white">{plan.price.toLocaleString()}</p>
+                            <p className="text-[9px] font-bold uppercase text-white/25">THB</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          {planBenefits.map((benefit) => {
+                            const hasMeter = benefit.limit !== null && benefit.limit > 0;
+                            const value = hasMeter ? `${benefit.used}/${benefit.limit}` : benefit.enabled ? 'ON' : 'OFF';
+                            const percent = hasMeter && benefit.limit ? Math.min((benefit.used / benefit.limit) * 100, 100) : 0;
+
+                            return (
+                              <div key={benefit.key} className={`rounded-xl border p-2 ${benefit.enabled ? 'border-app-red/20 bg-app-red/10' : 'border-white/5 bg-black/20'}`}>
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className={`truncate text-[10px] font-bold ${benefit.enabled ? 'text-white' : 'text-white/25'}`}>{benefit.title}</p>
+                                  <span className={`shrink-0 text-[10px] font-black ${benefit.enabled ? 'text-app-red' : 'text-white/20'}`}>{value}</span>
+                                </div>
+                                {hasMeter && (
+                                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/5">
+                                    <div className={`h-full rounded-full ${benefit.enabled ? 'bg-app-red' : 'bg-white/10'}`} style={{ width: `${percent}%` }} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0 text-[10px] text-white/35">
+                            {`${primaryCredit} · ${plan.termLabel || 'Active'}`}
+                          </div>
+                          <Button
+                            disabled
+                            className="h-9 rounded-full bg-white/10 px-4 text-[10px] font-black text-white/45"
+                          >
+                            ACTIVE
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+              </div>
+            </Card>
           </motion.div>
 
           {/* Points + Tier */}

@@ -1,0 +1,467 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ROBOSS Machine Integration Brief</title>
+    <style>
+      :root {
+        --red: #c8102e;
+        --red-dark: #8f071b;
+        --ink: #151515;
+        --muted: #5e6673;
+        --line: #e6e8ec;
+        --paper: #ffffff;
+        --soft: #f7f8fa;
+        --black: #080808;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #eceff3;
+        font-family: "Noto Sans Thai", "Tahoma", "Arial", sans-serif;
+        color: var(--ink);
+      }
+
+      .sheet {
+        width: 1240px;
+        min-height: 1754px;
+        margin: 0 auto;
+        background: var(--paper);
+        overflow: hidden;
+        position: relative;
+      }
+
+      .topbar {
+        height: 34px;
+        background: linear-gradient(90deg, var(--black), var(--red-dark), var(--red));
+      }
+
+      .hero {
+        padding: 54px 68px 38px;
+        background:
+          linear-gradient(135deg, rgba(200, 16, 46, 0.12), rgba(255, 255, 255, 0) 48%),
+          radial-gradient(circle at 94% 10%, rgba(200, 16, 46, 0.22), rgba(255, 255, 255, 0) 28%),
+          #fff;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 32px;
+      }
+
+      .logo {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+
+      .mark {
+        width: 78px;
+        height: 78px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, var(--black), var(--red));
+        color: white;
+        display: grid;
+        place-items: center;
+        font-size: 34px;
+        font-weight: 900;
+        letter-spacing: 0;
+        box-shadow: 0 14px 30px rgba(200, 16, 46, 0.26);
+      }
+
+      .logo-text strong {
+        display: block;
+        font-size: 46px;
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .logo-text span {
+        display: block;
+        margin-top: 7px;
+        font-size: 20px;
+        color: var(--muted);
+      }
+
+      .tag {
+        border: 2px solid var(--red);
+        color: var(--red);
+        border-radius: 999px;
+        padding: 10px 20px;
+        font-size: 20px;
+        font-weight: 800;
+      }
+
+      h1 {
+        margin: 42px 0 14px;
+        max-width: 940px;
+        font-size: 54px;
+        line-height: 1.16;
+        letter-spacing: 0;
+      }
+
+      .subtitle {
+        max-width: 1020px;
+        font-size: 26px;
+        line-height: 1.55;
+        color: #323946;
+      }
+
+      .flow {
+        margin-top: 34px;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
+
+      .flow-item {
+        background: var(--black);
+        color: white;
+        border-radius: 14px;
+        min-height: 86px;
+        padding: 15px 13px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        font-size: 19px;
+        font-weight: 800;
+        line-height: 1.25;
+      }
+
+      .content {
+        padding: 44px 68px 54px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .section-title .bar {
+        width: 11px;
+        height: 42px;
+        border-radius: 8px;
+        background: var(--red);
+      }
+
+      .section-title h2 {
+        margin: 0;
+        font-size: 34px;
+        line-height: 1.15;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 18px;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 24px 25px 22px;
+        background: #fff;
+        min-height: 238px;
+        box-shadow: 0 10px 26px rgba(19, 24, 34, 0.055);
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-bottom: 14px;
+      }
+
+      .num {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: var(--red);
+        color: white;
+        display: grid;
+        place-items: center;
+        font-size: 21px;
+        font-weight: 900;
+        flex: 0 0 auto;
+      }
+
+      .card h3 {
+        margin: 0;
+        font-size: 27px;
+        line-height: 1.2;
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+
+      li {
+        position: relative;
+        padding-left: 24px;
+        margin: 8px 0;
+        font-size: 20px;
+        line-height: 1.42;
+        color: #2f3744;
+      }
+
+      li::before {
+        content: "";
+        position: absolute;
+        left: 2px;
+        top: 13px;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--red);
+      }
+
+      .wide {
+        margin-top: 22px;
+        display: grid;
+        grid-template-columns: 1.04fr 0.96fr;
+        gap: 18px;
+      }
+
+      .protocol {
+        background: linear-gradient(135deg, #101010, #252525);
+        color: white;
+        border-radius: 20px;
+        padding: 28px;
+      }
+
+      .protocol h3,
+      .testbox h3 {
+        margin: 0 0 17px;
+        font-size: 28px;
+      }
+
+      .code {
+        background: #050505;
+        border: 1px solid rgba(255, 255, 255, 0.13);
+        border-radius: 14px;
+        padding: 18px;
+        font-family: "Consolas", monospace;
+        font-size: 19px;
+        line-height: 1.5;
+        color: #f4f4f4;
+        white-space: pre-line;
+      }
+
+      .testbox {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 28px;
+      }
+
+      .footer {
+        margin-top: 32px;
+        border-radius: 20px;
+        background: #fff5f6;
+        border: 1px solid #ffd7de;
+        padding: 24px 28px;
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 24px;
+        align-items: center;
+      }
+
+      .footer strong {
+        display: block;
+        font-size: 27px;
+        margin-bottom: 8px;
+      }
+
+      .footer p {
+        margin: 0;
+        font-size: 21px;
+        line-height: 1.45;
+        color: #373d48;
+      }
+
+      .pill {
+        background: var(--red);
+        color: white;
+        border-radius: 999px;
+        padding: 15px 22px;
+        font-size: 22px;
+        font-weight: 900;
+        white-space: nowrap;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="sheet">
+      <div class="topbar"></div>
+      <section class="hero">
+        <div class="brand">
+          <div class="logo">
+            <div class="mark">R</div>
+            <div class="logo-text">
+              <strong>ROBOSS</strong>
+              <span>Machine Integration Brief</span>
+            </div>
+          </div>
+          <div class="tag">สำหรับโรงงานผลิตเครื่องล้างรถ</div>
+        </div>
+
+        <h1>ข้อมูลที่ต้องขอ เพื่อเชื่อมเครื่องล้างรถเข้ากับแอพ ROBOSS</h1>
+        <p class="subtitle">
+          เป้าหมายคือให้ระบบ ROBOSS สั่งเริ่มล้าง ตรวจสถานะเครื่อง รับ error/progress
+          และบันทึกประวัติลูกค้า คูปอง สแตมป์ และสมาชิกได้แบบอัตโนมัติ
+        </p>
+
+        <div class="flow">
+          <div class="flow-item">ลูกค้าเลือกแพ็กเกจ</div>
+          <div class="flow-item">ชำระเงิน / ใช้สิทธิ์</div>
+          <div class="flow-item">ระบบจองเครื่อง</div>
+          <div class="flow-item">สั่งเริ่มล้าง</div>
+          <div class="flow-item">เครื่องส่งสถานะกลับ</div>
+        </div>
+      </section>
+
+      <section class="content">
+        <div class="section-title">
+          <div class="bar"></div>
+          <h2>Checklist ที่ต้องได้จากโรงงาน</h2>
+        </div>
+
+        <div class="grid">
+          <article class="card">
+            <div class="card-head">
+              <div class="num">1</div>
+              <h3>สเปกเครื่องและโหมดล้าง</h3>
+            </div>
+            <ul>
+              <li>รุ่นเครื่อง จำนวน bay และอุปกรณ์ต่อพ่วง</li>
+              <li>โหมดล้างทั้งหมด เช่น Quick, Shine, Graphene</li>
+              <li>step ของแต่ละโหมดและเวลาต่อ step</li>
+              <li>sensor ที่มี เช่น รถเข้า, ประตู, emergency stop</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="num">2</div>
+              <h3>วิธีสั่งงานเครื่อง</h3>
+            </div>
+            <ul>
+              <li>ใช้ PLC, Relay, ESP32, RS485, Modbus, MQTT หรือ HTTP API</li>
+              <li>คำสั่ง start, pause, stop, reset, maintenance</li>
+              <li>รูปแบบ request / response และตัวอย่างจริง</li>
+              <li>เงื่อนไขก่อนเริ่มล้าง เช่น เครื่องว่างและ safety พร้อม</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="num">3</div>
+              <h3>สถานะและ error ที่ส่งกลับ</h3>
+            </div>
+            <ul>
+              <li>สถานะ idle, reserved, washing, completed, error, offline</li>
+              <li>progress เป็นเปอร์เซ็นต์หรือ step ปัจจุบัน</li>
+              <li>error code พร้อมความหมายทุกตัว</li>
+              <li>event ตอนเริ่มล้าง เสร็จ ยกเลิก หรือหยุดฉุกเฉิน</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="num">4</div>
+              <h3>Network และการเชื่อมต่อ</h3>
+            </div>
+            <ul>
+              <li>เครื่องต่อ LAN, Wi-Fi หรือ 4G router</li>
+              <li>รองรับ IP คงที่, VPN หรือ cloud MQTT หรือไม่</li>
+              <li>heartbeat ส่งทุก 10-30 วินาทีได้ไหม</li>
+              <li>ถ้าเน็ตหลุด เครื่องและระบบต้องทำงานอย่างไร</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="num">5</div>
+              <h3>ความปลอดภัยและกันสั่งผิด</h3>
+            </div>
+            <ul>
+              <li>เครื่องต้องมี machineId และ secret/token ประจำเครื่อง</li>
+              <li>รับคำสั่งเฉพาะ sessionId ที่ถูกต้องจากระบบ ROBOSS</li>
+              <li>reject คำสั่งซ้ำหรือคำสั่งหมดอายุ</li>
+              <li>emergency stop ต้อง override แอพได้ทันที</li>
+            </ul>
+          </article>
+
+          <article class="card">
+            <div class="card-head">
+              <div class="num">6</div>
+              <h3>เอกสารที่ต้องส่งให้เรา</h3>
+            </div>
+            <ul>
+              <li>wiring diagram และ controller manual</li>
+              <li>API document หรือ Modbus register map</li>
+              <li>รายการ command, status, error code ทั้งหมด</li>
+              <li>วิธี update firmware และ contact engineer</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="wide">
+          <div class="protocol">
+            <h3>Protocol ที่ ROBOSS แนะนำ: MQTT</h3>
+            <div class="code">Topic:
+roboss/branch/{branchId}/machine/{machineId}/status
+roboss/branch/{branchId}/machine/{machineId}/event
+roboss/branch/{branchId}/machine/{machineId}/command
+
+Payload:
+{
+  "machineId": "BAY-01",
+  "sessionId": "session_123",
+  "status": "washing",
+  "step": 2,
+  "progress": 40,
+  "errorCode": null
+}</div>
+          </div>
+
+          <div class="testbox">
+            <h3>สิ่งที่ต้องทดสอบหน้าโรงงาน</h3>
+            <ul>
+              <li>สั่ง start จากระบบแล้วเครื่องเริ่มจริง</li>
+              <li>เครื่องส่ง progress และ completed กลับมา</li>
+              <li>กด emergency stop แล้ว ROBOSS เห็น event</li>
+              <li>เน็ตหลุดแล้วระบบเห็น offline</li>
+              <li>หลายเครื่องทำงานพร้อมกันได้</li>
+              <li>error code แสดงบนหลังบ้านได้ถูกต้อง</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="footer">
+          <div>
+            <strong>สิ่งสำคัญที่สุดที่ต้องได้กลับมา</strong>
+            <p>
+              Protocol การสั่ง start, รูปแบบ status/event ที่เครื่องส่งกลับ, error code ทั้งหมด,
+              network setup และวิธีทดสอบกับเครื่องจริง
+            </p>
+          </div>
+          <div class="pill">ROBOSS Ready</div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
