@@ -32,7 +32,7 @@ export interface Branch {
   shortName?: string;
   address: string;
   area: string;
-  type: 'car' | 'bike';
+  type: 'car' | 'motorcycle';
   location: { lat: number; lng: number };
   mapsUrl?: string;
   hours?: string;
@@ -253,6 +253,7 @@ export interface StampTransaction {
 }
 
 export interface MembershipPlan {
+  isAvailable?: boolean;
   id: string;
   code: string;
   name: string;
@@ -303,8 +304,24 @@ export interface MembershipBenefit {
   enabled: boolean;
 }
 
+export interface MembershipPurchase {
+  id: string;
+  planCode: string;
+  planName: string;
+  amount: number;
+  currency: string;
+  reference: string;
+  status: string;
+  purchaseStatus: string;
+  promptPayId: string;
+  promptPayName: string;
+  qrPayload: string;
+  slipUploadedAt: string | null;
+  expiresAt: string | null;
+}
+
 export interface MembershipOverview {
-  plan: MembershipPlan;
+  plan: MembershipPlan | null;
   membership: UserMembership | null;
   active: boolean;
   benefits: MembershipBenefit[];

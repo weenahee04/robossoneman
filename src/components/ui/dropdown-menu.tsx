@@ -5,7 +5,7 @@ interface DropdownMenuContextValue {
   open: boolean;
   setOpen: (v: boolean) => void;
 }
-const DropdownMenuContext = React.createContext<DropdownMenuContextValue>({ open: false, setOpen: () => {} });
+const DropdownMenuContext = React.createContext<DropdownMenuContextValue>({ open: false, setOpen: () => undefined });
 
 function DropdownMenu({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = React.useState(false);

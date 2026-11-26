@@ -32,6 +32,8 @@ const iconIds = {
   carService: 24548,  // Car service
   sedan: 16553,       // Sedan (small car)
   car: 12666,         // Car (medium)
+  motorcycle: 0,      // Custom motorcycle, matched to the outlined icon set
+  rewardPack: 0,      // Custom ROBOSS reward card pack
   suv: 16551,         // SUV (large)
   gift: 7694,         // Gift
   trending: 26028,    // Trending up
@@ -84,6 +86,8 @@ const iconSvgPaths: Record<IconName, string> = {
   carService: '<path d="M4 14h16l-2-5H6z"/><path d="M6 14v4M18 14v4"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M9 5h6M12 2v6"/>',
   sedan: '<path d="M3 14h18l-2.5-5h-13z"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>',
   car: '<path d="M4 15h16l-2-5H6z"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/><path d="M6 10l2-4h8l2 4"/>',
+  motorcycle: '<circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="m19 17-4-10h-3m4 3h3M3 10h5l3 3h6M5 17l4-5m-3 5h6l3-4"/>',
+  rewardPack: '<path d="M6 3h12v18H6z"/><path d="M6 7h12M6 18h12"/><path d="m9 12 3-2 3 2-3 4z"/>',
   suv: '<path d="M3 15h18l-1.5-6H5z"/><path d="M7 9V5h8l3 4"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
   gift: '<path d="M4 10h16v11H4z"/><path d="M3 6h18v4H3zM12 6v15"/><path d="M12 6c-2-4-6-3-5 0M12 6c2-4 6-3 5 0"/>',
   trending: '<path d="M4 16 9 11l4 4 7-8"/><path d="M15 7h5v5"/>',

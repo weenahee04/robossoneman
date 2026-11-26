@@ -322,7 +322,15 @@ export function BranchesPage({ admin, branchId, onBranchesChanged }: BranchesPag
               <Field label="รหัส" value={draft.code} onChange={(value) => setฉบับร่าง((current) => ({ ...current, code: value.toUpperCase() }))} />
               <Field label="พื้นที่" value={draft.area} onChange={(value) => setฉบับร่าง((current) => ({ ...current, area: value }))} />
               <Field label="ที่อยู่" value={draft.address} onChange={(value) => setฉบับร่าง((current) => ({ ...current, address: value }))} className="md:col-span-2" />
-              <Field label="ประเภท" value={draft.type} onChange={(value) => setฉบับร่าง((current) => ({ ...current, type: value }))} />
+              <SelectField
+                label="ประเภทสาขา"
+                value={draft.type === 'bike' ? 'motorcycle' : draft.type}
+                onChange={(value) => setฉบับร่าง((current) => ({ ...current, type: value }))}
+                options={[
+                  ['car', 'ล้างรถยนต์'],
+                  ['motorcycle', 'ล้างมอเตอร์ไซค์'],
+                ]}
+              />
               <SelectField
                 label="รูปแบบการถือครอง"
                 value={draft.ownershipType}

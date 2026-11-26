@@ -51,13 +51,13 @@ export function CustomerAuthGate() {
                 }
                 void beginLineLogin();
               }}
-              disabled={isLoading || !(config.clerkEnabled || config.lineLoginEnabled)}
+              disabled={isLoading || !(config?.clerkEnabled || config?.lineLoginEnabled)}
               className="h-12 w-full rounded-2xl bg-[#06C755] text-base font-semibold text-black hover:bg-[#05b84e] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? 'กำลังดำเนินการ...' : 'เข้าสู่ระบบด้วย LINE'}
             </Button>
 
-            {config.devLoginEnabled ? (
+            {config?.devLoginEnabled ? (
               <Button
                 type="button"
                 variant="outline"

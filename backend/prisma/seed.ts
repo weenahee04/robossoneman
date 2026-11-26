@@ -82,114 +82,126 @@ const packages = [
     image: '/freepik_0001_(3).png',
     sortOrder: 4,
   },
+  // ── Motorcycle packages — real ROBOSS pricing: base wash 49฿, 1-3 min,
+  //    touchless (source: Roboss official TikTok/Facebook). Flat price, no S/M/L.
+  //    stepDuration 60s/step ≈ 1-3 min total, matching the real machine.
   {
     id: 'pkg_moto_quick',
-    code: 'MOTO_CLEAN',
-    name: 'MOTO CLEAN',
-    description: 'ล้างมอเตอร์ไซค์แบบพื้นฐาน',
+    code: 'MOTO_QUICK',
+    name: 'MOTO QUICK 49',
+    description: 'ล้างมอเตอร์ไซค์อัตโนมัติ ไร้สัมผัส เสร็จใน 1-3 นาที',
     vehicleType: 'motorcycle',
     priceS: 49,
-    priceM: 59,
-    priceL: 69,
-    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'เป่าแห้ง'],
-    stepDuration: 180,
+    priceM: 49,
+    priceL: 49,
+    steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'เป่าแห้ง'],
+    stepDuration: 60,
     sortOrder: 5,
   },
   {
     id: 'pkg_moto_shine',
     code: 'MOTO_SHINE',
-    name: 'MOTO SHINE',
-    description: 'ล้างมอเตอร์ไซค์พร้อมเคลือบเงา',
+    name: 'MOTO SHINE 69',
+    description: 'ล้างมอเตอร์ไซค์พร้อมเคลือบเงา ปกป้องสีรถ',
     vehicleType: 'motorcycle',
-    priceS: 79,
-    priceM: 89,
-    priceL: 99,
-    steps: ['ฉีดน้ำแรงดันสูง', 'โฟมล้างรถ', 'เป่าแห้ง', 'เคลือบเงา'],
-    stepDuration: 180,
+    priceS: 69,
+    priceM: 69,
+    priceL: 69,
+    steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'เป่าแห้ง', 'เคลือบเงา'],
+    stepDuration: 60,
     sortOrder: 6,
+  },
+  {
+    id: 'pkg_moto_premium',
+    code: 'MOTO_PREMIUM',
+    name: 'MOTO PREMIUM 99',
+    description: 'โฟมหนาพิเศษ + เคลือบเงา ดูแลครบสำหรับบิ๊กไบค์และรถที่รักเป็นพิเศษ',
+    vehicleType: 'motorcycle',
+    priceS: 99,
+    priceM: 99,
+    priceL: 99,
+    steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'ขัดล้างอัตโนมัติ', 'เป่าแห้ง', 'เคลือบเงา'],
+    stepDuration: 60,
+    sortOrder: 7,
   },
 ];
 
-const branches: BranchSeed[] = [
-  {
-    id: 'branch_c01',
-    code: 'RAMA109',
-    name: 'ROBOSS รามอินทรา 109',
-    shortName: 'รามอินทรา 109',
-    type: 'car',
-    ownershipType: 'company_owned',
-    address: '99/9 ถ.รามอินทรา แขวงคันนายาว เขตคันนายาว กรุงเทพมหานคร',
-    area: 'กรุงเทพมหานคร',
-    lat: 13.8682,
-    lng: 100.6378,
-    hours: '06:00 - 22:00',
-    promptPayId: '0891234567',
-    promptPayName: 'ROBOSS รามอินทรา 109',
-    ownerName: 'ROBOSS HQ',
-    mapsUrl: 'https://maps.app.goo.gl/ut1MVhuveKSvmiS27',
-    supportPhone: '02-000-0109',
-    pointsEarnRate: 10,
-  },
-  {
-    id: 'branch_c02',
-    code: 'RAMA9',
-    name: 'ROBOSS พระราม 9',
-    shortName: 'พระราม 9',
-    type: 'car',
-    ownershipType: 'company_owned',
-    address: '1 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร',
-    area: 'กรุงเทพมหานคร',
-    lat: 13.7489,
-    lng: 100.5714,
-    hours: '06:00 - 22:00',
-    promptPayId: '0892345678',
-    promptPayName: 'ROBOSS พระราม 9',
-    ownerName: 'ROBOSS HQ',
-    mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
-    supportPhone: '02-000-0009',
-    pointsEarnRate: 10,
-  },
-  {
-    id: 'branch_c04',
-    code: 'CHONBURI',
-    name: 'ROBOSS ชลบุรี',
-    shortName: 'ชลบุรี',
-    type: 'car',
-    ownershipType: 'franchise',
-    franchiseCode: 'F-CHON-01',
-    address: '99 ถ.สุขุมวิท ต.บ้านสวน อ.เมืองชลบุรี จ.ชลบุรี',
-    area: 'ชลบุรี',
-    lat: 13.3611,
-    lng: 100.9847,
-    hours: '07:00 - 21:00',
-    promptPayId: '0894567890',
-    promptPayName: 'ROBOSS ชลบุรี',
-    ownerName: 'Chonburi Franchise Co., Ltd.',
-    mapsUrl: 'https://maps.app.goo.gl/H1xqWbL8BETheHpc6',
-    supportPhone: '038-555-010',
-    pointsEarnRate: 12,
-  },
-  {
-    id: 'branch_b01',
-    code: 'MOTO_RAMA9',
-    name: 'ROBOSS มอเตอร์ไซค์ พระราม 9',
-    shortName: 'มอไซค์ พระราม 9',
-    type: 'bike',
-    ownershipType: 'franchise',
-    franchiseCode: 'F-MOTO-01',
-    address: '1/2 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร',
-    area: 'กรุงเทพมหานคร',
-    lat: 13.7485,
-    lng: 100.572,
-    hours: '06:00 - 22:00',
-    promptPayId: '0898901234',
-    promptPayName: 'ROBOSS มอเตอร์ไซค์ พระราม 9',
-    ownerName: 'Moto Franchise Co., Ltd.',
-    mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
-    supportPhone: '02-111-0009',
-    pointsEarnRate: 10,
-  },
+// Full ROBOSS branch network — 17 car + 17 motorcycle (separate branches).
+// status 'soon' = อยู่ระหว่างดำเนินการ (shown on map, no active service yet).
+type RawBranch = {
+  id: string;
+  code: string;
+  type: 'car' | 'motorcycle';
+  name: string;
+  short: string;
+  area: string;
+  address: string;
+  lat: number;
+  lng: number;
+  own: 'company_owned' | 'franchise';
+  soon?: boolean;
+};
+
+const RAW_BRANCHES: RawBranch[] = [
+  // ===================== ล้างรถยนต์ (car) =====================
+  { id: 'branch_c01', code: 'CAR_RAMA9', type: 'car', name: 'ROBOSS ล้างรถ พระราม 9', short: 'พระราม 9', area: 'กรุงเทพมหานคร', address: 'ซ.โรงพยาบาลพระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพมหานคร', lat: 13.7571, lng: 100.569, own: 'company_owned' },
+  { id: 'branch_c02', code: 'CAR_RAMINTRA109', type: 'car', name: 'ROBOSS ล้างรถ รามอินทรา 109', short: 'รามอินทรา 109', area: 'กรุงเทพมหานคร', address: 'ถ.พระยาสุเรนทร์ ซ.พระยาสุเรนทร์ 23 เขตคันนายาว กรุงเทพมหานคร', lat: 13.8303, lng: 100.7102, own: 'company_owned' },
+  { id: 'branch_c03', code: 'CAR_KRUNGTHEPKREETHA', type: 'car', name: 'ROBOSS ล้างรถ กรุงเทพกรีฑา', short: 'กรุงเทพกรีฑา', area: 'กรุงเทพมหานคร', address: 'ถ.กรุงเทพกรีฑา เขตสะพานสูง กรุงเทพมหานคร', lat: 13.746, lng: 100.679, own: 'company_owned', soon: true },
+  { id: 'branch_c04', code: 'CAR_EKKACHAI', type: 'car', name: 'ROBOSS ล้างรถ เอกชัย', short: 'เอกชัย', area: 'กรุงเทพมหานคร', address: 'ถ.เอกชัย เขตบางบอน กรุงเทพมหานคร', lat: 13.669, lng: 100.418, own: 'franchise' },
+  { id: 'branch_c05', code: 'CAR_BANGKHAE', type: 'car', name: 'ROBOSS ล้างรถ บางแค-กาญจนาภิเษก', short: 'บางแค', area: 'กรุงเทพมหานคร', address: 'ถ.กาญจนาภิเษก เขตบางแค กรุงเทพมหานคร', lat: 13.696, lng: 100.409, own: 'franchise', soon: true },
+  { id: 'branch_c06', code: 'CAR_PATHUMTHANI', type: 'car', name: 'ROBOSS ล้างรถ ปทุมธานี', short: 'ปทุมธานี', area: 'ปทุมธานี', address: 'ถ.ปทุม-ลาดหลุมแก้ว อ.ลาดหลุมแก้ว จ.ปทุมธานี', lat: 14.033, lng: 100.429, own: 'franchise' },
+  { id: 'branch_c07', code: 'CAR_LOPBURI', type: 'car', name: 'ROBOSS ล้างรถ ลพบุรี', short: 'ลพบุรี', area: 'ลพบุรี', address: 'อ.เมืองลพบุรี จ.ลพบุรี', lat: 14.7995, lng: 100.6534, own: 'franchise', soon: true },
+  { id: 'branch_c08', code: 'CAR_RAYONG', type: 'car', name: 'ROBOSS ล้างรถ ระยอง', short: 'ระยอง', area: 'ระยอง', address: 'อ.นิคมพัฒนา ก่อนถึงแยกนิคมพัฒนา จ.ระยอง', lat: 12.952, lng: 101.145, own: 'franchise' },
+  { id: 'branch_c09', code: 'CAR_NAKHONSAWAN', type: 'car', name: 'ROBOSS ล้างรถ นครสวรรค์', short: 'นครสวรรค์', area: 'นครสวรรค์', address: 'อ.เมืองนครสวรรค์ จ.นครสวรรค์', lat: 15.7047, lng: 100.1372, own: 'franchise', soon: true },
+  { id: 'branch_c10', code: 'CAR_LAMPANG', type: 'car', name: 'ROBOSS ล้างรถ ลำปาง', short: 'ลำปาง', area: 'ลำปาง', address: 'อ.เมืองลำปาง ข้างห้าง Makro (Jook Club) จ.ลำปาง', lat: 18.286, lng: 99.501, own: 'franchise' },
+  { id: 'branch_c11', code: 'CAR_UTHAITHANI', type: 'car', name: 'ROBOSS ล้างรถ อุทัยธานี', short: 'อุทัยธานี', area: 'อุทัยธานี', address: 'อ.หนองฉาง ข้างโรงเรียนหนองฉาง จ.อุทัยธานี', lat: 15.362, lng: 99.896, own: 'franchise' },
+  { id: 'branch_c12', code: 'CAR_ROIET', type: 'car', name: 'ROBOSS ล้างรถ ร้อยเอ็ด', short: 'ร้อยเอ็ด', area: 'ร้อยเอ็ด', address: 'อ.เมืองร้อยเอ็ด จ.ร้อยเอ็ด', lat: 16.0538, lng: 103.652, own: 'franchise', soon: true },
+  { id: 'branch_c13', code: 'CAR_KHONKAEN', type: 'car', name: 'ROBOSS ล้างรถ ขอนแก่น', short: 'ขอนแก่น', area: 'ขอนแก่น', address: 'อ.เมืองขอนแก่น จ.ขอนแก่น', lat: 16.4419, lng: 102.836, own: 'franchise', soon: true },
+  { id: 'branch_c14', code: 'CAR_NST_OMKAI', type: 'car', name: 'ROBOSS ล้างรถ นครศรีฯ (อ้อมค่าย)', short: 'นครศรีฯ อ้อมค่าย', area: 'นครศรีธรรมราช', address: 'ถ.อ้อมค่าย ติดปั๊ม ปตท.อ้อมค่าย อ.เมือง จ.นครศรีธรรมราช', lat: 8.42, lng: 99.97, own: 'franchise' },
+  { id: 'branch_c15', code: 'CAR_NST_PAKPHANANG', type: 'car', name: 'ROBOSS ล้างรถ นครศรีฯ (ปากพนัง)', short: 'นครศรีฯ ปากพนัง', area: 'นครศรีธรรมราช', address: 'ปากพนัง ใกล้โฮมโปรนคร อ.เมือง จ.นครศรีธรรมราช', lat: 8.35, lng: 100.2, own: 'franchise' },
+  { id: 'branch_c16', code: 'CAR_PHUKET_SAMKONG', type: 'car', name: 'ROBOSS ล้างรถ ภูเก็ต (สามกอง)', short: 'ภูเก็ต สามกอง', area: 'ภูเก็ต', address: 'ถ.สามกอง อ.เมืองภูเก็ต จ.ภูเก็ต', lat: 7.8992, lng: 98.3761, own: 'franchise' },
+  { id: 'branch_c17', code: 'CAR_SATUN', type: 'car', name: 'ROBOSS ล้างรถ สตูล', short: 'สตูล', area: 'สตูล', address: 'อ.ฉลุง ตรงข้ามไปรษณีย์ฉลุง จ.สตูล', lat: 6.7254, lng: 100.0669, own: 'franchise' },
+
+  // ===================== ล้างมอเตอร์ไซค์ (motorcycle) =====================
+  { id: 'branch_b01', code: 'MOTO_RAMA9', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ พระราม 9', short: 'มอไซค์ พระราม 9', area: 'กรุงเทพมหานคร', address: 'ซ.โรงพยาบาลพระราม 9 แขวงห้วยขวาง กรุงเทพมหานคร', lat: 13.7571, lng: 100.569, own: 'company_owned' },
+  { id: 'branch_b02', code: 'MOTO_KRUNGTHEPKREETHA', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ กรุงเทพกรีฑา', short: 'มอไซค์ กรุงเทพกรีฑา', area: 'กรุงเทพมหานคร', address: 'ถ.กรุงเทพกรีฑา เขตสะพานสูง กรุงเทพมหานคร', lat: 13.7455, lng: 100.6795, own: 'company_owned', soon: true },
+  { id: 'branch_b03', code: 'MOTO_EKKACHAI', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ เอกชัย', short: 'มอไซค์ เอกชัย', area: 'กรุงเทพมหานคร', address: 'ถ.เอกชัย เขตบางบอน กรุงเทพมหานคร', lat: 13.6685, lng: 100.4185, own: 'franchise' },
+  { id: 'branch_b04', code: 'MOTO_BANGKHAE', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ บางแค-กาญจนาภิเษก', short: 'มอไซค์ บางแค', area: 'กรุงเทพมหานคร', address: 'ถ.กาญจนาภิเษก เขตบางแค กรุงเทพมหานคร', lat: 13.6955, lng: 100.4085, own: 'franchise', soon: true },
+  { id: 'branch_b05', code: 'MOTO_THAPHRA', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ ท่าพระ', short: 'มอไซค์ ท่าพระ', area: 'กรุงเทพมหานคร', address: 'ซ.เทอดไท 33 แขวงดาวคะนอง เขตธนบุรี กรุงเทพมหานคร', lat: 13.7159, lng: 100.4762, own: 'franchise' },
+  { id: 'branch_b06', code: 'MOTO_RAMA4', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ พระราม 4', short: 'มอไซค์ พระราม 4', area: 'กรุงเทพมหานคร', address: 'ปั๊ม ปตท.พระราม 4-กล้วยน้ำไท กรุงเทพมหานคร', lat: 13.716, lng: 100.5746, own: 'company_owned' },
+  { id: 'branch_b07', code: 'MOTO_DONMUANG', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ ดอนเมือง', short: 'มอไซค์ ดอนเมือง', area: 'กรุงเทพมหานคร', address: 'ปั๊มบางจาก โกสุมรวมใจ เขตดอนเมือง กรุงเทพมหานคร', lat: 13.92, lng: 100.6, own: 'company_owned' },
+  { id: 'branch_b08', code: 'MOTO_UDOMSUK', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ อุดมสุข', short: 'มอไซค์ อุดมสุข', area: 'กรุงเทพมหานคร', address: 'ปั๊มบางจาก อุดมสุข เขตบางนา กรุงเทพมหานคร', lat: 13.67, lng: 100.61, own: 'company_owned' },
+  { id: 'branch_b09', code: 'MOTO_YAMAHA', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ Yamaha ประเทศไทย', short: 'Yamaha คลังสินค้า', area: 'สมุทรปราการ', address: 'Yamaha ประเทศไทย (คลังสินค้า)', lat: 13.6, lng: 100.6, own: 'company_owned' },
+  { id: 'branch_b10', code: 'MOTO_CHONBURI', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ ชลบุรี', short: 'มอไซค์ ชลบุรี', area: 'ชลบุรี', address: 'หนองไม้แดง ซ.วัดอู่ตะเภา อ.เมืองชลบุรี จ.ชลบุรี', lat: 13.372, lng: 101.005, own: 'franchise' },
+  { id: 'branch_b11', code: 'MOTO_MAESOT', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ แม่สอด', short: 'มอไซค์ แม่สอด', area: 'ตาก', address: 'ปั๊มบางจาก แม่ปะ อ.แม่สอด จ.ตาก', lat: 16.7511, lng: 98.5721, own: 'franchise' },
+  { id: 'branch_b12', code: 'MOTO_NAKHONSAWAN', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ นครสวรรค์', short: 'มอไซค์ นครสวรรค์', area: 'นครสวรรค์', address: 'อ.เมืองนครสวรรค์ จ.นครสวรรค์', lat: 15.7047, lng: 100.1372, own: 'franchise', soon: true },
+  { id: 'branch_b13', code: 'MOTO_YASOTHON', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ ยโสธร', short: 'มอไซค์ ยโสธร', area: 'ยโสธร', address: 'ต.สำราญ อ.เมือง ข้าง TOFFEE CAFE จ.ยโสธร', lat: 15.79, lng: 104.13, own: 'franchise' },
+  { id: 'branch_b14', code: 'MOTO_NST', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ นครศรีธรรมราช', short: 'มอไซค์ นครศรีฯ', area: 'นครศรีธรรมราช', address: 'ใกล้โฮมโปรนคร อ.เมือง จ.นครศรีธรรมราช', lat: 8.4304, lng: 99.9631, own: 'franchise' },
+  { id: 'branch_b15', code: 'MOTO_SONGKHLA', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ สงขลา', short: 'มอไซค์ สงขลา', area: 'สงขลา', address: 'อ.เมืองสงขลา จ.สงขลา', lat: 7.19, lng: 100.595, own: 'franchise' },
+  { id: 'branch_b16', code: 'MOTO_PHUKET_SAMKONG', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ ภูเก็ต (สามกอง)', short: 'มอไซค์ ภูเก็ต สามกอง', area: 'ภูเก็ต', address: 'ถ.สามกอง อ.เมืองภูเก็ต จ.ภูเก็ต', lat: 7.8992, lng: 98.3761, own: 'franchise' },
+  { id: 'branch_b17', code: 'MOTO_PHUKET_BANGTAO', type: 'motorcycle', name: 'ROBOSS ล้างมอไซค์ ภูเก็ต (บางเทา)', short: 'มอไซค์ ภูเก็ต บางเทา', area: 'ภูเก็ต', address: 'บางเทา ซ.4 อ.ถลาง จ.ภูเก็ต', lat: 7.995, lng: 98.296, own: 'franchise' },
 ];
+
+const branches: BranchSeed[] = RAW_BRANCHES.map((b, index) => ({
+  id: b.id,
+  code: b.code,
+  name: b.name,
+  shortName: b.short,
+  type: b.type,
+  ownershipType: b.own,
+  franchiseCode: b.own === 'franchise' ? `F-${b.code}` : undefined,
+  address: b.address,
+  area: b.area,
+  lat: b.lat,
+  lng: b.lng,
+  hours: b.soon ? 'เร็วๆ นี้' : '06:00 - 22:00',
+  promptPayId: `09${String(11000000 + index).slice(-8)}`,
+  promptPayName: b.name,
+  ownerName: b.own === 'company_owned' ? 'ROBOSS HQ' : `${b.short} Franchise`,
+  mapsUrl: `https://www.google.com/maps/search/?api=1&query=${b.lat},${b.lng}`,
+  supportPhone: '02-000-0000',
+  pointsEarnRate: 10,
+}));
 
 const branchPackageOverrides: Record<string, Partial<Record<string, { S?: number; M?: number; L?: number; isVisible?: boolean }>>> = {
   branch_c01: {
@@ -475,7 +487,7 @@ async function upsertBranches() {
 
 async function upsertMachines() {
   for (const branch of branches) {
-    const isBikeBranch = branch.type === 'bike';
+    const isBikeBranch = branch.type === 'motorcycle';
     const configs = isBikeBranch
       ? [
           { id: `${branch.id}_moto_01`, code: 'B1', name: 'ตู้ล้างมอเตอร์ไซค์ B1', type: 'motorcycle', espDeviceId: `ESP32-${branch.code}-B1`, sortOrder: 1 },
@@ -514,8 +526,8 @@ async function upsertMachines() {
 async function upsertBranchPackageConfigs() {
   for (const branch of branches) {
     const allowedPackageIds =
-      branch.type === 'bike'
-        ? ['pkg_moto_quick', 'pkg_moto_shine']
+      branch.type === 'motorcycle'
+        ? ['pkg_moto_quick', 'pkg_moto_shine', 'pkg_moto_premium']
         : ['pkg_quick', 'pkg_shine', 'pkg_special', 'pkg_vacuum'];
 
     for (const packageId of allowedPackageIds) {
@@ -831,6 +843,7 @@ async function upsertAdmins() {
   const hqPassword = await bcrypt.hash('admin123', 12);
   const branchPassword = await bcrypt.hash('manager123', 12);
   const eastPassword = await bcrypt.hash('branch123', 12);
+  const cashierPassword = await bcrypt.hash('cashier123', 12);
 
   const hqAdmin = await prisma.adminUser.upsert({
     where: { email: 'admin@roboss.co.th' },
@@ -877,6 +890,21 @@ async function upsertAdmins() {
     },
   });
 
+  const cashier = await prisma.adminUser.upsert({
+    where: { email: 'cashier@roboss.co.th' },
+    update: {
+      name: 'Rama 9 Cashier',
+      role: 'cashier',
+      isActive: true,
+    },
+    create: {
+      email: 'cashier@roboss.co.th',
+      passwordHash: cashierPassword,
+      name: 'Rama 9 Cashier',
+      role: 'cashier',
+    },
+  });
+
   const scopes = [
     { adminUserId: ramaAdmin.id, branchId: 'branch_c01' },
     { adminUserId: ramaAdmin.id, branchId: 'branch_c02' },
@@ -900,6 +928,27 @@ async function upsertAdmins() {
       create: scope,
     });
   }
+
+  await prisma.adminBranchScope.upsert({
+    where: {
+      adminUserId_branchId: {
+        adminUserId: cashier.id,
+        branchId: 'branch_c01',
+      },
+    },
+    update: {
+      canManageCoupons: false,
+      canManageMachines: false,
+      canViewRevenue: false,
+    },
+    create: {
+      adminUserId: cashier.id,
+      branchId: 'branch_c01',
+      canManageCoupons: false,
+      canManageMachines: false,
+      canViewRevenue: false,
+    },
+  });
 
   await prisma.auditLog.upsert({
     where: { id: 'audit_seed_hq_admin' },
@@ -943,7 +992,7 @@ async function main() {
   promotions: ${promotions.length}
   rewards: ${rewards.length}
   test users: ${testUsers.length}
-  admins: 3`);
+  admins: 4`);
 }
 
 main()

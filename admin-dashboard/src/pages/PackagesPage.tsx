@@ -470,12 +470,18 @@ export function PackagesPage({ admin, branchId, branches }: PackagesPageProps) {
                   disabled={admin.role !== 'hq_admin'}
                   onChange={(value) => setฉบับร่าง((current) => ({ ...current, name: value }))}
                 />
-                <Field
-                  label="Vehicle type"
-                  value={draft.vehicleType}
-                  disabled={admin.role !== 'hq_admin'}
-                  onChange={(value) => setฉบับร่าง((current) => ({ ...current, vehicleType: value }))}
-                />
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-medium text-gray-400">ประเภทยานพาหนะ</span>
+                  <select
+                    value={draft.vehicleType === 'bike' ? 'motorcycle' : draft.vehicleType}
+                    disabled={admin.role !== 'hq_admin'}
+                    onChange={(event) => setฉบับร่าง((current) => ({ ...current, vehicleType: event.target.value }))}
+                    className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 px-4 py-3 text-sm text-white focus:border-red-500/50 focus:outline-none disabled:opacity-60"
+                  >
+                    <option value="car">รถยนต์</option>
+                    <option value="motorcycle">มอเตอร์ไซค์</option>
+                  </select>
+                </label>
                 <Field
                   label="ลำดับแสดงผล"
                   type="number"

@@ -21,7 +21,7 @@ export interface WashFlowIntent {
   source: WashIntentSource;
   branchId?: string;
   branchName?: string;
-  branchType?: 'car' | 'bike';
+  branchType?: 'car' | 'motorcycle';
   coupon?: WashFlowIntentCoupon;
   promotion?: WashFlowIntentPromotion;
   createdAt: number;

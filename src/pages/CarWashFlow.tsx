@@ -62,12 +62,12 @@ function normalizeSession(session: WashSession): WashSession {
   };
 }
 
-function normalizeBranchType(branchType?: Branch['type'] | string): 'car' | 'bike' {
-  return branchType === 'bike' ? 'bike' : 'car';
+function normalizeBranchType(branchType?: Branch['type'] | string): 'car' | 'motorcycle' {
+  return branchType === 'motorcycle' || branchType === 'bike' ? 'motorcycle' : 'car';
 }
 
 function matchesBranchMachineType(machine: Branch['machines'][number], branchType: Branch['type'] | string = 'car') {
-  if (normalizeBranchType(branchType) === 'bike') {
+  if (normalizeBranchType(branchType) === 'motorcycle') {
     return machine.type === 'motorcycle';
   }
 
@@ -421,7 +421,7 @@ export function CarWashFlow({ onBack }: CarWashFlowProps) {
       branchId: selectedBranch.id,
       machineId: selectedMachineId,
       userId: 'line_user_001',
-      vehicleType: selectedBranch.type === 'bike' ? 'motorcycle' : 'car',
+      vehicleType: selectedBranch.type === 'motorcycle' ? 'motorcycle' : 'car',
       packageId: selectedPackage.id,
       carSize,
       addons: addVacuum && vacuumPackage ? [vacuumPackage.id] : [],

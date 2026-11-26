@@ -170,7 +170,7 @@ export function AdminUsersPage({ admin, branches }: AdminUsersPageProps) {
   }
 
   function getRoleLabel(role: AdminRole) {
-    return role === 'hq_admin' ? 'ผู้ดูแล HQ' : 'ผู้ดูแลสาขา';
+    return role === 'hq_admin' ? 'ผู้ดูแล HQ' : role === 'cashier' ? 'แคชเชียร์' : 'ผู้ดูแลสาขา';
   }
 
   function getStatusLabel(active: boolean) {
@@ -281,6 +281,7 @@ export function AdminUsersPage({ admin, branches }: AdminUsersPageProps) {
                 >
                   <option value="hq_admin">ผู้ดูแล HQ</option>
                   <option value="branch_admin">ผู้ดูแลสาขา</option>
+                  <option value="cashier">แคชเชียร์ (รับชำระและดูคิวเท่านั้น)</option>
                 </select>
               </label>
             </div>
@@ -291,7 +292,7 @@ export function AdminUsersPage({ admin, branches }: AdminUsersPageProps) {
               onChange={(checked) => setฉบับร่าง((current) => ({ ...current, isActive: checked }))}
             />
 
-            {draft.role === 'branch_admin' && (
+            {draft.role !== 'hq_admin' && (
               <div className="rounded-2xl border border-white/5 bg-black/20 p-5">
                 <h4 className="font-semibold text-white">กำหนดขอบเขตสาขา</h4>
                 <p className="mt-1 text-sm text-gray-500">กำหนดสาขาและสิทธิ์แบบละเอียดสำหรับแอดมินสาขา</p>
@@ -311,7 +312,7 @@ export function AdminUsersPage({ admin, branches }: AdminUsersPageProps) {
                           <ToggleField label="กำหนดแล้ว" checked={enabled} onChange={(checked) => toggleBranch(branch.id, checked)} compact />
                         </div>
 
-                        {enabled && scope && (
+                        {enabled && scope && draft.role !== 'cashier' && (
                           <div className="mt-4 grid gap-3 md:grid-cols-3">
                             {[
                               ['canViewRevenue', 'ดูรายได้'],

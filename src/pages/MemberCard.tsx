@@ -321,7 +321,7 @@ export function MemberCard({ onBack }: { onBack: () => void }) {
     return buildLocalMembershipOverview(localActivePlanCodes);
   }, [apiMembership, localActivePlanCodes]);
 
-  const membershipPlan = membershipOverview.plan;
+  const membershipPlan = membershipOverview.plan ?? localMemberPlans[0]!;
   const memberPlans = membershipOverview.plans?.length ? membershipOverview.plans : [membershipPlan];
   const activeMemberPlans = memberPlans.filter((plan) => plan.active || plan.membership?.status === 'active');
   const activeMemberCount = activeMemberPlans.length;

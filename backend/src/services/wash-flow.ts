@@ -727,11 +727,11 @@ export async function completeWashSession(sessionId: string) {
 
     const wallet = await tx.pointWallet.upsert({
       where: { userId: session.userId },
-      update: {},
-      create: { userId: session.userId },
+      update: { balance: { increment: pointsEarned }, lifetimeEarned: { increment: pointsEarned } },
+      create: { userId: session.userId, balance: pointsEarned, lifetimeEarned: pointsEarned },
     });
 
-    const nextBalance = wallet.balance + pointsEarned;
+    const nextBalance = wallet.balance;
 
     await tx.pointsTransaction.create({
       data: {
@@ -743,14 +743,6 @@ export async function completeWashSession(sessionId: string) {
         amount: pointsEarned,
         balanceAfter: nextBalance,
         description: `Wash completed - ${pointsEarned} points`,
-      },
-    });
-
-    await tx.pointWallet.update({
-      where: { id: wallet.id },
-      data: {
-        balance: nextBalance,
-        lifetimeEarned: { increment: pointsEarned },
       },
     });
 

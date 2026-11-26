@@ -48,7 +48,6 @@ export function generatePromptPayPayload(phoneNumber: string, amount: number): s
   payload += tlv('63', ''); // CRC placeholder
   
   // Calculate CRC (remove the empty CRC value and recalc)
-  const payloadForCRC = payload.slice(0, -2); // Remove empty len of CRC
   const fullPayload = payload.slice(0, -4); // Remove "6300"
   const crcPayload = fullPayload + '6304';
   const crc = crc16(crcPayload);
@@ -57,7 +56,7 @@ export function generatePromptPayPayload(phoneNumber: string, amount: number): s
 }
 
 // Generate a simple QR-like data URL using canvas (no external library needed)
-export function generateQRDataUrl(data: string, size: number = 200): string {
+export function generateQRDataUrl(data: string, _size = 200): string {
   // We'll use a simple visual representation
   // In production, use a proper QR library
   return data; // Return raw data — we'll use a QR component to render it

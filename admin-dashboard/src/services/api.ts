@@ -2,7 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3002';
 const ACCESS_TOKEN_KEY = 'roboss_admin_access_token';
 const REFRESH_TOKEN_KEY = 'roboss_admin_refresh_token';
 
-export type AdminRole = 'hq_admin' | 'branch_admin';
+export type AdminRole = 'hq_admin' | 'branch_admin' | 'cashier';
 export type MachineStatus = 'idle' | 'reserved' | 'washing' | 'maintenance' | 'offline';
 export type PaymentStatus = 'pending' | 'confirmed' | 'failed' | 'cancelled' | 'refunded' | 'expired';
 export type CouponScope = 'all_branches' | 'selected_branches' | 'branch_only';
@@ -714,6 +714,65 @@ export interface CouponUsageSummary {
   }>;
 }
 
+export interface CouponMonitorStats {
+  redemptions: number;
+  discountAmount: number;
+  purchases: number;
+  pendingTransfer: number;
+  pendingReview: number;
+  confirmedPurchases: number;
+  rejectedPurchases: number;
+  couponSales: number;
+}
+
+export interface CouponMonitoringSnapshot {
+  period: {
+    days: number;
+    from: string;
+    to: string;
+  };
+  summary: CouponMonitorStats & {
+    branchesMonitored: number;
+    totalCoupons: number;
+    activeCoupons: number;
+    purchasableCoupons: number;
+    claimedCoupons: number;
+  };
+  ownershipSummary: Array<
+    CouponMonitorStats & {
+      ownershipType: 'company_owned' | 'franchise';
+      branchCount: number;
+      activeCoupons: number;
+    }
+  >;
+  branches: Array<
+    CouponMonitorStats & {
+      id: string;
+      code: string;
+      name: string;
+      shortName?: string | null;
+      ownershipType: 'company_owned' | 'franchise';
+      franchiseCode?: string | null;
+      isActive: boolean;
+      activeCoupons: number;
+      purchasableCoupons: number;
+      paymentAccountReady: boolean;
+      paymentAccountSource: 'branch_account' | 'hq_account' | 'branch_promptpay_fallback';
+    }
+  >;
+  topCoupons: Array<
+    CouponMonitorStats & {
+      id: string;
+      code: string;
+      title: string;
+      scope: CouponScope;
+      status: CouponStatus;
+      isPurchasable: boolean;
+      claimedCount: number;
+    }
+  >;
+}
+
 export interface AdminCouponRecord {
   id: string;
   code: string;
@@ -1067,7 +1126,7 @@ async function refreshAdminSession() {
   return mapAdmin(body.data.admin);
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),
@@ -1553,6 +1612,15 @@ export async function fetchAdminCoupons(params?: {
   return response.data;
 }
 
+export async function fetchCouponMonitoring(params?: { branchId?: string | null; days?: 7 | 30 | 90 | 365 }) {
+  const response = await request<{ data: CouponMonitoringSnapshot }>(
+    withBranch('/api/admin/coupon-monitoring', params?.branchId, {
+      days: params?.days ? String(params.days) : undefined,
+    })
+  );
+  return response.data;
+}
+
 export async function createAdminCoupon(payload: {
   code: string;
   title: string;
@@ -1708,6 +1776,43 @@ export async function rejectAdminCouponPurchase(purchaseId: string, adminNote?: 
       body: JSON.stringify(adminNote ? { adminNote } : {}),
     }
   );
+  return response.data;
+}
+
+export interface AdminMembershipPurchaseRecord {
+  id: string;
+  userName: string;
+  planName: string;
+  amount: number;
+  reference: string;
+  status: string;
+  purchaseStatus: string;
+  slipUploadedAt: string | null;
+  slipFileName: string | null;
+  slipMimeType: string | null;
+  slipImage: string | null;
+  slipImageHash: string | null;
+  createdAt: string;
+}
+
+export async function fetchAdminMembershipPurchases() {
+  const response = await request<{ data: AdminMembershipPurchaseRecord[] }>('/api/admin/membership-purchases');
+  return response.data;
+}
+
+export async function approveAdminMembershipPurchase(purchaseId: string) {
+  const response = await request<{ data: unknown }>(`/api/admin/membership-purchases/${purchaseId}/approve`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return response.data;
+}
+
+export async function rejectAdminMembershipPurchase(purchaseId: string) {
+  const response = await request<{ data: unknown }>(`/api/admin/membership-purchases/${purchaseId}/reject`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
   return response.data;
 }
 
@@ -2011,6 +2116,7 @@ const api = {
   updateAdminPackage,
   setAdminPackageActivation,
   updateBranchPackageConfig,
+  fetchCouponMonitoring,
   fetchAdminCoupons,
   createAdminCoupon,
   updateAdminCoupon,
@@ -2021,6 +2127,9 @@ const api = {
   fetchAdminCouponPurchases,
   approveAdminCouponPurchase,
   rejectAdminCouponPurchase,
+  fetchAdminMembershipPurchases,
+  approveAdminMembershipPurchase,
+  rejectAdminMembershipPurchase,
   fetchAdminPromotions,
   createAdminPromotion,
   updateAdminPromotion,

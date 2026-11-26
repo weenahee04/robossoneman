@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "prisma generate && tsc --noCheck",
+    "build": "prisma generate && tsc",
     "start": "node dist/index.js",
     "test": "tsx --test test/**/*.test.ts",
     "verify:system": "tsx scripts/system-verification.ts",
@@ -27,6 +27,7 @@
     "@kshersolution/ksher": "^1.0.11",
     "@prisma/client": "^6.5.0",
     "bcryptjs": "^2.4.3",
+    "dotenv": "^16.6.1",
     "hono": "^4.7.0",
     "jsonwebtoken": "^9.0.2",
     "mqtt": "^5.10.0",

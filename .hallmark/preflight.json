@@ -1,0 +1,15 @@
+{
+  "scannedAt": "2026-09-10",
+  "framework": "React 18 + Vite 5 + Tailwind CSS 3",
+  "fontStack": ["Noto Sans Thai", "Bricolage Grotesque", "sans-serif"],
+  "palette": {
+    "source": "tokens.css and tailwind.config.js",
+    "colors": ["app.black", "app.dark", "app.red", "app.red-dark"]
+  },
+  "motion": {
+    "stance": "motion-on",
+    "libraries": ["framer-motion", "lottie-react"]
+  },
+  "spacing": "Tailwind default spacing scale plus Pitlane semantic 4px scale",
+  "preserve": ["Thai typography", "ROBOSS dark palette", "existing bottom navigation", "Framer Motion page transitions"]
+}

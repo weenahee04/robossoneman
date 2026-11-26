@@ -2,6 +2,7 @@ import { createMiddleware } from 'hono/factory';
 import { verifyAccessToken } from '../lib/jwt.js';
 import { prisma } from '../lib/prisma.js';
 import type { AppEnv } from '../lib/types.js';
+import { canAccessAdminRoute } from '../lib/admin-access.js';
 
 export const requireAuth = createMiddleware<AppEnv>(async (c, next) => {
   const header = c.req.header('Authorization');
@@ -56,6 +57,10 @@ export const requireAdmin = createMiddleware<AppEnv>(async (c, next) => {
 
     if (!admin || !admin.isActive) {
       return c.json({ message: 'Admin access required' }, 403);
+    }
+
+    if (!canAccessAdminRoute(admin.role, c.req.method, c.req.path)) {
+      return c.json({ message: 'บทบาทนี้ไม่มีสิทธิ์ทำรายการดังกล่าว' }, 403);
     }
 
     c.set('adminId', admin.id);

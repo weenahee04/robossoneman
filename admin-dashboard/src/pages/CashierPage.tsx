@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Banknote,
   Camera,
@@ -94,6 +94,84 @@ export function CashierPage({ admin, branchId, branches }: CashierPageProps) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successPayment, setSuccessPayment] = useState<PaymentRecord | null>(null);
+
+  // Online purchase approvals (membership + coupon slips awaiting review).
+  const [pendingMemberships, setPendingMemberships] = useState<any[]>([]);
+  const [pendingCoupons, setPendingCoupons] = useState<any[]>([]);
+  const [approvalBusyId, setApprovalBusyId] = useState<string | null>(null);
+  const [approvalMsg, setApprovalMsg] = useState<string | null>(null);
+
+  const loadApprovals = useCallback(async () => {
+    if (admin.role === 'cashier') return;
+    const [mem, cpn] = await Promise.all([
+      api.fetchAdminMembershipPurchases().catch(() => []),
+      api.fetchAdminCouponPurchases({ status: 'pending_review' }).catch(() => []),
+    ]);
+    setPendingMemberships((mem as any[]).filter((m) => m.slipUploadedAt));
+    setPendingCoupons(cpn as any[]);
+  }, [admin.role]);
+
+  useEffect(() => {
+    void loadApprovals();
+  }, [loadApprovals]);
+
+  async function approveMembership(id: string) {
+    setApprovalBusyId(id);
+    setApprovalMsg(null);
+    try {
+      await api.approveAdminMembershipPurchase(id);
+      setApprovalMsg('อนุมัติแพ็กเกจสมาชิกแล้ว เปิดใช้งานให้ลูกค้าเรียบร้อย');
+      await loadApprovals();
+    } catch (err: any) {
+      setApprovalMsg(err?.message || 'อนุมัติไม่สำเร็จ');
+    } finally {
+      setApprovalBusyId(null);
+    }
+  }
+
+  async function rejectMembership(id: string) {
+    setApprovalBusyId(id);
+    setApprovalMsg(null);
+    try {
+      await api.rejectAdminMembershipPurchase(id);
+      setApprovalMsg('ปฏิเสธรายการสมาชิกแล้ว');
+      await loadApprovals();
+    } catch (err: any) {
+      setApprovalMsg(err?.message || 'ทำรายการไม่สำเร็จ');
+    } finally {
+      setApprovalBusyId(null);
+    }
+  }
+
+  async function approveCoupon(id: string) {
+    setApprovalBusyId(id);
+    setApprovalMsg(null);
+    try {
+      await api.approveAdminCouponPurchase(id, { amountMatches: true, referenceMatches: true, accountMatches: true });
+      setApprovalMsg('อนุมัติคูปองแล้ว ออกคูปองให้ลูกค้าเรียบร้อย');
+      await loadApprovals();
+    } catch (err: any) {
+      setApprovalMsg(err?.message || 'อนุมัติไม่สำเร็จ');
+    } finally {
+      setApprovalBusyId(null);
+    }
+  }
+
+  async function rejectCoupon(id: string) {
+    setApprovalBusyId(id);
+    setApprovalMsg(null);
+    try {
+      await api.rejectAdminCouponPurchase(id);
+      setApprovalMsg('ปฏิเสธรายการคูปองแล้ว');
+      await loadApprovals();
+    } catch (err: any) {
+      setApprovalMsg(err?.message || 'ทำรายการไม่สำเร็จ');
+    } finally {
+      setApprovalBusyId(null);
+    }
+  }
+
+  const totalPendingApprovals = pendingMemberships.length + pendingCoupons.length;
 
   useEffect(() => {
     if (branchId) {
@@ -235,6 +313,74 @@ export function CashierPage({ admin, branchId, branches }: CashierPageProps) {
         </div>
       </div>
 
+      {/* Online purchase approvals — membership + coupon slips awaiting review */}
+      {admin.role !== 'cashier' && <section className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4 sm:rounded-3xl sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-amber-700">Online</p>
+            <h3 className="mt-0.5 text-lg font-black text-slate-900">
+              รออนุมัติออนไลน์
+              {totalPendingApprovals > 0 && (
+                <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-black text-white">{totalPendingApprovals}</span>
+              )}
+            </h3>
+            <p className="text-xs text-slate-500">ลูกค้าโอนเงิน + อัปสลิปเข้ามาแล้ว รอตรวจและกดอนุมัติ</p>
+          </div>
+          <button type="button" onClick={() => void loadApprovals()} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700">
+            รีเฟรช
+          </button>
+        </div>
+
+        {approvalMsg && (
+          <div className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">{approvalMsg}</div>
+        )}
+
+        {totalPendingApprovals === 0 ? (
+          <p className="mt-3 rounded-xl border border-dashed border-amber-300 bg-white/60 p-4 text-center text-sm text-slate-400">ยังไม่มีรายการรออนุมัติ</p>
+        ) : (
+          <div className="mt-3 space-y-2">
+            {pendingMemberships.map((m) => (
+              <div key={m.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-black text-red-700">สมาชิก</span>
+                    <p className="truncate text-sm font-bold text-slate-900">{m.planName}</p>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">{m.userName} • {formatMoney(m.amount)} • {m.reference}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" disabled={approvalBusyId === m.id} onClick={() => void approveMembership(m.id)} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+                    {approvalBusyId === m.id ? '...' : 'อนุมัติ'}
+                  </button>
+                  <button type="button" disabled={approvalBusyId === m.id} onClick={() => void rejectMembership(m.id)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-50">
+                    ปฏิเสธ
+                  </button>
+                </div>
+              </div>
+            ))}
+            {pendingCoupons.map((cpn) => (
+              <div key={cpn.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white p-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700">คูปอง</span>
+                    <p className="truncate text-sm font-bold text-slate-900">{cpn.couponTitle || cpn.couponName || cpn.title || 'คูปอง'}</p>
+                  </div>
+                  <p className="mt-0.5 text-xs text-slate-500">{formatMoney(cpn.amount)} • {cpn.reference}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" disabled={approvalBusyId === cpn.id} onClick={() => void approveCoupon(cpn.id)} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+                    {approvalBusyId === cpn.id ? '...' : 'อนุมัติ'}
+                  </button>
+                  <button type="button" disabled={approvalBusyId === cpn.id} onClick={() => void rejectCoupon(cpn.id)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600 disabled:opacity-50">
+                    ปฏิเสธ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>}
+
       {error && <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700">{error}</div>}
       {successPayment && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
@@ -339,6 +485,7 @@ export function CashierPage({ admin, branchId, branches }: CashierPageProps) {
                   type="number"
                   min={1}
                   value={amount || ''}
+                  readOnly={admin.role === 'cashier'}
                   onChange={(event) => setAmount(Number(event.target.value))}
                   className="input text-xl font-black sm:text-2xl"
                 />

@@ -295,7 +295,7 @@ function resolvePaymentPromptPayTarget(payment: Awaited<ReturnType<typeof findPa
 function buildProviderMetadata(
   currentMetadata: Prisma.JsonValue | null | undefined,
   providerResult: ProviderCreatePaymentResult
-) {
+): Prisma.InputJsonObject {
   const metadata = asMetadataObject(currentMetadata);
   return {
     ...metadata,
@@ -304,7 +304,7 @@ function buildProviderMetadata(
     providerCreatePayload: providerResult.metadata?.createResponse ?? metadata.providerCreatePayload ?? null,
     providerCreateRequest: providerResult.metadata?.createRequest ?? metadata.providerCreateRequest ?? null,
     paymentQrContext: providerResult.metadata?.qrContext ?? metadata.paymentQrContext ?? null,
-  };
+  } as Prisma.InputJsonObject;
 }
 
 function buildProviderPayloadRecord(params: {

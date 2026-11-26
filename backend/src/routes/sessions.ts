@@ -37,7 +37,17 @@ sessionRoutes.post('/', async (c) => {
   const data = createSessionSchema.parse(body);
 
   try {
-    const session = await createWashSession({ userId, ...data });
+    const session = await createWashSession({
+      userId,
+      branchId: data.branchId as string,
+      machineId: data.machineId as string,
+      packageId: data.packageId as string,
+      scanTokenId: data.scanTokenId as string,
+      carSize: data.carSize as 'S' | 'M' | 'L',
+      addons: data.addons ?? [],
+      totalPrice: data.totalPrice,
+      couponId: data.couponId,
+    });
     return c.json({ data: session }, 201);
   } catch (error) {
     if (error instanceof ScanTokenError) {

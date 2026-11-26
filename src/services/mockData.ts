@@ -22,6 +22,7 @@ export interface Machine {
 export interface Branch {
   id: string;
   name: string;
+  type: 'car' | 'motorcycle';
   location: { lat: number; lng: number };
   promptPayId: string;
   promptPayName: string;
@@ -103,6 +104,47 @@ const defaultAddon = {
   image: '/freepik_0001_(3).png',
 };
 
+// Motorcycle wash uses a single flat price (no S/M/L size). We keep the S/M/L
+// shape for compatibility but set all three to the same value, and the customer
+// flow hides the size selector for motorcycle branches.
+function flatPrice(price: number): { S: number; M: number; L: number } {
+  return { S: price, M: price, L: price };
+}
+
+// Real ROBOSS motorcycle pricing: base wash 49฿ / 1-3 min (touchless).
+const defaultMotorcyclePackages: BranchPackage[] = [
+  {
+    id: 'moto_quick',
+    name: 'MOTO QUICK 49',
+    vehicleType: 'motorcycle',
+    prices: flatPrice(49),
+    steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'เป่าแห้ง'],
+    stepDuration: 60,
+    isActive: true,
+    image: '/freepik_0001.png',
+  },
+  {
+    id: 'moto_shine',
+    name: 'MOTO SHINE 69',
+    vehicleType: 'motorcycle',
+    prices: flatPrice(69),
+    steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'เป่าแห้ง', 'เคลือบเงา'],
+    stepDuration: 60,
+    isActive: true,
+    image: '/freepik_0001_(1).png',
+  },
+  {
+    id: 'moto_premium',
+    name: 'MOTO PREMIUM 99',
+    vehicleType: 'motorcycle',
+    prices: flatPrice(99),
+    steps: ['ฉีดน้ำแรงดันสูง', 'ล้างโฟมสลายคราบ', 'ขัดล้างอัตโนมัติ', 'เป่าแห้ง', 'เคลือบเงา'],
+    stepDuration: 60,
+    isActive: true,
+    image: '/freepik_0001_(2).png',
+  },
+];
+
 // Real ROBOSS branches with actual coordinates
 interface RealBranch {
   id: string;
@@ -118,7 +160,7 @@ interface RealBranch {
 
 const realBranches: RealBranch[] = [
   {
-    id: 'branch_001',
+    id: 'branch_c01',
     name: 'ROBOSS รามอินทรา 109',
     address: '99/9 ถ.รามอินทรา กม.9 แขวงคันนายาว เขตคันนายาว กรุงเทพฯ',
     area: 'กรุงเทพฯ (คันนายาว)',
@@ -129,7 +171,7 @@ const realBranches: RealBranch[] = [
     priceMultiplier: 1.0,
   },
   {
-    id: 'branch_002',
+    id: 'branch_c02',
     name: 'ROBOSS พระราม 9',
     address: '1 ถ.พระราม 9 แขวงห้วยขวาง เขตห้วยขวาง กรุงเทพฯ',
     area: 'กรุงเทพฯ (ห้วยขวาง)',
@@ -140,7 +182,7 @@ const realBranches: RealBranch[] = [
     priceMultiplier: 1.0,
   },
   {
-    id: 'branch_003',
+    id: 'branch_c03',
     name: 'ROBOSS ท่าพระ',
     address: '8/1 ถ.ท่าพระ แขวงบางยี่เรือ เขตธนบุรี กรุงเทพฯ',
     area: 'กรุงเทพฯ (ธนบุรี)',
@@ -151,7 +193,7 @@ const realBranches: RealBranch[] = [
     priceMultiplier: 1.0,
   },
   {
-    id: 'branch_004',
+    id: 'branch_c04',
     name: 'ROBOSS ชลบุรี',
     address: '99 ถ.สุขุมวิท ต.บ้านสวน อ.เมือง จ.ชลบุรี',
     area: 'ชลบุรี',
@@ -162,7 +204,7 @@ const realBranches: RealBranch[] = [
     priceMultiplier: 0.95,
   },
   {
-    id: 'branch_005',
+    id: 'branch_c05',
     name: 'ROBOSS สตูล',
     address: '15 ถ.สตูลธานี ต.พิมาน อ.เมือง จ.สตูล',
     area: 'สตูล',
@@ -173,7 +215,7 @@ const realBranches: RealBranch[] = [
     priceMultiplier: 0.9,
   },
   {
-    id: 'branch_006',
+    id: 'branch_c06',
     name: 'ROBOSS นครศรีธรรมราช',
     address: '55 ถ.ราชดำเนิน ต.ในเมือง อ.เมือง จ.นครศรีธรรมราช',
     area: 'นครศรีธรรมราช',
@@ -184,7 +226,7 @@ const realBranches: RealBranch[] = [
     priceMultiplier: 0.9,
   },
   {
-    id: 'branch_007',
+    id: 'branch_c07',
     name: 'ROBOSS อุทัยธานี',
     address: '123 ถ.ศรีอุทัย ต.อุทัยใหม่ อ.เมือง จ.อุทัยธานี',
     area: 'อุทัยธานี',
@@ -197,13 +239,14 @@ const realBranches: RealBranch[] = [
 ];
 
 const basePrices = {
-  quick: { S: 1, M: 1, L: 1 },
+  // Real ROBOSS car wash starts at 99฿ (official promo).
+  quick: { S: 99, M: 119, L: 139 },
   shine: { S: 139, M: 149, L: 169 },
   special: { S: 339, M: 399, L: 469 },
   vacuum: { S: 70, M: 90, L: 120 },
 };
 
-function roundToNearest(n: number, _nearest: number = 9): number {
+function roundToNearest(n: number): number {
   if (n < 10) return Math.max(1, Math.round(n));
   return Math.round(n / 10) * 10 - 1;
 }
@@ -211,6 +254,7 @@ function roundToNearest(n: number, _nearest: number = 9): number {
 export const branches: Branch[] = realBranches.map((rb) => ({
   id: rb.id,
   name: rb.name,
+  type: 'car',
   address: rb.address,
   area: rb.area,
   location: rb.location,
@@ -242,6 +286,103 @@ export const branches: Branch[] = realBranches.map((rb) => ({
     { id: `${rb.id}_moto_01`, name: 'ตู้ล้างมอไซค์ B1', type: 'motorcycle', status: 'idle', espDeviceId: `ESP32-${rb.id}-MOTO01` },
   ],
 }));
+
+// Dedicated motorcycle-only franchises: motorcycle wash category only, no cars.
+interface RealMotorcycleBranch {
+  id: string;
+  name: string;
+  address: string;
+  area: string;
+  location: { lat: number; lng: number };
+  mapsUrl: string;
+  promptPayId: string;
+  promptPayName: string;
+}
+
+// IDs align with the motorcycle branches in branchContext (branch_b01..b06) so a
+// motorcycle branch selected in the picker resolves to a motorcycle branch here.
+const realMotorcycleBranches: RealMotorcycleBranch[] = [
+  {
+    id: 'branch_b01',
+    name: 'ROBOSS ล้างมอไซค์ พระราม 9',
+    address: '204 ซ.โรงพยาบาลพระราม 9 แขวงห้วยขวาง กรุงเทพฯ',
+    area: 'กรุงเทพฯ (ห้วยขวาง)',
+    location: { lat: 13.7571, lng: 100.569 },
+    mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7',
+    promptPayId: '0901112201',
+    promptPayName: 'ROBOSS ล้างมอไซค์ พระราม 9',
+  },
+  {
+    id: 'branch_b02',
+    name: 'ROBOSS ล้างมอไซค์ พระราม 4',
+    address: 'ปตท. พระราม 4 แขวงพระโขนง เขตคลองเตย กรุงเทพฯ',
+    area: 'กรุงเทพฯ (คลองเตย)',
+    location: { lat: 13.716, lng: 100.5746 },
+    mapsUrl: 'https://maps.app.goo.gl/WhtiRPuwrRzrwgHF7',
+    promptPayId: '0901112202',
+    promptPayName: 'ROBOSS ล้างมอไซค์ พระราม 4',
+  },
+  {
+    id: 'branch_b03',
+    name: 'ROBOSS ล้างมอไซค์ ท่าพระ',
+    address: '182/1 ซ.เทอดไท 33 แขวงดาวคะนอง เขตธนบุรี กรุงเทพฯ',
+    area: 'กรุงเทพฯ (ธนบุรี)',
+    location: { lat: 13.7159, lng: 100.4762 },
+    mapsUrl: 'https://maps.app.goo.gl/F5GfLG99U1SDzy28A',
+    promptPayId: '0901112203',
+    promptPayName: 'ROBOSS ล้างมอไซค์ ท่าพระ',
+  },
+  {
+    id: 'branch_b04',
+    name: 'ROBOSS ล้างมอไซค์ ชลบุรี',
+    address: 'ต.นาป่า อ.เมืองชลบุรี จ.ชลบุรี',
+    area: 'ชลบุรี',
+    location: { lat: 13.3046, lng: 100.9024 },
+    mapsUrl: 'https://maps.app.goo.gl/6FdX7LG31ozszmc29',
+    promptPayId: '0901112204',
+    promptPayName: 'ROBOSS ล้างมอไซค์ ชลบุรี',
+  },
+  {
+    id: 'branch_b05',
+    name: 'ROBOSS ล้างมอไซค์ ภูเก็ต',
+    address: '78/162 ต.สามกอง อ.เมืองภูเก็ต จ.ภูเก็ต',
+    area: 'ภูเก็ต',
+    location: { lat: 7.8992, lng: 98.3761 },
+    mapsUrl: 'https://maps.app.goo.gl/oazz3WiRR5ghx8SAA',
+    promptPayId: '0901112205',
+    promptPayName: 'ROBOSS ล้างมอไซค์ ภูเก็ต',
+  },
+  {
+    id: 'branch_b06',
+    name: 'ROBOSS ล้างมอไซค์ แม่สอด',
+    address: 'ปั๊มบางจาก ต.แม่ปะ อ.แม่สอด จ.ตาก',
+    area: 'ตาก (แม่สอด)',
+    location: { lat: 16.7511, lng: 98.5721 },
+    mapsUrl: 'https://maps.app.goo.gl/BbHegYXa99rbBCGC9',
+    promptPayId: '0901112206',
+    promptPayName: 'ROBOSS ล้างมอไซค์ แม่สอด',
+  },
+];
+
+const motorcycleBranches: Branch[] = realMotorcycleBranches.map((mb) => ({
+  id: mb.id,
+  name: mb.name,
+  type: 'motorcycle',
+  address: mb.address,
+  area: mb.area,
+  location: mb.location,
+  mapsUrl: mb.mapsUrl,
+  promptPayId: mb.promptPayId,
+  promptPayName: mb.promptPayName,
+  isActive: true,
+  packages: defaultMotorcyclePackages.map((pkg) => ({ ...pkg, prices: { ...pkg.prices } })),
+  machines: [
+    { id: `${mb.id}_moto_01`, name: 'ตู้ล้างมอไซค์ B1', type: 'motorcycle', status: 'idle', espDeviceId: `ESP32-${mb.id}-MOTO01` },
+    { id: `${mb.id}_moto_02`, name: 'ตู้ล้างมอไซค์ B2', type: 'motorcycle', status: 'idle', espDeviceId: `ESP32-${mb.id}-MOTO02` },
+  ],
+}));
+
+branches.push(...motorcycleBranches);
 
 
 // Default mock user

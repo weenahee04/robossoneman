@@ -1,0 +1,77 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { createRoot } from 'react-dom/client';
+import * as Dialog from '@radix-ui/react-dialog';
+import { ArrowLeft, ArrowRight, Bell, CarFront, Check, ChevronDown, ChevronRight, CircleHelp, Clock3, Droplets, Home, MapPin, Search, ShieldCheck, Ticket, UserRound, X, ScanLine, ReceiptText, Wind, Headphones, Settings, Bookmark } from 'lucide-react';
+import { VehicleIcon } from '../../src/components/VehicleIcon';
+import './styles.css';
+
+type View = 'home' | 'packages' | 'coupons' | 'activity' | 'account';
+type Sheet = 'branches' | 'review' | 'promo' | 'help' | 'alerts' | null;
+const branches = ['พระราม 9', 'ลาดพร้าว', 'รามคำแหง'];
+const packages = [
+  { id: 'quick', name: 'ล้างด่วน', english: 'QUICK WASH', desc: 'สะอาดครบขั้นตอน สำหรับวันธรรมดา', features: ['ฉีดน้ำแรงดันสูง', 'โฟมทำความสะอาด', 'เป่าแห้ง'], image: 'motorcycle-express.webp', carImage: 'wash-express.webp', icon: Droplets },
+  { id: 'shine', name: 'ล้างและเคลือบเงา', english: 'WASH & SHINE', desc: 'เพิ่มการดูแลพื้นผิวและความเงางาม', features: ['ล้างทำความสะอาด', 'เคลือบเงาพื้นผิว', 'เป่าแห้ง'], image: 'motorcycle-shine.webp', carImage: 'wash-shine.webp', icon: ShieldCheck },
+];
+function Logo() { return <span className="logo-crop"><img src="/roboss-logo-ui.webp" alt="ROBOSS" width="480" height="270" /></span>; }
+function App() {
+  const [view, setView] = useState<View>('home');
+  const [motorcycle, setMotorcycle] = useState(true);
+  const [sheet, setSheet] = useState<Sheet>(null);
+  const [branch, setBranch] = useState(branches[0]);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState('quick');
+  const [promo, setPromo] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const [ack, setAck] = useState(false);
+  const [finished, setFinished] = useState(false);
+  const carousel = useRef<HTMLDivElement>(null);
+  const lastFocus = useRef<HTMLElement | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const initial = useRef(true);
+  const chosen = packages.find(p => p.id === selected)!;
+  useEffect(() => { if (initial.current) { initial.current = false; return; } window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior }); heading.current?.focus({ preventScroll: true }); }, [view]);
+  const open = (next: Sheet) => { lastFocus.current = document.activeElement as HTMLElement; setQuery(''); setSheet(next); if (next === 'review') { setAck(false); setFinished(false); } };
+  const go = (next: View) => { setSheet(null); setView(next); };
+  const VehicleTabs = () => <div className="vehicle-switch" role="group" aria-label="ประเภทรถ"><button aria-pressed={motorcycle} onClick={() => setMotorcycle(true)}><VehicleIcon motorcycle size={21} /><span>มอเตอร์ไซค์</span></button><button aria-pressed={!motorcycle} onClick={() => setMotorcycle(false)}><CarFront size={21} /><span>รถยนต์</span></button></div>;
+  const BranchButton = () => <button className="branch-button" onClick={() => open('branches')}><MapPin size={17}/><span>สาขา {branch}</span><ChevronDown size={15}/></button>;
+  const packageImage = (p: typeof packages[0]) => `/service-cards/${motorcycle ? p.image : p.carImage}`;
+  const promos = [
+    { title: 'ดูแลรถให้พร้อมทุกวัน', detail: 'เลือกบริการที่เหมาะกับรถของคุณ', image: '/service-cards/motorcycle-shine.webp' },
+    { title: 'มากกว่าความสะอาด', detail: 'ค้นพบแพ็กเกจล้างและเคลือบเงา', image: '/service-cards/wash-shine.webp' },
+  ];
+  const showPromo = (index: number) => { setPromo(index); carousel.current?.children[index]?.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'nearest', inline: 'start' }); };
+  const nav = [{ id: 'home', label: 'หน้าหลัก', icon: Home }, { id: 'packages', label: 'ล้างรถ', icon: Droplets }, { id: 'coupons', label: 'คูปอง', icon: Ticket }, { id: 'activity', label: 'ประวัติ', icon: ReceiptText }, { id: 'account', label: 'บัญชี', icon: UserRound }] as const;
+  return <div className="app-layout">
+    <header className="app-header"><button className="brand-button" aria-label="ROBOSS หน้าหลัก" onClick={() => go('home')}><Logo/></button><div className="desktop-nav">{nav.map(n => <button key={n.id} aria-current={view === n.id ? 'page' : undefined} onClick={() => go(n.id)}>{n.label}</button>)}</div><div className="header-actions"><span className="preview-pill">DESIGN PREVIEW</span><button className="icon-button" aria-label="การแจ้งเตือน" onClick={() => open('alerts')}><Bell size={21}/></button></div></header>
+    <main id="main-content">
+      {view === 'home' && <div className="home-layout"><div className="main-column">
+        <div className="welcome"><div><p>ยินดีต้อนรับสู่ ROBOSS</p><h1 ref={heading} tabIndex={-1}>วันนี้ล้างรถกันไหม?</h1></div><button className="avatar" aria-label="บัญชีของฉัน" onClick={() => go('account')}><UserRound size={23}/></button></div>
+        <div className="branch-line"><BranchButton/><span className="small-muted">เลือกสาขาก่อนเริ่ม</span></div>
+        <section className="service-composer" aria-label="เริ่มใช้บริการ"><VehicleTabs/>
+          <div className="service-photo"><img src={packageImage(packages[0])} alt={motorcycle ? 'มอเตอร์ไซค์ในช่องล้าง ROBOSS' : 'รถยนต์ในช่องล้าง ROBOSS'} width="1280" height="560" fetchPriority="high"/><div className="photo-caption"><span>ROBOSS CARE</span><strong>{motorcycle ? 'ล้างมอเตอร์ไซค์' : 'ล้างรถยนต์'}</strong></div></div>
+          <div className="composer-bottom"><div className="service-note"><ShieldCheck size={16}/><span>เลือกราคาและบริการก่อนชำระเงิน</span></div><button className="primary" onClick={() => go('packages')}><span>เลือกแพ็กเกจ</span><ArrowRight size={19}/></button></div>
+        </section>
+        <div className="quick-actions"><button onClick={() => go('coupons')}><Ticket/><span>คูปองของฉัน</span></button><button onClick={() => open('branches')}><MapPin/><span>ค้นหาสาขา</span></button><button onClick={() => go('activity')}><Clock3/><span>ประวัติการล้าง</span></button><button onClick={() => open('help')}><Headphones/><span>ช่วยเหลือ</span></button></div>
+        <button className="member-row" onClick={() => go('coupons')}><span className="member-mark">R</span><span><strong>สิทธิพิเศษของคุณ</strong><small>คูปองและสิทธิ์สมาชิก รวมไว้ที่เดียว</small></span><ChevronRight size={18}/></button>
+      </div><aside className="discover-column">
+        <section className="promo-section"><div className="section-heading"><h2>เรื่องดี ๆ จาก ROBOSS</h2><span className="small-muted">แบนเนอร์ตัวอย่าง</span></div><div className="promo-carousel" ref={carousel} onScroll={e => { const el = e.currentTarget; setPromo(Math.round(el.scrollLeft / (el.clientWidth + 12))); }}>{promos.map((p, index) => <button className="promo-card" key={p.title} onClick={() => { setPromo(index); open('promo'); }}><img src={p.image} alt="" width="1280" height="560" loading="lazy"/><div><strong>{p.title}</strong><span>{p.detail}</span></div><ArrowRight size={18}/></button>)}</div><div className="carousel-control"><span>โปรโมชันและบริการ</span><div>{promos.map((_, index) => <button key={index} aria-label={`แบนเนอร์ ${index + 1}`} aria-pressed={promo === index} onClick={() => showPromo(index)}><span/></button>)}</div></div></section>
+        <section className="how-to"><span className="quiet-icon"><ScanLine size={23}/></span><h2>มาถึงสาขาแล้ว?</h2><p>เลือกแพ็กเกจ แล้วทำตามขั้นตอน<br/>ก่อนเริ่มล้างบนหน้าจอ</p><button className="text-button" onClick={() => open('help')}>ดูวิธีใช้บริการ <ChevronRight size={16}/></button></section>
+      </aside></div>}
+      {view === 'packages' && <div className="page"><div className="page-heading"><button className="icon-button" aria-label="กลับหน้าหลัก" onClick={() => go('home')}><ArrowLeft/></button><div><p>เลือกบริการที่เหมาะกับรถคุณ</p><h1 ref={heading} tabIndex={-1}>แพ็กเกจล้างรถ</h1></div></div><BranchButton/><VehicleTabs/><p className="demo-note">รายการตัวอย่างสำหรับทดสอบดีไซน์ · ยังไม่ใช่ราคาขายจริง</p><div className="package-list" role="group" aria-label="เลือกแพ็กเกจ">{packages.map(p => <button className={`package ${selected === p.id ? 'selected' : ''}`} key={p.id} aria-pressed={selected === p.id} onClick={() => setSelected(p.id)}><img src={packageImage(p)} alt="" width="1280" height="560"/><div className="package-content"><div className="package-title"><span className="package-code">{p.english}</span><span className="radio-check">{selected === p.id && <Check size={14}/>}</span></div><h2>{p.name}</h2><p>{p.desc}</p><div className="features">{p.features.map(f => <span key={f}><Check size={14}/>{f}</span>)}</div><div className="package-price">ราคาตามสาขา<small>ยืนยันก่อนชำระเงิน</small></div></div></button>)}</div><div className="selection-bar"><div><small>แพ็กเกจที่เลือก</small><strong>{chosen.name}</strong></div><button className="primary" onClick={() => open('review')}>ตรวจสอบรายการ <ArrowRight size={18}/></button></div></div>}
+      {view === 'coupons' && <div className="page"><div className="simple-heading"><p>สิทธิพิเศษจาก ROBOSS</p><h1 ref={heading} tabIndex={-1}>คูปองของฉัน</h1></div><div className="member-surface"><span className="member-mark">R</span><div><strong>สิทธิ์ที่ใช้ได้ ดูได้ในที่เดียว</strong><p>เลือกคูปอง แล้วตรวจสอบเงื่อนไขก่อนใช้</p></div><Ticket/></div><div className="empty-state"><Ticket size={36}/><h2>ยังไม่มีคูปองในต้นแบบ</h2><p>หน้าพรีวิวนี้ไม่ได้เชื่อมบัญชีลูกค้า<br/>และจะไม่ออกหรือหักสิทธิ์คูปองจริง</p><button className="secondary" onClick={() => open('promo')}>ดูโปรโมชันตัวอย่าง <ArrowRight size={17}/></button></div></div>}
+      {view === 'activity' && <div className="page"><div className="simple-heading"><p>ทุกครั้งที่ดูแลรถ</p><h1 ref={heading} tabIndex={-1}>ประวัติการล้าง</h1></div><div className="empty-state"><ReceiptText size={36}/><h2>ไม่มีรายการจริงในต้นแบบ</h2><p>เมื่อเชื่อมระบบแล้ว คุณจะดูรายละเอียด<br/>แพ็กเกจและรายการชำระเงินได้ที่นี่</p><button className="primary" onClick={() => go('packages')}>ลองเลือกแพ็กเกจ <ArrowRight size={17}/></button></div></div>}
+      {view === 'account' && <div className="page"><div className="simple-heading"><p>ROBOSS ACCOUNT</p><h1 ref={heading} tabIndex={-1}>บัญชีของคุณ</h1></div><div className="account-identity"><span className="avatar"><UserRound size={27}/></span><div><h2>ผู้เข้าชมต้นแบบ</h2><p>ยังไม่ได้เชื่อมบัญชีจริง</p></div></div><div className="settings-list">{[{label:'คูปองและสิทธิพิเศษ', icon:Ticket, action:()=>go('coupons')},{label:'ประวัติการใช้บริการ',icon:ReceiptText,action:()=>go('activity')},{label:'สาขาที่เลือก',value:branch,icon:MapPin,action:()=>open('branches')},{label:'ติดต่อ ROBOSS',icon:Headphones,action:()=>open('help')}].map(r => <button key={r.label} onClick={r.action}><r.icon size={20}/><span>{r.label}</span>{r.value && <small>{r.value}</small>}<ChevronRight size={17}/></button>)}</div></div>}
+      <footer className="preview-note">ต้นแบบ UX/UI · ไม่เชื่อมการชำระเงินหรือเครื่องล้าง</footer>
+    </main>
+    <nav className="bottom-nav" aria-label="เมนูหลัก">{nav.map(n => <button key={n.id} aria-current={view === n.id ? 'page' : undefined} onClick={() => go(n.id)}>{n.id === 'packages' ? <VehicleIcon motorcycle={motorcycle} size={22}/> : <n.icon size={22}/>}<span>{n.label}</span></button>)}</nav>
+    <Dialog.Root open={sheet !== null} onOpenChange={open => { if (!open) setSheet(null); }}><Dialog.Portal><Dialog.Overlay className="sheet-overlay"/><Dialog.Content className="sheet" onCloseAutoFocus={e => {e.preventDefault(); lastFocus.current?.focus();}}><div className="sheet-handle"/><div className="sheet-heading"><Dialog.Title>{sheet === 'branches' ? 'เลือกสาขา' : sheet === 'review' ? 'ตรวจสอบรายการ' : sheet === 'promo' ? 'โปรโมชันตัวอย่าง' : sheet === 'alerts' ? 'การแจ้งเตือน' : 'ก่อนเริ่มใช้บริการ'}</Dialog.Title><Dialog.Close className="icon-button" aria-label="ปิด"><X size={20}/></Dialog.Close></div>
+      <Dialog.Description className="sheet-description">{sheet === 'branches' ? 'รายชื่อสาขาตัวอย่างสำหรับลองเปลี่ยนหน้าจอ ไม่ใช่สถานะเปิดบริการ' : 'หน้าตัวอย่างสำหรับทดลอง UX/UI เท่านั้น'}</Dialog.Description>
+      {sheet === 'branches' && <><label className="search-label" htmlFor="branch-search">ค้นหาชื่อสาขา</label><div className="search-field"><Search size={19}/><input id="branch-search" placeholder="เช่น พระราม 9" value={query} onChange={e => setQuery(e.target.value)}/>{query && <button aria-label="ล้างคำค้น" className="icon-button" onClick={() => setQuery('')}><X size={16}/></button>}</div><div className="branch-results" aria-live="polite">{branches.filter(b => b.includes(query.trim())).map(b => <button key={b} onClick={() => {setBranch(b); setSheet(null);}}><MapPin size={21}/><span><strong>ROBOSS {b}</strong><small>ข้อมูลสาขาตัวอย่าง</small></span>{b === branch ? <Check size={19}/> : <ChevronRight size={18}/>}</button>)}{branches.every(b => !b.includes(query.trim())) && <div className="search-empty"><Search size={26}/><p>ไม่พบสาขา “{query}”</p><button className="text-button" onClick={() => setQuery('')}>ล้างคำค้นแล้วลองใหม่</button></div>}</div></>}
+      {sheet === 'review' && (finished ? <div className="review-success" role="status"><Check size={32}/><h3>จบการทดลองเลือกแพ็กเกจ</h3><p>ไม่มีการชำระเงิน หักสิทธิ์ หรือสั่งเครื่องล้าง</p><button className="primary" onClick={() => go('home')}>กลับหน้าหลัก</button></div> : <><div className="review-service"><chosen.icon size={26}/><div><strong>{chosen.name}</strong><p>{motorcycle ? 'มอเตอร์ไซค์' : 'รถยนต์'} · สาขา {branch}</p></div></div><dl><div><dt>ราคาบริการ</dt><dd>ยังไม่เชื่อมราคา</dd></div><div><dt>การชำระเงิน</dt><dd>ปิดในต้นแบบ</dd></div></dl><div className="safety-note"><ShieldCheck size={20}/><p>จอดรถให้ตรงช่อง และตรวจสอบตำแหน่งเครื่องก่อนเริ่มใช้บริการทุกครั้ง</p></div><label className="acknowledgement"><input type="checkbox" checked={ack} onChange={e => setAck(e.target.checked)}/><span>เข้าใจว่านี่คือการทดลอง ไม่ใช่การสั่งล้างจริง</span></label><button className="primary" disabled={!ack} onClick={() => setFinished(true)}>จบการทดลอง <Check size={18}/></button></>)}
+      {sheet === 'promo' && <><img className="sheet-promo" src={promos[promo]?.image ?? promos[0].image} alt="ภาพประกอบโปรโมชันตัวอย่าง" width="1280" height="560"/><h3>{promos[promo]?.title ?? promos[0].title}</h3><p className="body-muted">พื้นที่นี้รองรับแคมเปญ ภาพโฆษณา และรายละเอียดเงื่อนไขจริง โดยแยกออกจากปุ่มเริ่มใช้บริการอย่างชัดเจน</p><button className="secondary" aria-pressed={saved} onClick={() => setSaved(!saved)}>{saved ? <Check size={18}/> : <Bookmark size={18}/>} {saved ? 'บันทึกไว้ในต้นแบบแล้ว' : 'บันทึกไว้ดูภายหลัง'}</button></>}
+      {sheet === 'alerts' && <div className="empty-state compact"><Bell size={32}/><h3>ไม่มีการแจ้งเตือนในต้นแบบ</h3><p>สถานะการล้างและสิทธิพิเศษจะแสดงที่นี่<br/>เมื่อเชื่อมระบบจริง</p></div>}
+      {sheet === 'help' && <><div className="instruction-list">{[['เลือกสาขาและแพ็กเกจ','ตรวจสอบบริการและราคาก่อนชำระเงิน'],['เตรียมรถให้พร้อม','จอดตรงช่องตามคำแนะนำของสาขา'],['ตรวจสอบก่อนเริ่มล้าง','หากเครื่องไม่อยู่ตำแหน่งพร้อมใช้งาน ให้ติดต่อพนักงานก่อนชำระเงิน'],['รอจนเครื่องทำงานเสร็จ','นำรถออกเมื่อขั้นตอนเป่าลมเสร็จแล้วเท่านั้น']].map(([title,detail],i)=><div key={title}><span>{i+1}</span><div><h3>{title}</h3><p>{detail}</p></div></div>)}</div><p className="contact-line"><Headphones size={18}/> ติดต่อสาขาหรือ LINE @ROBOSS เมื่อมีปัญหา</p></>}
+    </Dialog.Content></Dialog.Portal></Dialog.Root>
+  </div>;
+}
+createRoot(document.getElementById('root')!).render(<App/>);

@@ -37,3 +37,4 @@ dist-ssr
 .cursor/
 .claude/
 .vercel
+.env*.local

@@ -83,7 +83,8 @@ function resolveOpenState(params: {
 }
 
 function matchesBranchMachineType(branchType: string, machineType?: string | null) {
-  if (branchType === 'bike') {
+  // 'bike' kept for backward compatibility with any legacy rows not yet migrated.
+  if (branchType === 'motorcycle' || branchType === 'bike') {
     return machineType === 'motorcycle' || machineType === 'bike';
   }
 

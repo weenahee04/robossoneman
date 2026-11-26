@@ -131,6 +131,12 @@ async function handleClientMessage(client: WsClient, ws: WebSocket, raw: WebSock
       return;
     }
 
+    const machine = await prisma.machine.findUnique({ where: { id: message.machineId }, select: { branchId: true } });
+    if (!machine || !canSubscribeToBranch(client, machine.branchId)) {
+      sendJson(ws, { type: 'subscription_denied', target: 'machine', machineId: message.machineId });
+      return;
+    }
+
     client.machineIds.add(message.machineId);
     sendJson(ws, { type: 'subscribed', target: 'machine', machineId: message.machineId });
     return;

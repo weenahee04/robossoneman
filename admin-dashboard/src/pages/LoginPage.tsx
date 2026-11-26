@@ -132,6 +132,7 @@ export function LoginPage({ theme, onToggleTheme, onLogin }: LoginPageProps) {
             <div className="mt-6 grid gap-2 rounded-2xl border border-red-100 bg-red-50/70 p-4 text-[11px] text-slate-500">
               <p>เดโม HQ: `admin@roboss.co.th` / `admin123`</p>
               <p>เดโมสาขา: `rama.manager@roboss.co.th` / `manager123`</p>
+              <p>เดโมแคชเชียร์: `cashier@roboss.co.th` / `cashier123`</p>
             </div>
           </div>
         </div>

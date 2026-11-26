@@ -36,7 +36,7 @@ const adminIconIds: Record<string, string | number> = {
 
 type AdminIconName = keyof typeof adminIconIds;
 
-export function getAdminIconUrl(name: AdminIconName, size: number = 24): string {
+export function getAdminIconUrl(name: AdminIconName, size = 24): string {
   const id = adminIconIds[name];
   return `${ICONS8_BASE}${size}&id=${id}`;
 }

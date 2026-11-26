@@ -16,7 +16,7 @@ export function Header() {
   const { data: pointsBalance } = usePointsBalance();
   const { branch, allBranches, setBranch } = useBranch();
   const [showPicker, setShowPicker] = useState(false);
-  const [typeFilter, setTypeFilter] = useState<'all' | 'car' | 'bike'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'car' | 'motorcycle'>('all');
 
   useEffect(() => {
     if (USE_LOCAL_DEV_FALLBACK) {
@@ -67,16 +67,16 @@ export function Header() {
           className="w-full flex items-center gap-2 px-4 py-1.5 bg-white/[0.02] border-t border-white/[0.04] active:bg-white/[0.04] transition-colors"
         >
           <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${branch.isOpen ? 'bg-green-500' : 'bg-gray-500'}`} />
-          <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center ${branch.type === 'bike' ? 'bg-orange-500/15' : 'bg-app-red/15'}`}>
-            {branch.type === 'bike' ? (
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={branch.type === 'bike' ? '#F97316' : '#DC2626'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
+          <div className={`w-5 h-5 rounded flex-shrink-0 flex items-center justify-center ${branch.type === 'motorcycle' ? 'bg-orange-500/15' : 'bg-app-red/15'}`}>
+            {branch.type === 'motorcycle' ? (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={branch.type === 'motorcycle' ? '#F97316' : '#DC2626'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>
             ) : (
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/></svg>
             )}
           </div>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-white text-[11px] font-bold truncate leading-none">{branch.shortName}</p>
-            <p className="text-white/20 text-[9px] truncate leading-none mt-0.5">{branch.hours} • {branch.type === 'bike' ? 'ล้างมอไซค์' : 'ล้างรถยนต์'} · พ้อยท์รวมทุกสาขา</p>
+            <p className="text-white/20 text-[9px] truncate leading-none mt-0.5">{branch.hours} • {branch.type === 'motorcycle' ? 'ล้างมอไซค์' : 'ล้างรถยนต์'} · พ้อยท์รวมทุกสาขา</p>
           </div>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-white/20 flex-shrink-0">
             <path d="m6 9 6 6 6-6"/>
@@ -120,13 +120,13 @@ export function Header() {
 
               {/* Type filter */}
               <div className="flex gap-2 px-4 pb-3">
-                {([['all', 'ทั้งหมด'], ['car', 'ล้างรถยนต์'], ['bike', 'ล้างมอไซค์']] as const).map(([key, label]) => (
+                {([['all', 'ทั้งหมด'], ['car', 'ล้างรถยนต์'], ['motorcycle', 'ล้างมอไซค์']] as const).map(([key, label]) => (
                   <button
                     key={key}
                     onClick={() => setTypeFilter(key)}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-medium border transition-all ${
                       typeFilter === key
-                        ? key === 'bike' ? 'bg-orange-500 text-white border-orange-500' : 'bg-app-red text-white border-app-red'
+                        ? key === 'motorcycle' ? 'bg-orange-500 text-white border-orange-500' : 'bg-app-red text-white border-app-red'
                         : 'bg-white/[0.03] text-white/40 border-white/5'
                     }`}
                   >
@@ -145,14 +145,14 @@ export function Header() {
                       onClick={() => { setBranch(b); setShowPicker(false); }}
                       className={`w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all active:scale-[0.98] ${
                         isActive
-                          ? b.type === 'bike' ? 'bg-orange-500/10 border border-orange-500/25' : 'bg-app-red/10 border border-app-red/25'
+                          ? b.type === 'motorcycle' ? 'bg-orange-500/10 border border-orange-500/25' : 'bg-app-red/10 border border-app-red/25'
                           : 'bg-white/[0.02] border border-white/[0.04]'
                       }`}
                     >
                       <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden ${
-                        b.type === 'bike' ? 'bg-orange-950/50' : 'bg-black'
-                      } border ${isActive ? (b.type === 'bike' ? 'border-orange-500/30' : 'border-app-red/30') : 'border-white/5'}`}>
-                        <img src={b.type === 'bike' ? '/roboss_bike_icon.png' : '/roboss_car_icon.png'} alt="" className="w-full h-full object-cover" />
+                        b.type === 'motorcycle' ? 'bg-orange-950/50' : 'bg-black'
+                      } border ${isActive ? (b.type === 'motorcycle' ? 'border-orange-500/30' : 'border-app-red/30') : 'border-white/5'}`}>
+                        <img src={b.type === 'motorcycle' ? '/roboss_bike_icon.png' : '/roboss_car_icon.png'} alt="" className="w-full h-full object-cover" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-[12px] font-bold truncate ${isActive ? 'text-white' : 'text-white/70'}`}>{b.shortName}</p>
@@ -163,7 +163,7 @@ export function Header() {
                         </div>
                       </div>
                       {isActive && (
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${b.type === 'bike' ? 'bg-orange-500' : 'bg-app-red'}`}>
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${b.type === 'motorcycle' ? 'bg-orange-500' : 'bg-app-red'}`}>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
                         </div>
                       )}

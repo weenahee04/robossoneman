@@ -1,0 +1,7 @@
+<!doctype html>
+<html lang="th"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>ROBOSS isolated responsive QA</title>
+<style>body{margin:8px;font:14px sans-serif}iframe{height:1300px;border:1px solid #777;display:block;margin-top:8px}select{min-height:44px}</style></head>
+<body><label>ความกว้างหน้าทดสอบ <select id="width"><option>320</option><option>375</option><option>414</option><option>768</option><option>1280</option><option>1920</option></select></label>
+<label>หน้าทดสอบ <select id="page"><option>points</option><option>rewards</option><option>plans</option><option>content</option><option>audit</option></select></label>
+<iframe title="หน้าหลังบ้านจำลอง" src="./operations.html" width="320"></iframe>
+<script>document.getElementById('width').addEventListener('change',e=>document.querySelector('iframe').width=e.target.value);document.getElementById('page').addEventListener('change',e=>document.querySelector('iframe').src='./operations.html?page='+e.target.value)</script></body></html>
