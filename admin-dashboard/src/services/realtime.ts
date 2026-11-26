@@ -76,7 +76,7 @@ export function subscribeAdminRealtime(
 ) {
   const token = localStorage.getItem(TOKEN_KEY);
   if (!token) {
-    return () => {};
+    return () => undefined;
   }
 
   const ws = new WebSocket(`${getWsUrl()}?token=${token}`);

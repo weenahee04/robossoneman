@@ -1,0 +1,252 @@
+/* Hallmark · component: service-option-button · genre: modern-minimal · tone: ROBOSS app-native
+ * anchor: signal-red · fingerprint: compact media row · critique: P5 H5 E5 S5 R5 V5
+ * states: default · hover · focus · active · disabled · loading · error · success
+ * contrast: pass (40–41) · slop: pass (1–58) · mobile: pass (34, 49–57)
+ */
+:root {
+  --wash-card-page: oklch(10% 0.008 28);
+  --wash-card-surface: oklch(14% 0.01 28);
+  --wash-card-surface-active: oklch(18% 0.028 28);
+  --wash-card-rule: oklch(31% 0.018 28);
+  --wash-card-rule-active: oklch(55% 0.2 28);
+  --wash-card-ink: oklch(97% 0.008 28);
+  --wash-card-muted: oklch(69% 0.018 28);
+  --wash-card-subtle: oklch(52% 0.016 28);
+  --wash-card-accent: oklch(55% 0.2 28);
+  --wash-card-accent-strong: oklch(47% 0.19 28);
+  --wash-card-accent-ink: oklch(98% 0.006 28);
+  --wash-card-success: oklch(73% 0.15 150);
+  --wash-card-focus: oklch(86% 0.12 75);
+  --wash-card-space-2xs: 0.25rem;
+  --wash-card-space-xs: 0.5rem;
+  --wash-card-space-sm: 0.75rem;
+  --wash-card-space-md: 1rem;
+  --wash-card-radius-sm: 0.5rem;
+  --wash-card-radius-md: 1rem;
+  --wash-card-dur-micro: 120ms;
+  --wash-card-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wash-goal-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--wash-card-space-sm);
+}
+
+.wash-goal-card {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 7.25rem;
+  overflow: hidden;
+  grid-template-columns: 6rem minmax(0, 1fr) 2.75rem;
+  grid-template-areas: 'media body action';
+  align-items: stretch;
+  border: 1px solid var(--wash-card-rule);
+  border-radius: var(--wash-card-radius-md);
+  background: var(--wash-card-surface);
+  color: var(--wash-card-ink);
+  text-align: start;
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform var(--wash-card-dur-micro) var(--wash-card-ease-out), border-color var(--wash-card-dur-micro) linear;
+}
+
+.wash-goal-card__media {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  grid-area: media;
+  border-inline-end: 1px solid var(--wash-card-rule);
+  background: var(--wash-card-page);
+}
+
+.wash-goal-card__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.wash-goal-card__badge {
+  position: absolute;
+  inset-inline: var(--wash-card-space-xs);
+  inset-block-end: var(--wash-card-space-xs);
+  overflow: hidden;
+  border: 1px solid var(--wash-card-accent);
+  border-radius: var(--wash-card-radius-sm);
+  background: var(--wash-card-page);
+  color: var(--wash-card-ink);
+  padding: var(--wash-card-space-2xs) var(--wash-card-space-xs);
+  font-size: 0.625rem;
+  font-weight: 800;
+  line-height: 1.35;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wash-goal-card--premium .wash-goal-card__badge {
+  border-color: var(--wash-card-rule);
+  color: var(--wash-card-muted);
+}
+
+.wash-goal-card__body {
+  display: flex;
+  min-width: 0;
+  grid-area: body;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--wash-card-space-2xs);
+  padding: var(--wash-card-space-sm);
+}
+
+.wash-goal-card__title {
+  min-width: 0;
+  color: var(--wash-card-ink);
+  font-size: 0.9375rem;
+  font-weight: 800;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.wash-goal-card__description {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--wash-card-muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.wash-goal-card__detail,
+.wash-goal-card__status {
+  display: block;
+  overflow: hidden;
+  color: var(--wash-card-subtle);
+  font-size: 0.6875rem;
+  font-weight: 700;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wash-goal-card__action {
+  display: flex;
+  min-width: 0;
+  grid-area: action;
+  align-items: center;
+  justify-content: center;
+  border-inline-start: 1px solid var(--wash-card-rule);
+}
+
+.wash-goal-card__action-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.wash-goal-card__action-arrow {
+  display: grid;
+  width: 1.75rem;
+  height: 1.75rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--wash-card-accent);
+  color: var(--wash-card-accent-ink);
+  font-size: 0.9375rem;
+  font-weight: 900;
+  line-height: 1;
+  transform: translateX(0);
+  transition: transform var(--wash-card-dur-micro) var(--wash-card-ease-out);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wash-goal-card:hover,
+  .wash-goal-card.is-hover {
+    border-color: var(--wash-card-rule-active);
+  }
+
+  .wash-goal-card:hover .wash-goal-card__action-arrow,
+  .wash-goal-card.is-hover .wash-goal-card__action-arrow {
+    transform: translateX(var(--wash-card-space-2xs));
+  }
+}
+
+.wash-goal-card:focus-visible,
+.wash-goal-card.is-focus {
+  outline: 3px solid var(--wash-card-focus);
+  outline-offset: 2px;
+}
+
+.wash-goal-card:active,
+.wash-goal-card.is-active {
+  transform: scale(0.99);
+  border-color: var(--wash-card-rule-active);
+}
+
+.wash-goal-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.wash-goal-card[data-state='loading'] .wash-goal-card__action-arrow {
+  border: 2px solid var(--wash-card-muted);
+  border-block-start-color: var(--wash-card-accent);
+  background: transparent;
+  color: transparent;
+  animation: wash-card-spin 900ms linear infinite;
+}
+
+.wash-goal-card[data-state='error'] {
+  border-color: var(--wash-card-accent);
+}
+
+.wash-goal-card[data-state='error'] .wash-goal-card__status {
+  color: var(--wash-card-ink);
+}
+
+.wash-goal-card[data-state='success'] {
+  border-color: var(--wash-card-success);
+}
+
+.wash-goal-card[data-state='success'] .wash-goal-card__status {
+  color: var(--wash-card-success);
+}
+
+@keyframes wash-card-spin {
+  to { transform: rotate(1turn); }
+}
+
+@media (max-width: 22rem) {
+  .wash-goal-card {
+    grid-template-columns: 5.25rem minmax(0, 1fr) 2.5rem;
+  }
+
+  .wash-goal-card__body {
+    padding-inline: var(--wash-card-space-xs);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wash-goal-card,
+  .wash-goal-card__action-arrow {
+    transition-duration: 0ms;
+  }
+
+  .wash-goal-card:active,
+  .wash-goal-card.is-active {
+    transform: none;
+  }
+
+  .wash-goal-card[data-state='loading'] .wash-goal-card__action-arrow {
+    animation-duration: 1.5s;
+  }
+}

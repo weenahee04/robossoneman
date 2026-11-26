@@ -143,6 +143,7 @@ enum NotificationCategory {
 enum AdminRole {
   hq_admin
   branch_admin
+  cashier
 }
 
 enum AuditActorType {
@@ -531,6 +532,8 @@ model MembershipPlan {
   description        String?
   price              Int
   currency           String   @default("THB")
+  durationMonths     Int      @default(6) @map("duration_months")
+  group              String   @default("bundle")
   washLimit          Int      @default(10) @map("wash_limit")
   grapheneLimit      Int      @default(2) @map("graphene_limit")
   freeVacuumPerVisit Boolean  @default(true) @map("free_vacuum_per_visit")
@@ -960,4 +963,23 @@ model AuditLog {
   @@index([branchId, createdAt])
   @@index([actorType, createdAt])
   @@map("audit_logs")
+}
+
+model AppContent {
+  id        String   @id @default(uuid())
+  kind      String
+  slug      String
+  title     String
+  body      String
+  category  String   @default("")
+  imageUrl  String?  @map("image_url")
+  isPublished Boolean @default(false) @map("is_published")
+  sortOrder Int      @default(0) @map("sort_order")
+  version   Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([kind, slug])
+  @@index([kind, isPublished, sortOrder])
+  @@map("app_content")
 }

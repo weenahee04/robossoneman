@@ -1,0 +1,44 @@
+[
+  {
+    "date": "2026-09-10",
+    "scope": "documentation",
+    "macrostructure": "Narrative Workflow",
+    "theme": "ROBOSS Admin Control Center",
+    "enrichment": "real admin screenshots with numbered-pin annotations",
+    "brief": "Thai back-office handbook grouped by role and operational category, explaining what to click, what happens and why",
+    "designSystem": "design.md",
+    "nav": "N3 Side-rail",
+    "footer": "Ft2 Inline rule single line",
+    "critique": {"philosophy": 5, "hierarchy": 5, "execution": 4, "specificity": 5, "restraint": 5, "variety": 4},
+    "notes": "Documentation only. Production routes and business logic are unchanged. Screenshots come from the isolated local database."
+  },
+  {
+    "date": "2026-09-10",
+    "scope": "app",
+    "macrostructure": "Control Rail",
+    "theme": "ROBOSS Admin Control Center",
+    "enrichment": "none",
+    "brief": "Converted the back office into a responsive desktop operations dashboard with persistent navigation, command header, KPI strip, work queue, machine health, revenue trend and recent sessions",
+    "designSystem": "design.md",
+    "critique": {"philosophy": 5, "hierarchy": 5, "execution": 4, "specificity": 5, "restraint": 5, "variety": 4},
+    "notes": "Existing routes, APIs and HQ/branch/cashier permissions are preserved. Legacy admin screens inherit the new shell and surface normalization; the overview page is fully rebuilt. QA preview uses local fixture data only."
+  },
+  {
+    "date": "2026-09-10",
+    "scope": "app",
+    "macrostructure": "Workbench",
+    "theme": "ROBOSS Pitlane",
+    "enrichment": "existing service artwork; optimized existing logo",
+    "brief": "Unified customer home, discovery, navigation and wash decision journey; simplified profile, membership, coupon and notification screens",
+    "designSystem": "design.md",
+    "critique": {"philosophy": 4, "hierarchy": 4, "execution": 4, "specificity": 4, "restraint": 4, "variety": 3},
+    "notes": "App consistency overrides catalog rotation. Legacy routes and package art retained. Account screens remove ornamental card chrome and use white outline icons, flat rows and shared tokens. See qa-account.md for scoped verification; no claim of a whole-repository 58-gate audit."
+  },
+  {
+    "date": "2026-08-18",
+    "macrostructure": "Workbench",
+    "theme": "Midnight",
+    "enrichment": "user-supplied ROBOSS reward pack",
+    "brief": "Points-based reward pack that grants local coupons"
+  }
+]

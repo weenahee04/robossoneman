@@ -81,6 +81,13 @@ const branchScopeInputSchema = z.object({
   canManageCoupons: z.boolean().default(true),
 });
 
+type BranchScopeInput = {
+  branchId: string;
+  canViewRevenue: boolean;
+  canManageMachines: boolean;
+  canManageCoupons: boolean;
+};
+
 const stampAdjustmentSchema = z
   .object({
     delta: z.number().int().min(-10).max(10),
@@ -137,7 +144,7 @@ const createAdminUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().min(1),
-  role: z.enum(['hq_admin', 'branch_admin']),
+  role: z.enum(['hq_admin', 'branch_admin', 'cashier']),
   branchIds: z.array(z.string()).optional(),
   branchScopes: z.array(branchScopeInputSchema).optional(),
 });
@@ -147,7 +154,7 @@ const updateAdminUserSchema = z
     email: z.string().email().optional(),
     password: z.string().min(6).optional(),
     name: z.string().min(1).optional(),
-    role: z.enum(['hq_admin', 'branch_admin']).optional(),
+    role: z.enum(['hq_admin', 'branch_admin', 'cashier']).optional(),
     isActive: z.boolean().optional(),
     branchScopes: z.array(branchScopeInputSchema).optional(),
   })
@@ -978,12 +985,17 @@ async function logSystemAction(params: {
 }
 
 function normalizeBranchScopes(input: {
-  role: 'hq_admin' | 'branch_admin';
+  role: 'hq_admin' | 'branch_admin' | 'cashier';
   branchIds?: string[];
-  branchScopes?: Array<z.infer<typeof branchScopeInputSchema>>;
-}) {
+  branchScopes?: BranchScopeInput[];
+}): BranchScopeInput[] {
   if (input.role === 'hq_admin') {
     return [];
+  }
+
+  if (input.role === 'cashier') {
+    return (input.branchScopes ?? (input.branchIds ?? []).map(branchId => ({ branchId })))
+      .map(scope => ({ branchId: scope.branchId, canViewRevenue: false, canManageMachines: false, canManageCoupons: false }));
   }
 
   if (input.branchScopes?.length) {
@@ -3129,9 +3141,15 @@ adminRoutes.post('/cashier/payments', requireAdmin, async (c) => {
         throw new Error('Machine already has an active session');
       }
 
-      if (!branchPackageConfig || !branchPackageConfig.isActive || !branchPackageConfig.isVisible) {
+      if (!branchPackageConfig || !branchPackageConfig.isActive || !branchPackageConfig.isVisible || !branchPackageConfig.package.isActive) {
         throw new Error('Package not found');
       }
+
+      const reserved = await tx.machine.updateMany({
+        where: { id: payload.machineId, branchId: payload.branchId, status: 'idle', isEnabled: true },
+        data: { status: 'reserved' },
+      });
+      if (reserved.count !== 1) throw new Error('Machine already has an active session');
 
       const pkg = branchPackageConfig.package;
       const expectedPrice =
@@ -3141,6 +3159,9 @@ adminRoutes.post('/cashier/payments', requireAdmin, async (c) => {
             ? branchPackageConfig.priceOverrideM ?? pkg.priceM
             : branchPackageConfig.priceOverrideL ?? pkg.priceL;
       const subtotalPrice = Math.max(expectedPrice, payload.amount);
+      if (admin.role === 'cashier' && payload.amount !== expectedPrice) {
+        throw new Error('แคชเชียร์ต้องรับชำระตามราคาสาขา ไม่สามารถแก้ยอดหรือให้ส่วนลดเองได้');
+      }
       const discountAmount = Math.max(subtotalPrice - payload.amount, 0);
       const steps = Array.isArray(pkg.steps) ? pkg.steps : [];
 
@@ -3514,23 +3535,16 @@ adminRoutes.get('/customers', requireAdmin, async (c) => {
   try {
     const page = Number(c.req.query('page') || 1);
     const limit = Number(c.req.query('limit') || 50);
+    if (!Number.isInteger(page) || page < 1 || page > 100000 || !Number.isInteger(limit) || limit < 1 || limit > 100) {
+      return c.json({ message: 'Invalid pagination; limit must be 1–100' }, 400);
+    }
     const search = c.req.query('search')?.trim();
     const branchId = c.req.query('branchId');
     const { sessionWhere } = buildBranchFilter(admin, branchId);
 
-    const userIds = await prisma.washSession.findMany({
-      where: sessionWhere,
-      distinct: ['userId'],
-      select: { userId: true },
-    });
-
-    const scopedUserIds = userIds.map((entry) => entry.userId);
-    if (scopedUserIds.length === 0) {
-      return c.json({ data: [], total: 0, page, limit });
-    }
-
     const userWhere: Prisma.UserWhereInput = {
-      id: { in: scopedUserIds },
+      deletedAt: null,
+      ...(admin.role === 'hq_admin' && !branchId ? {} : { sessions: { some: sessionWhere } }),
     };
 
     if (search) {
@@ -3709,6 +3723,7 @@ adminRoutes.get('/memberships', requireAdmin, async (c) => {
       prisma.userMembership.findMany({
         where: membershipWhere,
         include,
+        omit: { metadata: true },
         orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -3716,6 +3731,7 @@ adminRoutes.get('/memberships', requireAdmin, async (c) => {
       prisma.userMembership.count({ where: membershipWhere }),
       prisma.userMembership.findMany({
         where: membershipWhere,
+        omit: { metadata: true },
         include: {
           plan: {
             select: {
@@ -4227,7 +4243,7 @@ adminRoutes.get('/meta', requireAdmin, async (c) => {
         isActive: true,
       },
     }),
-    Promise.resolve(['hq_admin', 'branch_admin']),
+    Promise.resolve(['hq_admin', 'branch_admin', 'cashier']),
   ]);
 
   return c.json({
@@ -4240,6 +4256,276 @@ adminRoutes.get('/meta', requireAdmin, async (c) => {
       branches: accessibleBranches,
     },
   });
+});
+
+adminRoutes.get('/coupon-monitoring', requireAdmin, async (c) => {
+  const admin = await resolveAdmin(c);
+  if (admin instanceof Response) {
+    return admin;
+  }
+
+  try {
+    const branchId = c.req.query('branchId');
+    const requestedDays = Number(c.req.query('days') || 30);
+    const days = [7, 30, 90, 365].includes(requestedDays) ? requestedDays : 30;
+    const scopedBranchId = branchId ? ensureCouponManagementAccess(admin, branchId) : null;
+    const manageableBranchIds = getCouponManageableBranchIds(admin);
+    const branchWhere: Prisma.BranchWhereInput = scopedBranchId
+      ? { id: scopedBranchId }
+      : manageableBranchIds
+        ? { id: { in: manageableBranchIds } }
+        : {};
+
+    const to = new Date();
+    const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+    const branches = await prisma.branch.findMany({
+      where: branchWhere,
+      select: {
+        id: true,
+        code: true,
+        name: true,
+        shortName: true,
+        ownershipType: true,
+        franchiseCode: true,
+        promptPayId: true,
+        promptPayName: true,
+        isActive: true,
+      },
+      orderBy: [{ ownershipType: 'asc' }, { name: 'asc' }],
+    });
+    const branchIds = branches.map((branch) => branch.id);
+
+    if (branchIds.length === 0) {
+      return c.json({
+        data: {
+          period: { days, from: from.toISOString(), to: to.toISOString() },
+          summary: {
+            branchesMonitored: 0,
+            totalCoupons: 0,
+            activeCoupons: 0,
+            purchasableCoupons: 0,
+            claimedCoupons: 0,
+            redemptions: 0,
+            discountAmount: 0,
+            purchases: 0,
+            pendingTransfer: 0,
+            pendingReview: 0,
+            confirmedPurchases: 0,
+            couponSales: 0,
+          },
+          ownershipSummary: [],
+          branches: [],
+          topCoupons: [],
+        },
+      });
+    }
+
+    const [coupons, redemptionGroups, purchaseGroups, paymentAccounts] = await Promise.all([
+      prisma.coupon.findMany({
+        where: {
+          status: { not: 'archived' },
+          OR: [{ scope: 'all_branches' }, { branches: { some: { branchId: { in: branchIds } } } }],
+        },
+        include: {
+          branches: { select: { branchId: true } },
+          _count: { select: { users: true } },
+        },
+        orderBy: [{ status: 'asc' }, { validUntil: 'asc' }],
+      }),
+      prisma.couponRedemption.groupBy({
+        by: ['couponId', 'branchId'],
+        where: {
+          branchId: { in: branchIds },
+          redeemedAt: { gte: from, lte: to },
+        },
+        _count: { _all: true },
+        _sum: { discountAmount: true },
+      }),
+      prisma.couponPurchase.groupBy({
+        by: ['couponId', 'branchId', 'status'],
+        where: {
+          branchId: { in: branchIds },
+          createdAt: { gte: from, lte: to },
+        },
+        _count: { _all: true },
+        _sum: { amount: true },
+      }),
+      prisma.couponPaymentAccount.findMany({
+        where: {
+          isActive: true,
+          OR: [{ accountType: 'hq' }, { accountType: 'branch', branchId: { in: branchIds } }],
+        },
+        select: { id: true, accountType: true, branchId: true },
+      }),
+    ]);
+
+    type MonitorStats = {
+      redemptions: number;
+      discountAmount: number;
+      purchases: number;
+      pendingTransfer: number;
+      pendingReview: number;
+      confirmedPurchases: number;
+      rejectedPurchases: number;
+      couponSales: number;
+    };
+    const emptyStats = (): MonitorStats => ({
+      redemptions: 0,
+      discountAmount: 0,
+      purchases: 0,
+      pendingTransfer: 0,
+      pendingReview: 0,
+      confirmedPurchases: 0,
+      rejectedPurchases: 0,
+      couponSales: 0,
+    });
+    const branchStats = new Map(branchIds.map((id) => [id, emptyStats()]));
+    const couponStats = new Map(coupons.map((coupon) => [coupon.id, emptyStats()]));
+
+    for (const group of redemptionGroups) {
+      const count = group._count._all;
+      const amount = group._sum.discountAmount ?? 0;
+      const branchEntry = branchStats.get(group.branchId);
+      const couponEntry = couponStats.get(group.couponId);
+      if (branchEntry) {
+        branchEntry.redemptions += count;
+        branchEntry.discountAmount += amount;
+      }
+      if (couponEntry) {
+        couponEntry.redemptions += count;
+        couponEntry.discountAmount += amount;
+      }
+    }
+
+    for (const group of purchaseGroups) {
+      const count = group._count._all;
+      const amount = group._sum.amount ?? 0;
+      const targets = [branchStats.get(group.branchId), couponStats.get(group.couponId)].filter(
+        (entry): entry is MonitorStats => Boolean(entry)
+      );
+      for (const target of targets) {
+        target.purchases += count;
+        if (group.status === 'pending_transfer') target.pendingTransfer += count;
+        if (group.status === 'pending_review') target.pendingReview += count;
+        if (group.status === 'rejected') target.rejectedPurchases += count;
+        if (group.status === 'confirmed') {
+          target.confirmedPurchases += count;
+          target.couponSales += amount;
+        }
+      }
+    }
+
+    const hasHqPaymentAccount = paymentAccounts.some((account) => account.accountType === 'hq');
+    const branchPaymentAccountIds = new Set(
+      paymentAccounts
+        .filter((account) => account.accountType === 'branch' && account.branchId)
+        .map((account) => account.branchId as string)
+    );
+    const couponAppliesToBranch = (coupon: (typeof coupons)[number], monitoredBranchId: string) =>
+      coupon.scope === 'all_branches' || coupon.branches.some((link) => link.branchId === monitoredBranchId);
+    const isCouponCurrentlyActive = (coupon: (typeof coupons)[number]) =>
+      coupon.status === 'active' && coupon.validFrom <= to && coupon.validUntil >= to;
+
+    const branchRows = branches.map((branch) => {
+      const stats = branchStats.get(branch.id) ?? emptyStats();
+      const applicableCoupons = coupons.filter((coupon) => couponAppliesToBranch(coupon, branch.id));
+      const activeCoupons = applicableCoupons.filter(isCouponCurrentlyActive);
+      const paymentAccountSource = branchPaymentAccountIds.has(branch.id)
+        ? 'branch_account'
+        : hasHqPaymentAccount
+          ? 'hq_account'
+          : 'branch_promptpay_fallback';
+
+      return {
+        id: branch.id,
+        code: branch.code,
+        name: branch.name,
+        shortName: branch.shortName,
+        ownershipType: branch.ownershipType,
+        franchiseCode: branch.franchiseCode,
+        isActive: branch.isActive,
+        activeCoupons: activeCoupons.length,
+        purchasableCoupons: activeCoupons.filter((coupon) => coupon.isPurchasable).length,
+        paymentAccountReady: Boolean(
+          branchPaymentAccountIds.has(branch.id) ||
+            hasHqPaymentAccount ||
+            (branch.promptPayId.trim() && branch.promptPayName.trim())
+        ),
+        paymentAccountSource,
+        ...stats,
+      };
+    });
+
+    const ownershipMap = new Map<
+      string,
+      MonitorStats & { ownershipType: string; branchCount: number; activeCoupons: number }
+    >();
+    for (const branch of branchRows) {
+      const current = ownershipMap.get(branch.ownershipType) ?? {
+        ownershipType: branch.ownershipType,
+        branchCount: 0,
+        activeCoupons: 0,
+        ...emptyStats(),
+      };
+      current.branchCount += 1;
+      current.activeCoupons += branch.activeCoupons;
+      current.redemptions += branch.redemptions;
+      current.discountAmount += branch.discountAmount;
+      current.purchases += branch.purchases;
+      current.pendingTransfer += branch.pendingTransfer;
+      current.pendingReview += branch.pendingReview;
+      current.confirmedPurchases += branch.confirmedPurchases;
+      current.rejectedPurchases += branch.rejectedPurchases;
+      current.couponSales += branch.couponSales;
+      ownershipMap.set(branch.ownershipType, current);
+    }
+
+    const summaryStats = branchRows.reduce<MonitorStats>((total, branch) => {
+      total.redemptions += branch.redemptions;
+      total.discountAmount += branch.discountAmount;
+      total.purchases += branch.purchases;
+      total.pendingTransfer += branch.pendingTransfer;
+      total.pendingReview += branch.pendingReview;
+      total.confirmedPurchases += branch.confirmedPurchases;
+      total.rejectedPurchases += branch.rejectedPurchases;
+      total.couponSales += branch.couponSales;
+      return total;
+    }, emptyStats());
+    const activeCoupons = coupons.filter(isCouponCurrentlyActive);
+
+    return c.json({
+      data: {
+        period: { days, from: from.toISOString(), to: to.toISOString() },
+        summary: {
+          branchesMonitored: branchRows.length,
+          totalCoupons: coupons.length,
+          activeCoupons: activeCoupons.length,
+          purchasableCoupons: activeCoupons.filter((coupon) => coupon.isPurchasable).length,
+          claimedCoupons: coupons.reduce((sum, coupon) => sum + coupon._count.users, 0),
+          ...summaryStats,
+        },
+        ownershipSummary: Array.from(ownershipMap.values()),
+        branches: branchRows,
+        topCoupons: coupons
+          .map((coupon) => ({
+            id: coupon.id,
+            code: coupon.code,
+            title: coupon.title,
+            scope: coupon.scope,
+            status: coupon.status,
+            isPurchasable: coupon.isPurchasable,
+            claimedCount: coupon._count.users,
+            ...(couponStats.get(coupon.id) ?? emptyStats()),
+          }))
+          .sort((a, b) => b.redemptions - a.redemptions || b.couponSales - a.couponSales)
+          .slice(0, 8),
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to load coupon monitoring';
+    const status = message === 'Coupon management access denied' ? 403 : 400;
+    return c.json({ message }, status);
+  }
 });
 
 adminRoutes.get('/coupons', requireAdmin, async (c) => {
@@ -6246,8 +6532,18 @@ adminRoutes.post('/users', requireAdmin, async (c) => {
   }
 
   const body = await c.req.json();
-  const data = createAdminUserSchema.parse(body);
+  const data = createAdminUserSchema.parse(body) as {
+    email: string;
+    password: string;
+    name: string;
+    role: 'hq_admin' | 'branch_admin' | 'cashier';
+    branchIds?: string[];
+    branchScopes?: BranchScopeInput[];
+  };
   const branchScopes = normalizeBranchScopes(data);
+  if (data.role !== 'hq_admin' && branchScopes.length === 0) {
+    return c.json({ message: 'ต้องกำหนดอย่างน้อยหนึ่งสาขาให้ผู้ดูแลสาขาหรือแคชเชียร์' }, 400);
+  }
 
   const passwordHash = await bcrypt.hash(data.password, 12);
 
@@ -6303,9 +6599,16 @@ adminRoutes.patch('/users/:id', requireAdmin, async (c) => {
 
   const id = c.req.param('id');
   const body = await c.req.json();
-  const data = updateAdminUserSchema.parse(body);
+  const data = updateAdminUserSchema.parse(body) as {
+    email?: string;
+    password?: string;
+    name?: string;
+    role?: 'hq_admin' | 'branch_admin' | 'cashier';
+    isActive?: boolean;
+    branchScopes?: BranchScopeInput[];
+  };
 
-  if (actorAdminId === id && (data.isActive === false || data.role === 'branch_admin')) {
+  if (actorAdminId === id && (data.isActive === false || (data.role !== undefined && data.role !== 'hq_admin'))) {
     return c.json({ message: 'You cannot deactivate or demote your own HQ account' }, 400);
   }
 
@@ -6322,10 +6625,13 @@ adminRoutes.patch('/users/:id', requireAdmin, async (c) => {
 
   const passwordHash = data.password ? await bcrypt.hash(data.password, 12) : undefined;
   const nextRole = data.role ?? existing.role;
-  const nextScopes = data.branchScopes
+  if (nextRole !== 'hq_admin' && (data.branchScopes ?? existing.branchScopes).length === 0) {
+    return c.json({ message: 'ต้องกำหนดอย่างน้อยหนึ่งสาขา' }, 400);
+  }
+  const nextScopes = data.branchScopes || data.role
     ? normalizeBranchScopes({
         role: nextRole,
-        branchScopes: data.branchScopes,
+        branchScopes: data.branchScopes ?? existing.branchScopes,
       })
     : null;
 

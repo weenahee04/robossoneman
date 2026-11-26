@@ -33,7 +33,7 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-const USE_LOCAL_MOCK_ONLY = !import.meta.env.VITE_API_URL;
+const USE_LOCAL_MOCK_ONLY = import.meta.env.VITE_LOCAL_DEMO === 'true' || !import.meta.env.VITE_API_URL;
 const USE_CLERK_AUTH = Boolean(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 
 const EMPTY_AUTH_CONFIG: AuthConfig = {

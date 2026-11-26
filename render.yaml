@@ -49,6 +49,10 @@ services:
         value: "false"
       - key: PAYMENT_PROVIDER_NAME
         value: ksher
+      - key: MEMBERSHIP_PROMPTPAY_ID
+        sync: false
+      - key: MEMBERSHIP_PROMPTPAY_NAME
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

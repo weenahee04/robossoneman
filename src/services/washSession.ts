@@ -1,8 +1,8 @@
 // Wash Session Service — Mock ESP32 simulation
 import { WashSession, branches, POINTS_RATE, type Branch, type BranchPackage } from './mockData';
 
-let sessions: Map<string, WashSession> = new Map();
-let sessionListeners: Map<string, ((session: WashSession) => void)[]> = new Map();
+const sessions: Map<string, WashSession> = new Map();
+const sessionListeners: Map<string, ((session: WashSession) => void)[]> = new Map();
 
 function generateId(): string {
   return 'sess_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);

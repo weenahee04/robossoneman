@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { HeroBanner } from './components/HeroBanner';
+import { GoldCouponBanner } from './components/GoldCouponBanner';
+import { RobossAssistant } from './components/RobossAssistant';
 import { CategoryGrid } from './components/CategoryGrid';
 import { BottomNavBar } from './components/BottomNavBar';
 import { CarWashFlow } from './pages/CarWashFlow';
@@ -39,6 +41,7 @@ function HomePage() {
       <Header />
       <main className="flex-1 overflow-y-auto no-scrollbar pb-2">
         <HeroBanner />
+        <GoldCouponBanner />
         <CategoryGrid onNavigate={(view) => navigate(`/${view}`)} />
         <div className="h-4" />
       </main>
@@ -146,6 +149,7 @@ export function App() {
         {loading && !isPublicAuthPath ? <LoadingScreen /> : null}
         <div className="app-container safe-top">
           <AppRoutes />
+          {!isPublicAuthPath && !loading && <RobossAssistant />}
           {shouldHideBottomNav ? null : (
             <BottomNavBar active={activeNavTab} notificationCount={notificationQuery.data?.unreadCount ?? 0} />
           )}

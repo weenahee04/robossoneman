@@ -1,7 +1,9 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   CalendarRange,
+  Activity,
   Banknote,
+  Building2,
   CheckCircle2,
   CircleOff,
   Clock3,
@@ -12,6 +14,7 @@ import {
   TicketPercent,
   XCircle,
 } from 'lucide-react';
+import { useRef } from 'react';
 import api, {
   type AdminCouponRecord,
   type AdminCouponPaymentAccountRecord,
@@ -19,6 +22,7 @@ import api, {
   type AdminPackageRecord,
   type AdminUser,
   type BranchOption,
+  type CouponMonitoringSnapshot,
   type CouponPaymentAccountType,
   type CouponPurchaseStatus,
   type CouponScope,
@@ -31,6 +35,8 @@ interface CouponsPageProps {
   branchId: string | null;
   branches: BranchOption[];
 }
+
+type CouponWorkspaceView = 'overview' | 'approvals' | 'coupons' | 'accounts';
 
 type Couponฉบับร่าง = {
   id?: string;
@@ -245,7 +251,11 @@ function normalizeฉบับร่างForScope(
 }
 
 export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
+  const [activeView, setActiveView] = useState<CouponWorkspaceView>('overview');
+  const editorRef = useRef<HTMLDivElement>(null);
   const [coupons, setCoupons] = useState<AdminCouponRecord[]>([]);
+  const [monitoring, setMonitoring] = useState<CouponMonitoringSnapshot | null>(null);
+  const [monitoringDays, setMonitoringDays] = useState<7 | 30 | 90 | 365>(30);
   const [paymentAccounts, setPaymentAccounts] = useState<AdminCouponPaymentAccountRecord[]>([]);
   const [accountDraft, setAccountDraft] = useState<PaymentAccountDraft>(createEmptyPaymentAccountDraft(branchId));
   const [couponPurchases, setCouponPurchases] = useState<AdminCouponPurchaseRecord[]>([]);
@@ -306,7 +316,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
   }, [admin.role]);
 
   async function reloadCoupons(nextSelectedId?: string | 'new' | null) {
-    const [couponResponse, packageResponse, purchaseResponse, accountResponse] = await Promise.all([
+    const [couponResponse, packageResponse, purchaseResponse, accountResponse, monitoringResponse] = await Promise.all([
       api.fetchAdminCoupons({
         branchId,
         status: statusFilter,
@@ -320,12 +330,14 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
         search: search.trim() || undefined,
       }),
       api.fetchAdminCouponPaymentAccounts({ branchId }),
+      api.fetchCouponMonitoring({ branchId, days: monitoringDays }),
     ]);
 
     setCoupons(couponResponse);
     setแพ็กเกจ(packageResponse);
     setCouponPurchases(purchaseResponse);
     setPaymentAccounts(accountResponse);
+    setMonitoring(monitoringResponse);
 
     const preferred =
       (nextSelectedId && nextSelectedId !== 'new' ? couponResponse.find((item) => item.id === nextSelectedId) : undefined) ??
@@ -350,7 +362,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
 
     (async () => {
       try {
-        const [couponResponse, packageResponse, purchaseResponse, accountResponse] = await Promise.all([
+        const [couponResponse, packageResponse, purchaseResponse, accountResponse, monitoringResponse] = await Promise.all([
           api.fetchAdminCoupons({
             branchId,
             status: statusFilter,
@@ -364,6 +376,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
             search: search.trim() || undefined,
           }),
           api.fetchAdminCouponPaymentAccounts({ branchId }),
+          api.fetchCouponMonitoring({ branchId, days: monitoringDays }),
         ]);
 
         if (cancelled) {
@@ -374,6 +387,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
         setแพ็กเกจ(packageResponse);
         setCouponPurchases(purchaseResponse);
         setPaymentAccounts(accountResponse);
+        setMonitoring(monitoringResponse);
         setError(null);
 
         const preferred =
@@ -402,7 +416,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [branchId, statusFilter, purchaseStatusFilter, search]);
+  }, [branchId, statusFilter, purchaseStatusFilter, search, monitoringDays]);
 
   useEffect(() => {
     if (selectedId === 'new') {
@@ -441,8 +455,9 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
 
       if (selectedId === 'new' || !draft.id) {
         const created = await api.createAdminCoupon(payload);
-        setSuccess('สร้างคูปองสำเร็จ');
         await reloadCoupons(created.id);
+        setSuccess('สร้างคูปองสำเร็จ คูปองอยู่ในแท็บ “คูปองทั้งหมด” แล้ว');
+        window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
       } else {
         await api.updateAdminCoupon(draft.id, payload);
         setSuccess('อัปเดตคูปองสำเร็จ');
@@ -620,23 +635,30 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
     return Boolean(checks?.amountMatches && checks.referenceMatches && checks.accountMatches);
   }
 
+  function openNewCouponEditor() {
+    setActiveView('coupons');
+    setSelectedId('new');
+    setฉบับร่าง(createEmptyฉบับร่าง(branchId));
+    setError(null);
+    setSuccess(null);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => editorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    });
+  }
+
   return (
     <div className="max-w-[1650px] space-y-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">จัดการคูปอง</h2>
           <p className="mt-1 text-sm text-gray-500">
-            สร้าง เปิดใช้งาน และดูแลคูปองตามขอบเขตสาขาด้วยกฎจาก backend จริง ช่วงเวลาใช้งาน เงื่อนไข และข้อมูลการใช้งาน
+            เลือกงานที่ต้องการด้านล่าง เพื่อตรวจภาพรวม อนุมัติรายการ หรือจัดการคูปอง
           </p>
         </div>
 
         <button
-          onClick={() => {
-            setSelectedId('new');
-            setฉบับร่าง(createEmptyฉบับร่าง(branchId));
-            setError(null);
-            setSuccess(null);
-          }}
+          onClick={openNewCouponEditor}
           className="inline-flex items-center gap-2 rounded-xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-red-600"
         >
           <Plus className="h-4 w-4" />
@@ -653,7 +675,184 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>}
       {success && <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-300">{success}</div>}
 
-      <div className="grid gap-4 rounded-[24px] border border-white/5 bg-white/[0.03] p-4 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
+      <nav aria-label="งานคูปอง" className="grid gap-2 rounded-2xl border border-white/5 bg-white/[0.03] p-2 sm:grid-cols-2 xl:grid-cols-4">
+        {[
+          { id: 'overview' as const, label: 'ภาพรวม', helper: 'ยอดใช้และสถานะสาขา', icon: Activity },
+          { id: 'approvals' as const, label: 'รายการรอตรวจ', helper: `${couponPurchases.length.toLocaleString()} รายการตามตัวกรอง`, icon: Banknote },
+          { id: 'coupons' as const, label: 'คูปองทั้งหมด', helper: 'สร้างและแก้ไขสิทธิ์', icon: TicketPercent },
+          { id: 'accounts' as const, label: 'บัญชีรับเงิน', helper: 'PromptPay ของ HQ และสาขา', icon: Store },
+        ].map((item) => {
+          const ItemIcon = item.icon;
+          const active = activeView === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => setActiveView(item.id)}
+              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left transition ${
+                active ? 'bg-red-500 text-white shadow-lg shadow-red-500/10' : 'text-gray-400 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <ItemIcon className="h-5 w-5 shrink-0" />
+              <span className="min-w-0">
+                <span className="block text-sm font-semibold">{item.label}</span>
+                <span className={`block truncate text-[11px] ${active ? 'text-red-100' : 'text-gray-600'}`}>{item.helper}</span>
+              </span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {activeView === 'overview' && (
+      <section className="rounded-[28px] border border-cyan-500/15 bg-cyan-500/[0.04] p-5">
+        <div className="mb-5 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-cyan-300" />
+              <h3 className="text-lg font-bold text-white">Coupon Monitoring</h3>
+            </div>
+            <p className="mt-1 text-sm text-gray-400">
+              {admin.role === 'hq_admin'
+                ? 'มุมมอง HQ สำหรับเทียบสาขาหลักและแฟรนไชส์ พร้อมยอดใช้ ส่วนลด ยอดขาย และงานรอตรวจ'
+                : 'มุมมองเฉพาะสาขาที่ได้รับสิทธิ์ แสดงยอดใช้คูปอง ยอดขาย และรายการที่ต้องดำเนินการ'}
+            </p>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-gray-400">
+            <CalendarRange className="h-4 w-4" />
+            ช่วงข้อมูล
+            <select
+              value={monitoringDays}
+              onChange={(event) => setMonitoringDays(Number(event.target.value) as 7 | 30 | 90 | 365)}
+              className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none"
+            >
+              <option value={7}>7 วัน</option>
+              <option value={30}>30 วัน</option>
+              <option value={90}>90 วัน</option>
+              <option value={365}>1 ปี</option>
+            </select>
+          </label>
+        </div>
+
+        {!monitoring ? (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-6 text-sm text-gray-400">
+            กำลังโหลดข้อมูลมอนิเตอร์คูปอง...
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+              <MonitorCard label="สาขาที่มอนิเตอร์" value={monitoring.summary.branchesMonitored.toLocaleString()} helper="ตามสิทธิ์ปัจจุบัน" />
+              <MonitorCard label="คูปองพร้อมใช้" value={monitoring.summary.activeCoupons.toLocaleString()} helper={`ขายได้ ${monitoring.summary.purchasableCoupons.toLocaleString()}`} />
+              <MonitorCard label="ใช้คูปอง" value={monitoring.summary.redemptions.toLocaleString()} helper={`ลูกค้าถืออยู่ ${monitoring.summary.claimedCoupons.toLocaleString()}`} />
+              <MonitorCard label="ส่วนลดรวม" value={`${monitoring.summary.discountAmount.toLocaleString()}฿`} helper={`ย้อนหลัง ${monitoring.period.days} วัน`} />
+              <MonitorCard label="ยอดขายคูปอง" value={`${monitoring.summary.couponSales.toLocaleString()}฿`} helper={`อนุมัติ ${monitoring.summary.confirmedPurchases.toLocaleString()} รายการ`} />
+              <MonitorCard
+                label="ต้องดำเนินการ"
+                value={(monitoring.summary.pendingReview + monitoring.summary.pendingTransfer).toLocaleString()}
+                helper={`รอตรวจ ${monitoring.summary.pendingReview.toLocaleString()} • รอโอน ${monitoring.summary.pendingTransfer.toLocaleString()}`}
+                alert={monitoring.summary.pendingReview > 0}
+              />
+            </div>
+
+            {admin.role === 'hq_admin' && monitoring.ownershipSummary.length > 0 && (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {monitoring.ownershipSummary.map((group) => (
+                  <div key={group.ownershipType} className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-4 w-4 text-cyan-300" />
+                        <p className="font-semibold text-white">
+                          {group.ownershipType === 'company_owned' ? 'สาขาหลักของบริษัท' : 'สาขาแฟรนไชส์'}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white/10 px-2.5 py-1 text-[11px] text-gray-300">{group.branchCount} สาขา</span>
+                    </div>
+                    <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+                      <MiniMetric label="ใช้คูปอง" value={group.redemptions.toLocaleString()} />
+                      <MiniMetric label="ส่วนลด" value={`${group.discountAmount.toLocaleString()}฿`} />
+                      <MiniMetric label="ยอดขาย" value={`${group.couponSales.toLocaleString()}฿`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="overflow-hidden rounded-2xl border border-white/5 bg-black/25">
+              <div className="border-b border-white/5 px-4 py-3">
+                <p className="text-sm font-semibold text-white">สถานะรายสาขา</p>
+                <p className="mt-1 text-xs text-gray-500">HQ เห็นทุกสาขา ส่วน Branch Admin เห็นเฉพาะสาขาใน scope ที่จัดการคูปองได้</p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-[980px] w-full text-left text-xs">
+                  <thead className="bg-white/[0.03] text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3 font-medium">สาขา</th>
+                      <th className="px-4 py-3 font-medium">ประเภท</th>
+                      <th className="px-4 py-3 text-right font-medium">คูปองพร้อมใช้</th>
+                      <th className="px-4 py-3 text-right font-medium">ใช้แล้ว</th>
+                      <th className="px-4 py-3 text-right font-medium">ส่วนลด</th>
+                      <th className="px-4 py-3 text-right font-medium">ยอดขาย</th>
+                      <th className="px-4 py-3 text-right font-medium">รอตรวจ</th>
+                      <th className="px-4 py-3 font-medium">บัญชีรับเงิน</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {monitoring.branches.map((branch) => (
+                      <tr key={branch.id} className="text-gray-300">
+                        <td className="px-4 py-3">
+                          <p className="font-semibold text-white">{branch.shortName || branch.name}</p>
+                          <p className="mt-0.5 text-[11px] text-gray-600">{branch.code}{branch.franchiseCode ? ` • ${branch.franchiseCode}` : ''}</p>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-semibold ${branch.ownershipType === 'company_owned' ? 'bg-blue-500/15 text-blue-200' : 'bg-violet-500/15 text-violet-200'}`}>
+                            {branch.ownershipType === 'company_owned' ? 'สาขาหลัก' : 'แฟรนไชส์'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">{branch.activeCoupons.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-white">{branch.redemptions.toLocaleString()}</td>
+                        <td className="px-4 py-3 text-right">{branch.discountAmount.toLocaleString()}฿</td>
+                        <td className="px-4 py-3 text-right text-emerald-300">{branch.couponSales.toLocaleString()}฿</td>
+                        <td className={`px-4 py-3 text-right font-semibold ${branch.pendingReview > 0 ? 'text-amber-300' : 'text-gray-500'}`}>{branch.pendingReview.toLocaleString()}</td>
+                        <td className="px-4 py-3">
+                          <span className={branch.paymentAccountReady ? 'text-emerald-300' : 'text-red-300'}>
+                            {branch.paymentAccountReady ? getPaymentAccountSourceLabel(branch.paymentAccountSource) : 'ยังไม่พร้อม'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {monitoring.topCoupons.length > 0 && (
+              <div>
+                <p className="mb-3 text-sm font-semibold text-white">คูปองที่มีการใช้งานสูง</p>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  {monitoring.topCoupons.slice(0, 4).map((coupon) => (
+                    <div key={coupon.id} className="rounded-2xl border border-white/5 bg-black/25 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-white">{coupon.title}</p>
+                          <p className="mt-1 font-mono text-[11px] text-gray-500">{coupon.code}</p>
+                        </div>
+                        <TicketPercent className="h-4 w-4 shrink-0 text-cyan-300" />
+                      </div>
+                      <div className="mt-4 grid grid-cols-2 gap-2">
+                        <MiniMetric label="ใช้แล้ว" value={coupon.redemptions.toLocaleString()} />
+                        <MiniMetric label="ยอดขาย" value={`${coupon.couponSales.toLocaleString()}฿`} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </section>
+      )}
+
+      {(activeView === 'coupons' || activeView === 'approvals') && (
+      <div className="grid gap-4 rounded-[24px] border border-white/5 bg-white/[0.03] p-4 xl:grid-cols-[minmax(0,1fr)_220px]">
         <label className="flex items-center gap-3 rounded-2xl border border-white/5 bg-black/20 px-4 py-3 text-sm text-gray-300">
           <Search className="h-4 w-4 text-gray-500" />
           <input
@@ -664,6 +863,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           />
         </label>
 
+        {activeView === 'coupons' ? (
         <select
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value as CouponStatus | 'all')}
@@ -675,7 +875,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           <option value="inactive">ปิดใช้งาน</option>
           <option value="archived">เก็บถาวร</option>
         </select>
-
+        ) : (
         <select
           value={purchaseStatusFilter}
           onChange={(event) => setPurchaseStatusFilter(event.target.value as CouponPurchaseStatus | 'all')}
@@ -688,8 +888,11 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           <option value="expired">หมดเวลา</option>
           <option value="all">ทุกสถานะซื้อ</option>
         </select>
+        )}
       </div>
+      )}
 
+      {activeView === 'accounts' && (
       <section className="rounded-[28px] border border-white/5 bg-white/[0.03] p-5">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -824,7 +1027,9 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           </div>
         </div>
       </section>
+      )}
 
+      {activeView === 'approvals' && (
       <section className="rounded-[28px] border border-red-500/15 bg-red-500/[0.06] p-5">
         <div className="mb-4 flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
           <div>
@@ -956,7 +1161,9 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           </div>
         )}
       </section>
+      )}
 
+      {activeView === 'coupons' && (
       <div className="grid gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
         <div className="space-y-4">
           {loading && <div className="rounded-2xl border border-white/5 bg-white/[0.03] p-6 text-sm text-gray-400">กำลังโหลดคูปอง...</div>}
@@ -1037,7 +1244,7 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
             ))}
         </div>
 
-        <div className="gradient-card rounded-[28px] p-6">
+        <div ref={editorRef} className="gradient-card scroll-mt-24 rounded-[28px] p-6">
           <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.24em] text-gray-500">
@@ -1282,6 +1489,32 @@ export function CouponsPage({ admin, branchId, branches }: CouponsPageProps) {
           </div>
         </div>
       </div>
+      )}
+    </div>
+  );
+}
+
+function getPaymentAccountSourceLabel(source: CouponMonitoringSnapshot['branches'][number]['paymentAccountSource']) {
+  if (source === 'branch_account') return 'บัญชีของสาขา';
+  if (source === 'hq_account') return 'บัญชีกลาง HQ';
+  return 'PromptPay สาขา';
+}
+
+function MonitorCard({ label, value, helper, alert = false }: { label: string; value: string; helper: string; alert?: boolean }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${alert ? 'border-amber-500/20 bg-amber-500/[0.08]' : 'border-white/5 bg-black/25'}`}>
+      <p className="text-[10px] uppercase tracking-[0.14em] text-gray-500">{label}</p>
+      <p className={`mt-2 text-2xl font-bold ${alert ? 'text-amber-200' : 'text-white'}`}>{value}</p>
+      <p className="mt-1 text-[11px] text-gray-500">{helper}</p>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-white/[0.03] px-3 py-2">
+      <p className="text-[10px] text-gray-500">{label}</p>
+      <p className="mt-1 font-semibold text-white">{value}</p>
     </div>
   );
 }

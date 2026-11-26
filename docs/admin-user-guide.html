@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="description" content="คู่มือใช้งาน ROBOSS Control Center สำหรับสำนักงานใหญ่ ผู้ดูแลสาขา และแคชเชียร์">
+  <title>คู่มือใช้งาน ROBOSS Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&amp;family=Noto+Sans+Thai:wght@400;700&amp;display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin-user-guide-tokens.css">
+</head>
+<body>
+  <div class="guide-shell">
+    <aside class="guide-rail" aria-label="สารบัญคู่มือ">
+      <div class="guide-rail__inner">
+        <div class="brand">
+          <span class="brand__mark" aria-hidden="true">RB</span>
+          <div><strong>ROBOSS</strong><small>CONTROL CENTER GUIDE</small></div>
+        </div>
+        <nav>
+          <a href="#start">เริ่มต้นใช้งาน</a>
+          <a href="#daily">งานประจำวัน</a>
+          <a href="#customers">ลูกค้าและสิทธิ์</a>
+          <a href="#marketing">การตลาดและเนื้อหา</a>
+          <a href="#business">ธุรกิจและสาขา</a>
+          <a href="#system">ผู้ดูแลและตรวจสอบ</a>
+          <a href="#checklist">เช็กลิสต์ก่อนเลิกงาน</a>
+        </nav>
+        <p class="guide-rail__note">ฉบับสำหรับระบบ Local · กันยายน 2569<br>ภาพทั้งหมดมาจากหน้าหลังบ้านจริง</p>
+      </div>
+    </aside>
+
+    <main class="guide-main">
+      <header class="cover">
+        <div>
+          <p class="cover__label">ROBOSS · OPERATOR HANDBOOK</p>
+          <h1>คู่มือใช้งานหลังบ้าน</h1>
+          <p class="cover__lede">เปิดภาพ ดูหมายเลข แล้วทำตามทีละจุด คู่มือนี้อธิบายว่าต้องกดตรงไหน สิ่งใดจะเกิดขึ้น และเหตุผลที่ต้องทำในแต่ละงาน</p>
+        </div>
+        <div class="cover__meta">
+          <dl>
+            <div><dt>ระบบ</dt><dd>ROBOSS Control Center</dd></div>
+            <div><dt>สำหรับ</dt><dd>HQ · สาขา · แคชเชียร์</dd></div>
+            <div><dt>รูปแบบ</dt><dd>ภาพจริง + หมายเลขกำกับ</dd></div>
+            <div><dt>เวอร์ชัน</dt><dd>10 กันยายน 2569</dd></div>
+          </dl>
+        </div>
+      </header>
+
+      <details class="mobile-toc">
+        <summary>เปิดสารบัญ</summary>
+        <nav>
+          <a href="#start">เริ่มต้นใช้งาน</a>
+          <a href="#daily">งานประจำวัน</a>
+          <a href="#customers">ลูกค้าและสิทธิ์</a>
+          <a href="#marketing">การตลาดและเนื้อหา</a>
+          <a href="#business">ธุรกิจและสาขา</a>
+          <a href="#system">ผู้ดูแลและตรวจสอบ</a>
+          <a href="#checklist">เช็กลิสต์ก่อนเลิกงาน</a>
+        </nav>
+      </details>
+
+      <section class="chapter" id="start">
+        <span class="chapter__number">01</span>
+        <h2>เริ่มต้นให้ถูกบทบาท</h2>
+        <p>เมนูและข้อมูลที่เห็นขึ้นอยู่กับบัญชีที่ใช้เข้าสู่ระบบ หากหาเมนูไม่พบ ให้ตรวจบทบาทและสาขาที่ได้รับมอบหมายก่อน</p>
+        <div class="role-grid">
+          <article class="role"><strong>สำนักงานใหญ่ (HQ)</strong><p>เห็นทุกสาขา จัดการราคา สาขา บัญชีผู้ดูแล นโยบาย และตรวจ Audit ได้ทั้งระบบ</p></article>
+          <article class="role"><strong>ผู้ดูแลสาขา</strong><p>เห็นเฉพาะสาขาที่ได้รับสิทธิ์ ใช้ดูคิว เครื่อง ลูกค้า รายรับ และตั้งค่าที่ HQ อนุญาต</p></article>
+          <article class="role"><strong>แคชเชียร์</strong><p>ใช้เมนู <code>รับชำระหน้าร้าน</code> และ <code>คิวและรอบล้าง</code> เพื่อลดความผิดพลาดหน้าจุดบริการ</p></article>
+        </div>
+      </section>
+
+      <article class="manual-step">
+        <div class="manual-step__copy">
+          <span class="stage">1.1 · SIGN IN</span>
+          <h3>เข้าสู่ระบบ</h3>
+          <p class="purpose">ใช้ยืนยันตัวผู้ปฏิบัติงาน ทุกการทำรายการสำคัญจะผูกกับบัญชีนี้ในประวัติ Audit</p>
+          <ol class="action-list">
+            <li>กรอกอีเมลของตนเองในช่อง <strong>อีเมล</strong></li>
+            <li>กรอกรหัสผ่าน แล้วใช้รูปตาเมื่อต้องการตรวจตัวอักษร</li>
+            <li>กด <strong>เข้าสู่ระบบหลังบ้าน</strong> เพียงครั้งเดียวและรอหน้าแดชบอร์ด</li>
+          </ol>
+          <div class="warning"><strong>ห้ามใช้บัญชีร่วมกัน</strong>บัญชีเดโมและรหัสผ่านที่เห็นในภาพใช้เฉพาะ Local ต้องเปลี่ยนก่อนเปิด Production</div>
+        </div>
+        <figure class="annotated">
+          <div class="shot">
+            <img src="admin-user-guide-assets/01-login.png" width="1440" height="960" alt="หน้าล็อกอินหลังบ้าน ROBOSS">
+            <span class="pin" style="--x:71%;--y:46%;" aria-hidden="true">1</span>
+            <span class="pin" style="--x:71%;--y:55%;" aria-hidden="true">2</span>
+            <span class="pin" style="--x:71%;--y:62%;" aria-hidden="true">3</span>
+          </div>
+          <figcaption><ol class="legend"><li><b>1</b><span>อีเมลประจำตัว</span></li><li><b>2</b><span>รหัสผ่านและปุ่มดูรหัส</span></li><li><b>3</b><span>ยืนยันเพื่อเข้าสู่ระบบ</span></li></ol></figcaption>
+        </figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy">
+          <span class="stage">1.2 · ORIENT</span>
+          <h3>อ่านแดชบอร์ดและเลือกสาขา</h3>
+          <p class="purpose">เริ่มทุกกะด้วยการตรวจภาพรวมและขอบเขตสาขา ป้องกันการแก้ข้อมูลผิดสาขา</p>
+          <ol class="action-list">
+            <li>เลือกงานจากเมนูซ้าย เมนูที่กำลังเปิดจะมีแถบแดง</li>
+            <li>บัญชี HQ ใช้ตัวเลือก <strong>ทุกสาขา</strong> เพื่อกรองข้อมูล ส่วนบัญชีสาขาจะถูกจำกัดอัตโนมัติ</li>
+            <li>ตรวจรายได้ รอบล้าง ความพร้อมเครื่อง และรายการที่ต้องดู ก่อนเริ่มทำงานอื่น</li>
+          </ol>
+          <div class="note"><strong>ออกจากระบบเมื่อเลิกใช้</strong>กดไอคอนประตูมุมขวาบน โดยเฉพาะเครื่องที่มีพนักงานใช้ร่วมกัน</div>
+        </div>
+        <figure class="annotated">
+          <div class="shot">
+            <img src="admin-user-guide-assets/02-dashboard.png" width="1440" height="960" alt="แดชบอร์ดภาพรวม ROBOSS" loading="lazy">
+            <span class="pin" style="--x:8%;--y:23%;" aria-hidden="true">1</span>
+            <span class="pin" style="--x:86%;--y:4%;" aria-hidden="true">2</span>
+            <span class="pin" style="--x:95.8%;--y:4%;" aria-hidden="true">3</span>
+          </div>
+          <figcaption><ol class="legend"><li><b>1</b><span>เมนูงานทั้งหมด</span></li><li><b>2</b><span>เลือกขอบเขตสาขา</span></li><li><b>3</b><span>ออกจากระบบ</span></li></ol></figcaption>
+        </figure>
+      </article>
+
+      <section class="chapter" id="daily">
+        <span class="chapter__number">02</span>
+        <h2>งานประจำวันหน้าสาขา</h2>
+        <p>ลำดับที่แนะนำคือ ตรวจคิว → ตรวจเครื่อง → รับชำระ → ตรวจสถานะเงิน เมื่อข้อมูลผิดปกติให้หยุดและตรวจหลักฐานก่อนสั่งเครื่อง</p>
+      </section>
+
+      <article class="manual-step">
+        <div class="manual-step__copy">
+          <span class="stage">2.1 · QUEUE</span>
+          <h3>คิวและรอบล้าง</h3>
+          <p class="purpose">ใช้ติดตามงานตั้งแต่รอชำระ พร้อมเริ่ม กำลังบริการ จนถึงเสร็จสิ้น</p>
+          <ol class="action-list">
+            <li>กดเมนู <strong>คิวและรอบล้าง</strong></li>
+            <li>เลือกแท็บสถานะเพื่อจำกัดรายการที่ต้องจัดการ</li>
+            <li>เลือกรายการทางซ้ายเพื่อเปิด Service Checklist และ Log ทางขวา</li>
+          </ol>
+          <div class="note"><strong>ใช้เมื่อเกิดข้อโต้แย้ง</strong>Log ระบุลำดับเหตุการณ์ของรอบล้างและช่วยตรวจว่าเครื่องเริ่มหรือจบเมื่อใด</div>
+        </div>
+        <figure class="annotated"><div class="shot">
+          <img src="admin-user-guide-assets/03-sessions.png" width="1440" height="960" alt="หน้าคิวและรอบล้าง" loading="lazy">
+          <span class="pin" style="--x:9%;--y:31%;" aria-hidden="true">1</span><span class="pin" style="--x:48%;--y:42%;" aria-hidden="true">2</span><span class="pin" style="--x:76%;--y:52%;" aria-hidden="true">3</span>
+        </div><figcaption><ol class="legend"><li><b>1</b><span>เปิดหน้าคิว</span></li><li><b>2</b><span>กรองตามสถานะ</span></li><li><b>3</b><span>รายละเอียดและ Log</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy">
+          <span class="stage">2.2 · CASHIER</span>
+          <h3>รับชำระหน้าร้าน</h3>
+          <p class="purpose">สร้างรายการสำหรับลูกค้า Walk-in ที่จ่ายเงินสดหรือยื่นสลิปกับพนักงาน</p>
+          <ol class="action-list">
+            <li>เลือกสาขา เครื่อง แพ็กเกจ และขนาดรถให้ตรงกับหน้างาน</li>
+            <li>กรอกชื่อลูกค้า เบอร์โทร หรือ LINE User ID เท่าที่มี</li>
+            <li>เลือก <strong>เงินสด</strong> หรือ <strong>โอน/สลิป</strong> แนบหลักฐาน แล้วตรวจยอดก่อนยืนยัน</li>
+          </ol>
+          <div class="warning"><strong>ยืนยันเมื่อรับเงินจริงแล้วเท่านั้น</strong>รายการจากหน้านี้สร้างสถานะยืนยันพร้อม Audit Log ทันที</div>
+        </div>
+        <figure class="annotated"><div class="shot">
+          <img src="admin-user-guide-assets/04-cashier.png" width="1440" height="960" alt="หน้ารับชำระหน้าร้าน" loading="lazy">
+          <span class="pin" style="--x:42%;--y:55%;" aria-hidden="true">1</span><span class="pin" style="--x:72%;--y:55%;" aria-hidden="true">2</span><span class="pin" style="--x:80%;--y:73%;" aria-hidden="true">3</span>
+        </div><figcaption><ol class="legend"><li><b>1</b><span>เลือกรายการล้าง</span></li><li><b>2</b><span>ข้อมูลลูกค้า</span></li><li><b>3</b><span>วิธีรับเงินและหลักฐาน</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy">
+          <span class="stage">2.3 · MACHINE</span>
+          <h3>ตรวจและควบคุมเครื่อง</h3>
+          <p class="purpose">ดูว่าเครื่องว่าง จองแล้ว กำลังล้าง ซ่อมบำรุง หรือออฟไลน์ พร้อมตรวจสัญญาณล่าสุด</p>
+          <ol class="action-list">
+            <li>ดูจำนวนรวมและสถานะจากแถบสรุปด้านบน</li>
+            <li>หาเครื่องจากชื่อสาขา รหัสเครื่อง และ ESP Device ID</li>
+            <li>ใช้คำสั่งรีสตาร์ต เข้าโหมดซ่อม หรือเช็กสัญญาณเฉพาะเมื่อได้รับมอบหมาย</li>
+          </ol>
+          <div class="warning"><strong>ความปลอดภัยมาก่อน</strong>ตรวจพื้นที่และยืนยันว่าไม่มีคนอยู่ในแนวเครื่องก่อนส่งคำสั่งควบคุม</div>
+        </div>
+        <figure class="annotated"><div class="shot">
+          <img src="admin-user-guide-assets/05-machines.png" width="1440" height="960" alt="หน้าสถานะเครื่องล้าง" loading="lazy">
+          <span class="pin" style="--x:36%;--y:22%;" aria-hidden="true">1</span><span class="pin" style="--x:48%;--y:40%;" aria-hidden="true">2</span><span class="pin" style="--x:39%;--y:56%;" aria-hidden="true">3</span>
+        </div><figcaption><ol class="legend"><li><b>1</b><span>สรุปสถานะทั้งหมด</span></li><li><b>2</b><span>ข้อมูลประจำเครื่อง</span></li><li><b>3</b><span>คำสั่งควบคุม</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy">
+          <span class="stage">2.4 · PAYMENT</span>
+          <h3>ตรวจรายการชำระเงิน</h3>
+          <p class="purpose">ค้นหาด้วยรหัสอ้างอิง ดูสถานะจากผู้ให้บริการ และกระทบยอดเมื่อจำเป็น</p>
+          <ol class="action-list">
+            <li>ค้นหารหัสอ้างอิงหรือรหัสผู้ให้บริการ</li>
+            <li>กรองสถานะและ Payment Provider เพื่อลดรายการ</li>
+            <li>เลือกรายการจากตารางเพื่อเปิดรายละเอียดและคำสั่งทางขวา</li>
+          </ol>
+          <div class="warning"><strong>อย่ากดยืนยันจากคำบอกเล่า</strong>เทียบยอด เวลา รหัสอ้างอิง และหลักฐานธนาคารก่อน Verify หรือ Reconcile เสมอ</div>
+        </div>
+        <figure class="annotated"><div class="shot">
+          <img src="admin-user-guide-assets/06-payments.png" width="1440" height="960" alt="หน้ารายการชำระเงิน" loading="lazy">
+          <span class="pin" style="--x:39%;--y:28%;" aria-hidden="true">1</span><span class="pin" style="--x:59%;--y:28%;" aria-hidden="true">2</span><span class="pin" style="--x:82%;--y:38%;" aria-hidden="true">3</span>
+        </div><figcaption><ol class="legend"><li><b>1</b><span>ช่องค้นหา</span></li><li><b>2</b><span>ตัวกรองสถานะ</span></li><li><b>3</b><span>รายละเอียดรายการ</span></li></ol></figcaption></figure>
+      </article>
+
+      <section class="chapter" id="customers">
+        <span class="chapter__number">03</span>
+        <h2>ลูกค้า สมาชิก และสิทธิประโยชน์</h2>
+        <p>ข้อมูลกลุ่มนี้มีผลต่อยอดพ้อยท์ เครดิต แสตม และสิทธิ์ของลูกค้า ทุกการปรับมือควรมีเหตุผลและตรวจย้อนหลังได้</p>
+      </section>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.1 · CUSTOMER</span><h3>ค้นหาข้อมูลลูกค้า</h3><p class="purpose">ใช้ดูระดับสมาชิก แต้ม รถ ประวัติการล้าง และยอดใช้จ่ายของลูกค้า</p><ol class="action-list"><li>ค้นหาด้วยชื่อ เบอร์โทร หรือ LINE User ID</li><li>ตรวจข้อมูลสรุปจากตารางก่อนดำเนินการ</li><li>กดลูกศรท้ายแถวเพื่อเปิดรายละเอียดของลูกค้าคนนั้น</li></ol><div class="note"><strong>ค้นหาให้เจอก่อนสร้างใหม่</strong>ช่วยป้องกันบัญชีลูกค้าซ้ำและประวัติแยกกันหลายบัญชี</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/07-customers.png" width="1440" height="960" alt="หน้าข้อมูลลูกค้า" loading="lazy"><span class="pin" style="--x:37%;--y:36%;" aria-hidden="true">1</span><span class="pin" style="--x:61%;--y:56%;" aria-hidden="true">2</span><span class="pin" style="--x:96%;--y:57%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ค้นหาลูกค้า</span></li><li><b>2</b><span>ข้อมูลสรุป</span></li><li><b>3</b><span>เปิดรายละเอียด</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.2 · MEMBERSHIP</span><h3>สมาชิกและเครดิต</h3><p class="purpose">ติดตามสมาชิกที่ใช้งานอยู่ เครดิตคงเหลือ และคำขอซื้อแพ็กเกจที่รอตรวจสลิป</p><ol class="action-list"><li>เลือกมุมมองสมาชิก แผน หรือรายการซื้อที่รอตรวจ</li><li>ค้นหาด้วยชื่อ เบอร์โทร แพ็กเกจ หรือเลขอ้างอิง</li><li>เปิดสลิป ตรวจข้อมูล แล้วกดอนุมัติหรือปฏิเสธพร้อมเหตุผล</li></ol><div class="warning"><strong>อนุมัติแล้วมีผลต่อสิทธิ์ทันที</strong>ตรวจชื่อบัญชี ยอด และเลขอ้างอิงให้ครบก่อนกด</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/08-memberships.png" width="1440" height="960" alt="หน้าสมาชิกและเครดิต" loading="lazy"><span class="pin" style="--x:45%;--y:21%;" aria-hidden="true">1</span><span class="pin" style="--x:56%;--y:49%;" aria-hidden="true">2</span><span class="pin" style="--x:83%;--y:72%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกมุมมอง</span></li><li><b>2</b><span>ค้นหารายการ</span></li><li><b>3</b><span>ตรวจและตัดสินใจ</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.3 · POINTS</span><h3>พ้อยท์ลูกค้า</h3><p class="purpose">ดูยอดคงเหลือ ประวัติ และปรับยอดเฉพาะกรณีที่มีหลักฐานรองรับ</p><ol class="action-list"><li>ค้นหาลูกค้าจากชื่อหรือเบอร์โทร</li><li>กด <strong>ดูประวัติ</strong> เพื่อเทียบรายการรับและใช้พ้อยท์</li><li>หากต้องปรับยอด ให้ระบุจำนวนและเหตุผลที่ตรวจสอบได้</li></ol><div class="warning"><strong>สิทธิ์ HQ เท่านั้น</strong>การเพิ่มหรือลดพ้อยท์ต้องมี Ticket หลักฐาน หรือเหตุขัดข้องของเครื่อง</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/09-points.png" width="1440" height="960" alt="หน้าพ้อยท์ลูกค้า" loading="lazy"><span class="pin" style="--x:41%;--y:25%;" aria-hidden="true">1</span><span class="pin" style="--x:86%;--y:40%;" aria-hidden="true">2</span><span class="pin" style="--x:88%;--y:48%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ค้นหาลูกค้า</span></li><li><b>2</b><span>เปิดประวัติ</span></li><li><b>3</b><span>รายการถัดไป</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.4 · COUPON</span><h3>คูปอง</h3><p class="purpose">สร้างเงื่อนไขส่วนลด กำหนดสาขา ช่วงเวลา จำนวนสิทธิ์ และติดตามการแจกหรือซื้อ</p><ol class="action-list"><li>เลือกประเภทงานคูปองจากแถบด้านบน</li><li>ค้นหารหัสหรือชื่อ แล้วเลือกรายการที่ต้องการแก้ไข</li><li>ตรวจสถานะ ขอบเขตสาขา และวันหมดอายุก่อนเปิดใช้งาน</li></ol><div class="note"><strong>ทดสอบเงื่อนไขก่อนเผยแพร่</strong>ตรวจขั้นต่ำ ยอดลดสูงสุด และแพ็กเกจที่ใช้ได้ เพื่อไม่ให้ส่วนลดผิด</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/10-coupons.png" width="1440" height="960" alt="หน้าจัดการคูปอง" loading="lazy"><span class="pin" style="--x:48%;--y:20%;" aria-hidden="true">1</span><span class="pin" style="--x:48%;--y:39%;" aria-hidden="true">2</span><span class="pin" style="--x:83%;--y:59%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกงานคูปอง</span></li><li><b>2</b><span>ค้นหารายการ</span></li><li><b>3</b><span>แก้ไขและตั้งสถานะ</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.5 · REWARD</span><h3>ของรางวัลและการส่งมอบ</h3><p class="purpose">กำหนดรางวัลที่ใช้พ้อยท์แลก และบันทึกเมื่อพนักงานส่งมอบสิทธิ์ให้ลูกค้าแล้ว</p><ol class="action-list"><li>ในเมนู <strong>ของรางวัล</strong> สร้างหรือแก้ชื่อ ต้นทุนพ้อยท์ จำนวน และสถานะ</li><li>ไปที่ <strong>รายการแลกรางวัล</strong> เพื่อดูคำขอที่รอส่งมอบ</li><li>กดส่งมอบเมื่อยืนยันตัวลูกค้าและมอบสิทธิ์จริงแล้ว</li></ol><div class="warning"><strong>สถานะส่งมอบคือหลักฐาน</strong>ห้ามกดล่วงหน้า เพราะลูกค้าอาจเสียสิทธิ์โดยยังไม่ได้รับรางวัล</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/11-rewards.png" width="1440" height="960" alt="หน้าจัดการของรางวัล" loading="lazy"><span class="pin" style="--x:91%;--y:14%;" aria-hidden="true">1</span><span class="pin" style="--x:45%;--y:28%;" aria-hidden="true">2</span><span class="pin" style="--x:78%;--y:52%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เพิ่มของรางวัล</span></li><li><b>2</b><span>ค้นหา</span></li><li><b>3</b><span>แก้ไขสถานะ</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.6 · STAMP</span><h3>แสตมสะสม</h3><p class="purpose">ตรวจยอดแสตมจากรอบล้างจริง และแก้ไขเฉพาะกรณี Event จากเครื่องไม่ครบ</p><ol class="action-list"><li>ค้นหาลูกค้าด้วยชื่อ เบอร์โทร หรือ LINE User ID</li><li>เลือกประวัติแสตมจากรอบล้างและประวัติการปรับมือ</li><li>เมื่อปรับมือ ให้กรอกจำนวนและเหตุผลอย่างเฉพาะเจาะจง</li></ol><div class="note"><strong>เหตุผลที่ดี</strong>เช่น “รอบล้างเลขอ้างอิง… เสร็จ 14:32 แต่เครื่องไม่ส่ง completed event”</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/11b-stamps.png" width="1440" height="960" alt="หน้าแสตมสะสม" loading="lazy"><span class="pin" style="--x:43%;--y:25%;" aria-hidden="true">1</span><span class="pin" style="--x:55%;--y:48%;" aria-hidden="true">2</span><span class="pin" style="--x:83%;--y:72%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ค้นหาลูกค้า</span></li><li><b>2</b><span>ดูยอดและประวัติ</span></li><li><b>3</b><span>ปรับพร้อมเหตุผล</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">3.7 · FULFILMENT</span><h3>รายการแลกรางวัล</h3><p class="purpose">เป็นคิวกลางสำหรับตรวจคำขอแลกและติดตามว่ารายการใดส่งมอบแล้ว</p><ol class="action-list"><li>กรองสาขาหรือค้นหาชื่อลูกค้าและรางวัล</li><li>ตรวจจำนวนพ้อยท์ วันเวลา และสถานะคำขอ</li><li>กด <strong>ส่งมอบรางวัล</strong> แล้วใส่หมายเหตุเมื่อมอบจริง</li></ol></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/11c-reward-redemptions.png" width="1440" height="960" alt="หน้ารายการแลกรางวัล" loading="lazy"><span class="pin" style="--x:42%;--y:23%;" aria-hidden="true">1</span><span class="pin" style="--x:61%;--y:40%;" aria-hidden="true">2</span><span class="pin" style="--x:85%;--y:41%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ค้นหาและกรอง</span></li><li><b>2</b><span>ตรวจคำขอ</span></li><li><b>3</b><span>บันทึกส่งมอบ</span></li></ol></figcaption></figure>
+      </article>
+
+      <section class="chapter" id="marketing">
+        <span class="chapter__number">04</span>
+        <h2>การตลาด ข่าวสาร และเนื้อหา</h2>
+        <p>เนื้อหาที่เปิดเผยแพร่จะกระทบหน้าลูกค้า จึงควรตรวจตัวสะกด ช่วงเวลา ลิงก์ และขอบเขตสาขาก่อนทุกครั้ง</p>
+      </section>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">4.1 · CAMPAIGN</span><h3>โปรโมชัน</h3><p class="purpose">จัดการแคมเปญ ข้อเสนอ ช่วงเวลา และภาพที่ลูกค้าเห็นในแอป</p><ol class="action-list"><li>กดเพิ่มโปรโมชันเมื่อต้องการสร้างแคมเปญใหม่</li><li>ค้นหาชื่อหรือข้อความเพื่อแก้แคมเปญเดิม</li><li>ตรวจวันเริ่ม วันสิ้นสุด ขอบเขต และสถานะเผยแพร่</li></ol><div class="note"><strong>ไม่ลบประวัติโดยไม่จำเป็น</strong>ปิดใช้งานแคมเปญเก่าเพื่อเก็บข้อมูลย้อนหลังแทนการลบ</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/12-promotions.png" width="1440" height="960" alt="หน้าจัดการโปรโมชัน" loading="lazy"><span class="pin" style="--x:91%;--y:14%;" aria-hidden="true">1</span><span class="pin" style="--x:44%;--y:28%;" aria-hidden="true">2</span><span class="pin" style="--x:80%;--y:54%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>สร้างโปรโมชัน</span></li><li><b>2</b><span>ค้นหา</span></li><li><b>3</b><span>แก้ไขและเผยแพร่</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">4.2 · MESSAGE</span><h3>ส่งข่าวสาร</h3><p class="purpose">ส่งประกาศ แจ้งเตือนบริการ หรือข้อความการตลาดไปยังกลุ่มลูกค้าที่เลือก</p><ol class="action-list"><li>เลือกประเภทข้อความและกลุ่มเป้าหมาย</li><li>เขียนหัวข้อและข้อความให้สั้น ชัด และระบุการกระทำที่ต้องการ</li><li>ตรวจ Preview และขอบเขตผู้รับก่อนกดส่ง</li></ol><div class="warning"><strong>การส่งย้อนกลับไม่ได้</strong>ตรวจชื่อสาขา ราคา วันเวลา และลิงก์อย่างน้อยสองรอบ</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/12b-notifications.png" width="1440" height="960" alt="หน้าส่งข่าวสาร" loading="lazy"><span class="pin" style="--x:47%;--y:27%;" aria-hidden="true">1</span><span class="pin" style="--x:47%;--y:53%;" aria-hidden="true">2</span><span class="pin" style="--x:83%;--y:76%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกผู้รับ</span></li><li><b>2</b><span>เขียนข้อความ</span></li><li><b>3</b><span>ตรวจและส่ง</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">4.3 · FEEDBACK</span><h3>ปัญหาและข้อเสนอแนะ</h3><p class="purpose">รับเรื่องจากลูกค้า มอบหมายผู้รับผิดชอบ และเก็บสถานะการแก้ไข</p><ol class="action-list"><li>ค้นหาด้วยชื่อลูกค้า เบอร์โทร ประเภท หรือข้อความ</li><li>เลือกเรื่องเพื่ออ่านรายละเอียดและข้อมูลรอบล้างที่เกี่ยวข้อง</li><li>เปลี่ยนสถานะและบันทึกวิธีแก้ ก่อนปิดเรื่อง</li></ol><div class="note"><strong>เขียนให้คนถัดไปอ่านต่อได้</strong>ระบุว่าเกิดอะไร ตรวจอะไรแล้ว และต้องทำอะไรต่อ</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/12c-feedback.png" width="1440" height="960" alt="หน้าปัญหาและข้อเสนอแนะ" loading="lazy"><span class="pin" style="--x:42%;--y:25%;" aria-hidden="true">1</span><span class="pin" style="--x:59%;--y:47%;" aria-hidden="true">2</span><span class="pin" style="--x:84%;--y:66%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ค้นหาเรื่อง</span></li><li><b>2</b><span>เปิดรายละเอียด</span></li><li><b>3</b><span>อัปเดตสถานะ</span></li></ol></figcaption></figure>
+      </article>
+
+      <section class="chapter" id="business">
+        <span class="chapter__number">05</span>
+        <h2>รายได้ ราคา สาขา และการรับเงิน</h2>
+        <p>เมนูกลุ่มธุรกิจเปลี่ยนข้อมูลที่มีผลต่อยอดขายและการรับเงินจริง ควรใช้บัญชี HQ และมีผู้ตรวจทานเมื่อเปลี่ยนค่าสำคัญ</p>
+      </section>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">5.1 · REVENUE</span><h3>รายได้และรายงาน</h3><p class="purpose">ดูยอดขายสุทธิ ยอดก่อนส่วนลด Refund รายการรอชำระ และผลงานตามสาขาหรือแพ็กเกจ</p><ol class="action-list"><li>เลือกช่วงวันที่และสาขาที่ต้องการวิเคราะห์</li><li>อ่าน Metrics ด้านบน โดยแยกยอดยืนยันแล้วออกจากยอดรอชำระ</li><li>ใช้ Breakdown เพื่อดูแพ็กเกจ ช่องทางรับเงิน และ Provider</li></ol><div class="note"><strong>ยอดรายงานไม่เท่ากับยอดธนาคารเสมอ</strong>ใช้หน้ารายการชำระเงินสำหรับกระทบยอดและ Refund</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/13-revenue.png" width="1440" height="960" alt="หน้ารายได้และรายงาน" loading="lazy"><span class="pin" style="--x:41%;--y:16%;" aria-hidden="true">1</span><span class="pin" style="--x:61%;--y:28%;" aria-hidden="true">2</span><span class="pin" style="--x:72%;--y:70%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ช่วงเวลาและสาขา</span></li><li><b>2</b><span>ตัวเลขสรุป</span></li><li><b>3</b><span>รายละเอียดแยกกลุ่ม</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">5.2 · PACKAGE</span><h3>บริการและราคา</h3><p class="purpose">สร้างแพ็กเกจ กำหนดประเภทพาหนะ ราคา S/M/L ขั้นตอน และการเปิดขายตามสาขา</p><ol class="action-list"><li>เลือกแพ็กเกจจากรายการซ้าย หรือกดเพิ่มแพ็กเกจใหม่</li><li>แก้ข้อมูล ราคา เวลา ภาพ และขั้นตอนบริการทางขวา</li><li>กด <strong>บันทึกแพ็กเกจ</strong> แล้วตรวจหน้าลูกค้าว่าราคาและข้อความถูกต้อง</li></ol><div class="warning"><strong>อย่าเปลี่ยนสิทธิ์ที่ขายไปแล้ว</strong>หากต้องเปลี่ยนสาระสำคัญ ให้สร้างแผนใหม่เพื่อรักษาสิทธิ์ลูกค้าเดิม</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/14-packages.png" width="1440" height="960" alt="หน้าบริการและราคา" loading="lazy"><span class="pin" style="--x:34%;--y:30%;" aria-hidden="true">1</span><span class="pin" style="--x:72%;--y:48%;" aria-hidden="true">2</span><span class="pin" style="--x:91%;--y:24%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกแพ็กเกจ</span></li><li><b>2</b><span>แก้รายละเอียด</span></li><li><b>3</b><span>บันทึก</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">5.3 · BRANCH</span><h3>จัดการสาขา</h3><p class="purpose">เก็บชื่อ รหัส ที่อยู่ พิกัด เวลาเปิด บัญชี PromptPay และรูปแบบการถือครองของแต่ละจุดบริการ</p><ol class="action-list"><li>เลือกสาขาจากรายการซ้าย หรือกดเพิ่มสาขา</li><li>แก้ข้อมูลในแบบฟอร์มด้านขวา โดยเฉพาะพิกัด เวลา และข้อมูลรับเงิน</li><li>กด <strong>บันทึกการเปลี่ยนแปลง</strong> และตรวจขอบเขตบัญชีผู้ดูแลสาขา</li></ol><div class="warning"><strong>พิกัดและ PromptPay มีผลจริง</strong>ค่าผิดอาจพาลูกค้าไปผิดที่หรือรับเงินเข้าผิดบัญชี</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/15-branches.png" width="1440" height="960" alt="หน้าจัดการสาขา" loading="lazy"><span class="pin" style="--x:35%;--y:27%;" aria-hidden="true">1</span><span class="pin" style="--x:72%;--y:55%;" aria-hidden="true">2</span><span class="pin" style="--x:89%;--y:22%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกสาขา</span></li><li><b>2</b><span>แก้ข้อมูลจริง</span></li><li><b>3</b><span>บันทึก</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">5.4 · PAYMENT SETUP</span><h3>ตั้งค่ารับเงินแต่ละสาขา</h3><p class="purpose">กำหนด Payment Provider บัญชีรับเงิน การล็อกค่า และสถานะอนุมัติก่อนเปิดรับเงินจริง</p><ol class="action-list"><li>ดูตัวเลขสรุปว่ากี่สาขาเปิดใช้งาน พร้อมอนุมัติ หรือยังไม่พร้อม</li><li>เลือกแถวของสาขาที่ต้องการตั้งค่า</li><li>กรอก Credential ตรวจความสามารถ Webhook/Verify แล้วส่งให้ HQ อนุมัติและเปิดใช้</li></ol><div class="warning"><strong>หน้าสรุปว่า “พร้อมใช้งาน” ยังไม่แทนการทดสอบเงินจริง</strong>ต้องชำระแบบ Staging และตรวจ Webhook ก่อน Production</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/16-payment-setup.png" width="1440" height="960" alt="หน้าตั้งค่ารับเงิน" loading="lazy"><span class="pin" style="--x:75%;--y:15%;" aria-hidden="true">1</span><span class="pin" style="--x:55%;--y:45%;" aria-hidden="true">2</span><span class="pin" style="--x:86%;--y:46%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>สถานะทั้งเครือข่าย</span></li><li><b>2</b><span>เลือกสาขา</span></li><li><b>3</b><span>ตรวจความพร้อม</span></li></ol></figcaption></figure>
+      </article>
+
+      <section class="chapter" id="system">
+        <span class="chapter__number">06</span>
+        <h2>ผู้ดูแล นโยบาย และการตรวจสอบย้อนหลัง</h2>
+        <p>เมนูนี้มีไว้กำกับสิทธิ์และมาตรฐานทั้งระบบ ใช้หลักสิทธิ์น้อยที่สุด: ให้แต่ละคนเห็นและทำได้เท่าที่จำเป็นต่อหน้าที่</p>
+      </section>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">6.1 · ACCESS</span><h3>ผู้ดูแลและสิทธิ์</h3><p class="purpose">สร้างบัญชี HQ ผู้ดูแลสาขา หรือแคชเชียร์ พร้อมกำหนดสาขาและความสามารถรายสาขา</p><ol class="action-list"><li>เลือกบัญชีเดิมจากรายการซ้าย หรือกดเพิ่มผู้ดูแล</li><li>กรอกชื่อ อีเมล รหัสผ่าน และเลือกบทบาท</li><li>สำหรับผู้ดูแลสาขา ให้เปิดเฉพาะสาขาและสิทธิ์ที่ต้องใช้ แล้วกดสร้างหรือบันทึก</li></ol><div class="warning"><strong>แคชเชียร์ไม่ควรได้สิทธิ์จัดการระบบ</strong>ให้ใช้เฉพาะรับชำระและดูคิว ลดความเสี่ยงการแก้ราคา เครื่อง หรือข้อมูลการเงิน</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/18-admins.png" width="1440" height="960" alt="หน้าผู้ดูแลและสิทธิ์" loading="lazy"><span class="pin" style="--x:34%;--y:27%;" aria-hidden="true">1</span><span class="pin" style="--x:70%;--y:39%;" aria-hidden="true">2</span><span class="pin" style="--x:84%;--y:76%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>บัญชีที่มีอยู่</span></li><li><b>2</b><span>ข้อมูลและบทบาท</span></li><li><b>3</b><span>ขอบเขตสาขา</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">6.2 · POLICY</span><h3>นโยบายส่วนกลาง</h3><p class="purpose">ควบคุมค่ามาตรฐาน เช่น แต้ม ข้อจำกัดรอบล้าง ระยะเวลารอ และค่าที่ทุกสาขาควรใช้ร่วมกัน</p><ol class="action-list"><li>เลือกหัวข้อนโยบายที่ต้องการแก้</li><li>อ่านผลกระทบและค่าปัจจุบันก่อนเปลี่ยน</li><li>บันทึก แล้วตรวจ Audit และทดสอบกับสาขาตัวอย่าง</li></ol><div class="warning"><strong>แจ้งสาขาก่อนเปลี่ยนค่ากลาง</strong>การเปลี่ยนนโยบายอาจกระทบลูกค้าและขั้นตอนหน้าร้านพร้อมกันหลายสาขา</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/19-policies.png" width="1440" height="960" alt="หน้านโยบายส่วนกลาง" loading="lazy"><span class="pin" style="--x:42%;--y:28%;" aria-hidden="true">1</span><span class="pin" style="--x:67%;--y:48%;" aria-hidden="true">2</span><span class="pin" style="--x:89%;--y:18%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกหัวข้อ</span></li><li><b>2</b><span>ตรวจและแก้ค่า</span></li><li><b>3</b><span>บันทึก</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">6.3 · PLAN</span><h3>แผนสมาชิก</h3><p class="purpose">สร้างแผนขายใหม่ กำหนดราคา เครดิต อายุสิทธิ์ และสถานะ โดยรักษาสิทธิ์ที่ขายไปแล้ว</p><ol class="action-list"><li>เลือกแผนเดิมเพื่อดูรายละเอียดและยอดที่ขาย</li><li>เมื่อต้องเปลี่ยนสิทธิ์หลัก ให้สร้างแผนเวอร์ชันใหม่</li><li>ปิดการขายแผนเก่าโดยไม่ลบสิทธิ์ของสมาชิกเดิม</li></ol></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/20-membership-plans.png" width="1440" height="960" alt="หน้าแผนสมาชิก" loading="lazy"><span class="pin" style="--x:36%;--y:30%;" aria-hidden="true">1</span><span class="pin" style="--x:72%;--y:48%;" aria-hidden="true">2</span><span class="pin" style="--x:90%;--y:18%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกแผนเดิม</span></li><li><b>2</b><span>กำหนดสิทธิ์</span></li><li><b>3</b><span>สร้างแผนใหม่</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">6.4 · CONTENT</span><h3>เนื้อหาในแอป</h3><p class="purpose">จัดการคำถามที่พบบ่อยและบทความช่วยเหลือลูกค้า โดยแยกฉบับร่างออกจากเนื้อหาที่เผยแพร่</p><ol class="action-list"><li>เลือกหมวดเนื้อหาและค้นหาหัวข้อเดิม</li><li>กดเพิ่มเนื้อหา หรือแก้ไขรายการที่มีอยู่</li><li>ตรวจข้อความ ลิงก์ และรูป แล้วเปิดสถานะเผยแพร่เมื่อพร้อม</li></ol></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/21-content.png" width="1440" height="960" alt="หน้าเนื้อหาในแอป" loading="lazy"><span class="pin" style="--x:42%;--y:24%;" aria-hidden="true">1</span><span class="pin" style="--x:79%;--y:39%;" aria-hidden="true">2</span><span class="pin" style="--x:90%;--y:18%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>เลือกหมวด</span></li><li><b>2</b><span>แก้ไขเนื้อหา</span></li><li><b>3</b><span>เพิ่มรายการใหม่</span></li></ol></figcaption></figure>
+      </article>
+
+      <article class="manual-step">
+        <div class="manual-step__copy"><span class="stage">6.5 · AUDIT</span><h3>ประวัติการทำรายการ</h3><p class="purpose">ตอบคำถามว่า ใคร ทำอะไร เมื่อไร ที่สาขาใด และกระทบข้อมูลรายการไหน</p><ol class="action-list"><li>ค้นหาชื่อการทำรายการ รหัส หรือข้อมูลอ้างอิง</li><li>อ่านวันเวลาและชื่อผู้ปฏิบัติงาน</li><li>เทียบสาขา Entity Type และ Entity ID กับเอกสารหรือ Ticket</li></ol><div class="note"><strong>ใช้ Audit ก่อนสรุปว่าเป็นบั๊ก</strong>หลายกรณีเกิดจากการเปลี่ยนค่าหรือยืนยันมือ ซึ่งดูผู้ทำรายการได้จากหน้านี้</div></div>
+        <figure class="annotated"><div class="shot"><img src="admin-user-guide-assets/17-audit.png" width="1440" height="960" alt="หน้าประวัติการทำรายการ" loading="lazy"><span class="pin" style="--x:42%;--y:25%;" aria-hidden="true">1</span><span class="pin" style="--x:40%;--y:39%;" aria-hidden="true">2</span><span class="pin" style="--x:81%;--y:39%;" aria-hidden="true">3</span></div><figcaption><ol class="legend"><li><b>1</b><span>ค้นหารายการ</span></li><li><b>2</b><span>เวลาและผู้ทำ</span></li><li><b>3</b><span>ข้อมูลอ้างอิง</span></li></ol></figcaption></figure>
+      </article>
+
+      <section class="final-check" id="checklist">
+        <h2>เช็กลิสต์ก่อนเลิกงาน</h2>
+        <ul class="checklist">
+          <li>ไม่มีรอบล้างค้างผิดปกติในสถานะรอชำระหรือกำลังบริการ</li>
+          <li>เครื่องที่เสียถูกตั้งเป็นโหมดซ่อม พร้อมมีหมายเหตุและผู้รับผิดชอบ</li>
+          <li>เงินสด สลิป และยอดยืนยันในระบบตรงกับหลักฐานของกะ</li>
+          <li>คำขอสมาชิกและรางวัลที่ดำเนินการแล้วมีสถานะถูกต้อง</li>
+          <li>ปัญหาลูกค้ามีบันทึกว่าเกิดอะไร ตรวจอะไรแล้ว และต้องทำอะไรต่อ</li>
+          <li>ออกจากระบบทุกครั้ง โดยเฉพาะอุปกรณ์ส่วนกลางของสาขา</li>
+        </ul>
+        <div class="warning"><strong>เมื่อระบบกับหน้างานไม่ตรงกัน</strong>อย่าสร้างรายการซ้ำ ให้จดรหัสสาขา เครื่อง รอบล้าง Payment Reference เวลา และภาพหลักฐาน แล้วส่งให้ HQ ตรวจ Audit ก่อน</div>
+      </section>
+
+      <footer class="footer"><p>ROBOSS Control Center · คู่มือการทำงานสำหรับสำนักงานใหญ่ ผู้ดูแลสาขา และแคชเชียร์ · ภาพจากระบบ Local</p></footer>
+    </main>
+  </div>
+</body>
+</html>

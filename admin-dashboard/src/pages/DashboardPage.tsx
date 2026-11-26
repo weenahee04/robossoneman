@@ -1,11 +1,13 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
+  ArrowRight,
   BarChart3,
-  Building2,
+  Calculator,
   Cpu,
   DollarSign,
-  ShieldCheck,
+  History,
+  TicketPercent,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -21,13 +23,15 @@ import {
   YAxis,
 } from 'recharts';
 import api, { type AdminUser, type DashboardData } from '@/services/api';
+import type { PageName } from '@/App';
 
 interface DashboardPageProps {
   admin: AdminUser;
   branchId: string | null;
+  onNavigate: (page: PageName) => void;
 }
 
-export function DashboardPage({ admin, branchId }: DashboardPageProps) {
+export function DashboardPage({ admin, branchId, onNavigate }: DashboardPageProps) {
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,60 +73,96 @@ export function DashboardPage({ admin, branchId }: DashboardPageProps) {
 
   return (
     <div className="max-w-[1440px] space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs uppercase tracking-[0.24em] text-gray-500">
-            {admin.role === 'hq_admin' ? 'ศูนย์ควบคุม HQ' : 'ภาพรวมงานสาขา'}
-          </p>
-          <h2 className="text-xl font-bold text-white sm:text-2xl">{selectedBranchชื่อ}</h2>
-          <p className="mt-1 text-sm text-gray-500">
-            มองเห็นภาพรวมสถานะเครื่อง ปริมาณงาน การเติบโตของลูกค้า และประสิทธิภาพรายได้
-          </p>
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-red-600">สรุปวันนี้</p>
+          <h2 className="mt-1 text-xl font-bold text-white sm:text-2xl">{selectedBranchชื่อ}</h2>
+          <p className="mt-1 text-sm text-gray-500">ตัวเลขสำคัญและงานที่ควรจัดการตอนนี้</p>
         </div>
-
-        <div className="grid gap-3 sm:grid-cols-3">
-          <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-500">สถานะเครื่องออนไลน์</p>
-            <p className="mt-2 text-2xl font-black text-white">{data?.machineHealth.onlineRate ?? 0}%</p>
-            <p className="text-xs text-gray-500">{data?.machineHealth.online ?? 0} ออนไลน์ / {data?.machineHealth.offline ?? 0} ออฟไลน์</p>
-          </div>
-          <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-500">การเติบโตของลูกค้า</p>
-            <p className="mt-2 text-2xl font-black text-white">{summary?.customerGrowthCurrent ?? 0}</p>
-            <p className="text-xs text-gray-500">ช่วง 14 วันที่ผ่านมาเทียบกับช่วงก่อนหน้า: {customerGrowthDelta}%</p>
-          </div>
-          <div className="rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-500">ฐานรายได้</p>
-            <p className="mt-2 text-2xl font-black text-white">{(summary?.totalRevenue ?? 0).toLocaleString()}</p>
-            <p className="text-xs text-gray-500">ยอดยืนยันแล้วในขอบเขตปัจจุบัน (บาท)</p>
-          </div>
-        </div>
+        <p className="text-xs text-gray-500">อัปเดตจากข้อมูลในระบบตามสาขาที่เลือก</p>
       </div>
 
       {error && <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-300">{error}</div>}
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-8">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          { label: 'สาขา', value: summary?.totalBranches ?? 0, icon: Building2, tone: 'text-cyan-300 bg-cyan-500/10' },
-          { label: 'เครื่อง', value: summary?.totalMachines ?? 0, icon: Cpu, tone: 'text-amber-300 bg-amber-500/10' },
-          { label: 'จำนวนรอบทั้งหมด', value: summary?.totalSessions ?? 0, icon: Activity, tone: 'text-violet-300 bg-violet-500/10' },
-          { label: 'รอบวันนี้', value: summary?.todaySessions ?? 0, icon: BarChart3, tone: 'text-blue-300 bg-blue-500/10' },
-          { label: 'รอบที่กำลังทำงาน', value: summary?.activeSessions ?? 0, icon: ShieldCheck, tone: 'text-emerald-300 bg-emerald-500/10' },
-          { label: 'รายได้วันนี้', value: summary?.todayRevenue ?? 0, icon: DollarSign, tone: 'text-green-300 bg-green-500/10' },
-          { label: 'ลูกค้า', value: summary?.totalCustomers ?? 0, icon: Users, tone: 'text-orange-300 bg-orange-500/10' },
-          { label: 'เติบโต 14 วัน', value: summary?.customerGrowthCurrent ?? 0, icon: TrendingUp, tone: 'text-rose-300 bg-rose-500/10' },
+          { label: 'รายได้วันนี้', value: `${(summary?.todayRevenue ?? 0).toLocaleString()}฿`, helper: 'ยอดที่ยืนยันแล้ว', icon: DollarSign, tone: 'text-green-600 bg-green-500/10' },
+          { label: 'รอบล้างวันนี้', value: (summary?.todaySessions ?? 0).toLocaleString(), helper: 'รายการทั้งหมดวันนี้', icon: BarChart3, tone: 'text-blue-600 bg-blue-500/10' },
+          { label: 'กำลังให้บริการ', value: (summary?.activeSessions ?? 0).toLocaleString(), helper: 'รอบที่ยังไม่จบ', icon: Activity, tone: 'text-violet-600 bg-violet-500/10' },
+          { label: 'เครื่องออนไลน์', value: `${data?.machineHealth.onlineRate ?? 0}%`, helper: `${data?.machineHealth.offline ?? 0} ออฟไลน์ • ${data?.machineHealth.maintenance ?? 0} ซ่อม`, icon: Cpu, tone: 'text-amber-600 bg-amber-500/10' },
         ].map((card) => {
           const ไอคอน = card.icon;
           return (
             <div key={card.label} className="gradient-card rounded-2xl p-4 sm:p-5">
-              <div className={`mb-3 flex h-11 w-11 items-center justify-center rounded-xl ${card.tone}`}>
-                <ไอคอน className="h-5 w-5" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-semibold text-gray-500">{card.label}</p>
+                  <p className="mt-2 text-2xl font-black text-white">{card.value}</p>
+                  <p className="mt-1 text-xs text-gray-500">{card.helper}</p>
+                </div>
+                <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${card.tone}`}>
+                  <ไอคอน className="h-5 w-5" />
+                </div>
               </div>
-              <p className="text-2xl font-black text-white">{card.value.toLocaleString()}</p>
-              <p className="mt-1 text-xs text-gray-500">{card.label}</p>
             </div>
           );
         })}
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="gradient-card rounded-2xl p-5">
+          <div className="mb-4">
+            <h3 className="font-semibold text-white">ไปที่งานที่ใช้บ่อย</h3>
+            <p className="mt-1 text-xs text-gray-500">เลือกงานได้ตรงนี้ ไม่ต้องไล่หาในเมนู</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {[
+              { page: 'sessions' as const, label: 'ดูคิวล้าง', helper: 'ติดตามรอบปัจจุบัน', icon: History },
+              { page: 'cashier' as const, label: 'รับชำระ', helper: 'เงินสดและสลิป', icon: Calculator },
+              { page: 'coupons' as const, label: 'จัดการคูปอง', helper: 'ขาย ใช้ และตรวจสอบ', icon: TicketPercent },
+              { page: 'revenue' as const, label: 'ดูรายได้', helper: 'รายงานและยอดขาย', icon: TrendingUp },
+            ].map((action) => {
+              const ActionIcon = action.icon;
+              return (
+                <button
+                  key={action.page}
+                  type="button"
+                  onClick={() => onNavigate(action.page)}
+                  className="group flex items-center gap-3 rounded-2xl border border-white/5 bg-white/[0.03] p-3 text-left transition hover:border-red-500/20 hover:bg-red-500/[0.05]"
+                >
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-500/10 text-red-500">
+                    <ActionIcon className="h-5 w-5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">{action.label}</p>
+                    <p className="truncate text-[11px] text-gray-500">{action.helper}</p>
+                  </div>
+                  <ArrowRight className="h-4 w-4 text-gray-600 transition group-hover:translate-x-0.5 group-hover:text-red-500" />
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="gradient-card rounded-2xl p-5">
+          <h3 className="font-semibold text-white">สิ่งที่ควรเช็ก</h3>
+          <div className="mt-4 space-y-2">
+            <button onClick={() => onNavigate('machines')} className="flex w-full items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5 text-left text-sm">
+              <span className="text-gray-400">เครื่องออฟไลน์/ซ่อม</span>
+              <span className={(data?.machineHealth.offline ?? 0) + (data?.machineHealth.maintenance ?? 0) > 0 ? 'font-bold text-amber-400' : 'font-semibold text-emerald-400'}>
+                {(data?.machineHealth.offline ?? 0) + (data?.machineHealth.maintenance ?? 0)} เครื่อง
+              </span>
+            </button>
+            <button onClick={() => onNavigate('sessions')} className="flex w-full items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5 text-left text-sm">
+              <span className="text-gray-400">รอบที่กำลังทำงาน</span>
+              <span className="font-semibold text-white">{summary?.activeSessions ?? 0} รอบ</span>
+            </button>
+            <div className="flex items-center justify-between rounded-xl bg-white/[0.03] px-3 py-2.5 text-sm">
+              <span className="text-gray-400">ลูกค้าใหม่ 14 วัน</span>
+              <span className="font-semibold text-white">{summary?.customerGrowthCurrent ?? 0} คน ({customerGrowthDelta >= 0 ? '+' : ''}{customerGrowthDelta}%)</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">

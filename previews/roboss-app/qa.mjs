@@ -1,0 +1,57 @@
+import { chromium } from 'playwright';
+import fs from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const out=new URL('./qa/',import.meta.url);await fs.mkdir(out,{recursive:true});
+const browser=await chromium.launch({channel:'msedge',headless:true});
+const failures=[];const report=[];
+const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:1});
+page.on('pageerror',e=>failures.push(e.message));
+page.on('request',r=>{if(r.url().includes('/api/')&&r.method()!=='GET')failures.push('Unexpected API write: '+r.url());});
+await page.goto('http://127.0.0.1:5192/previews/roboss-app/');await page.evaluate(()=>document.fonts.ready);
+for(const width of [320,375,414,768,1280]){
+  await page.setViewportSize({width,height:900});
+  for(const [id,label] of [['home','หน้าหลัก'],['packages','บริการ'],['coupons','คูปอง'],['account','บัญชี']]){
+    const nav=page.getByRole('navigation',{name:width>=960?'เมนูเดสก์ท็อป':'เมนูหลัก',exact:true});
+    await nav.getByRole('button',{name:label,exact:true}).click();
+    await page.waitForTimeout(650);
+    const layout=await page.evaluate(()=>({width:innerWidth,scroll:document.documentElement.scrollWidth,brokenImages:[...document.images].filter(i=>!i.complete||!i.naturalWidth).map(i=>i.src)}));
+    assert.ok(layout.scroll<=width+1,`${id} overflow at ${width}`);assert.equal(layout.brokenImages.length,0);
+    await page.screenshot({path:new URL(`${id}-${width}.png`,out).pathname.replace(/^\//,'') ,fullPage:true});
+    report.push({page:id,...layout});
+  }
+}
+await page.setViewportSize({width:390,height:844});
+const nav=page.getByRole('navigation',{name:'เมนูหลัก',exact:true});
+await nav.getByRole('button',{name:'หน้าหลัก',exact:true}).click();await page.waitForTimeout(400);
+await page.getByRole('button',{name:'พระราม 9',exact:true}).click();
+await page.getByLabel('ค้นหาชื่อสาขา').fill('missing');
+assert.ok(await page.getByText('ไม่พบสาขา “missing”').isVisible());
+await page.getByRole('button',{name:'ล้างคำค้นแล้วลองใหม่'}).click();
+await page.getByRole('button',{name:'ROBOSS ลาดพร้าว ข้อมูลสาขาตัวอย่าง'}).click();
+await page.waitForTimeout(300);assert.ok(await page.getByRole('button',{name:'ลาดพร้าว',exact:true}).isVisible());
+await page.getByRole('button',{name:'รถยนต์',exact:true}).click();assert.equal(await page.getByRole('button',{name:'รถยนต์',exact:true}).getAttribute('aria-pressed'),'true');
+await page.getByRole('button',{name:'เลือกแพ็กเกจ',exact:true}).click();await page.waitForTimeout(450);
+await page.getByRole('button',{name:'แพ็กเกจถัดไป',exact:true}).click();await page.waitForTimeout(900);
+assert.equal(await page.getByRole('button',{name:'เลือกล้างและเคลือบเงา',exact:true}).getAttribute('aria-pressed'),'true');
+await page.getByRole('button',{name:'แพ็กเกจถัดไป',exact:true}).click();await page.waitForTimeout(900);
+assert.equal(await page.getByRole('button',{name:'เลือกดูแลครบขั้นตอน',exact:true}).getAttribute('aria-pressed'),'true');
+await page.getByRole('button',{name:'เลือกแพ็กเกจนี้',exact:true}).click();
+const confirm=page.getByRole('button',{name:'ยืนยันการทดลอง',exact:true});assert.ok(await confirm.isDisabled());
+await page.getByLabel('เข้าใจว่าเป็นการทดลอง ไม่ได้สั่งล้างจริง').check();await confirm.click();
+assert.ok(await page.getByRole('heading',{name:'จบการทดลองเลือกแพ็กเกจ'}).isVisible());
+await page.getByRole('button',{name:'กลับหน้าหลัก',exact:true}).click();await page.waitForTimeout(500);
+await nav.getByRole('button',{name:'คูปอง',exact:true}).click();await page.waitForTimeout(500);
+await page.locator('.rb-ticket').first().click();await page.getByRole('button',{name:'บันทึกไว้ดูภายหลัง'}).click();
+await page.keyboard.press('Escape');await page.waitForTimeout(300);await page.getByRole('button',{name:'บันทึกแล้ว',exact:true}).click();await page.waitForTimeout(350);
+assert.equal(await page.locator('.rb-ticket').count(),1);
+await page.locator('.rb-ticket').first().click();await page.getByRole('button',{name:'ลองใช้กับแพ็กเกจ'}).click();await page.waitForTimeout(500);
+await page.getByRole('button',{name:'เลือกแพ็กเกจนี้',exact:true}).click();assert.ok(await page.getByText('เลือกคูปองตัวอย่างแล้ว',{exact:true}).isVisible());
+await page.keyboard.press('Escape');await page.waitForTimeout(300);
+await page.emulateMedia({reducedMotion:'reduce'});await nav.getByRole('button',{name:'บัญชี',exact:true}).click();await page.waitForTimeout(300);
+await page.getByRole('button',{name:'ตั้งค่าหน้าตัวอย่าง'}).click();assert.ok(await page.getByText('กำลังลดการเคลื่อนไหวตามการตั้งค่าเครื่อง').isVisible());
+await page.keyboard.press('Escape');await page.waitForTimeout(250);
+assert.equal(await page.getByRole('dialog').count(),0);
+assert.equal(failures.length,0,failures.join('\n'));
+await fs.writeFile(new URL('report.json',out),JSON.stringify({result:'pass',checks:report,interactions:['branch search/empty/select','vehicle switch','carousel next 2x','review disabled/confirm/success','coupon save/filter/use','reduced motion','Escape dismiss'],pageErrors:failures},null,2));
+console.log(JSON.stringify({result:'pass',responsiveScreens:report.length,errors:failures},null,2));
+await browser.close();

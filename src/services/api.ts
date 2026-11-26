@@ -10,6 +10,7 @@ import type {
   Stamp,
   StampTransaction,
   MembershipOverview,
+  MembershipPurchase,
   LoginResponse,
   ApiResponse,
   PaginatedResponse,
@@ -401,7 +402,7 @@ class ApiClient {
     return res.data;
   }
 
-  async redeemPoints(data: { amount: number; rewardId: string }): Promise<PointsTransaction> {
+  async redeemPoints(data: { amount: number; rewardId: string; branchId?: string; requestId?: string }): Promise<PointsTransaction> {
     return this.request<PointsTransaction>({ method: 'POST', url: '/points/redeem', data });
   }
 
@@ -496,6 +497,25 @@ class ApiClient {
     });
   }
 
+  async createMembershipPurchase(planCode: string): Promise<MembershipPurchase> {
+    return this.request<MembershipPurchase>({
+      method: 'POST',
+      url: '/memberships/purchase',
+      data: { planCode },
+    });
+  }
+
+  async uploadMembershipSlip(purchaseId: string, file: File): Promise<MembershipPurchase> {
+    const formData = new FormData();
+    formData.append('file', file);
+    return this.request<MembershipPurchase>({
+      method: 'POST',
+      url: `/memberships/purchase/${purchaseId}/slip`,
+      data: formData,
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  }
+
   async getNotifications(page = 1, limit = 20): Promise<NotificationsResponse> {
     const res = await this.client.get<NotificationsResponse>('/notifications', {
       params: { page, limit },
@@ -513,6 +533,14 @@ class ApiClient {
 
   async submitFeedback(data: { type: string; message: string }): Promise<void> {
     await this.client.post('/feedback', data);
+  }
+
+  async getAssistantStatus(): Promise<{ available: boolean }> {
+    return this.request({ method: 'GET', url: '/assistant/status' });
+  }
+
+  async chatWithAssistant(messages: { role: 'user' | 'assistant'; content: string }[], signal?: AbortSignal): Promise<{ reply: string }> {
+    return this.request({ method: 'POST', url: '/assistant/chat', data: { messages }, signal, timeout: 30000 });
   }
 
   async getVehicles(): Promise<Vehicle[]> {

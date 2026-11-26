@@ -22,7 +22,7 @@ function I8Icon({ name, size = 20, className = '' }: { name: IconName; size?: nu
 
 const DEFAULT_LOCATION: [number, number] = [13.7563, 100.5018];
 
-type BranchType = 'car' | 'bike';
+type BranchType = 'car' | 'motorcycle';
 
 interface Branch {
   id: string;
@@ -51,12 +51,12 @@ const MOCK_BRANCHES: Branch[] = [
   { id: 'c6', name: 'ROBOSS ล้างรถ สาขานครศรีธรรมราช', address: '384 ต.ปากพูน อ.เมืองนครศรีฯ จ.นครศรีธรรมราช 80000', lat: 8.5191, lng: 99.9750, isOpen: true, hours: '07:00-22:00', services: ['wash', 'vacuum'], machinesFree: 2, machinesTotal: 2, image: '/roboss_car_icon.png', rating: 4.4, mapsUrl: 'https://maps.app.goo.gl/qdMDCMGr6LfagE2N8', type: 'car' },
   { id: 'c7', name: 'ROBOSS ล้างรถ สาขาอุทัยธานี', address: 'ต.หนองฉาง อ.หนองฉาง จ.อุทัยธานี 61110', lat: 15.3906, lng: 99.8406, isOpen: true, hours: '07:00-21:00', services: ['wash', 'coating', 'vacuum'], machinesFree: 1, machinesTotal: 2, image: '/roboss_car_icon.png', rating: 4.3, mapsUrl: 'https://maps.app.goo.gl/8dn8U7UiKFwY3dST7', type: 'car' },
   // ===== ล้างมอเตอร์ไซค์ =====
-  { id: 'b1', name: 'ROBOSS ล้างมอไซค์ สาขาพระราม 9', address: '204 ซ.โรงพยาบาลพระราม 9 แขวงห้วยขวาง กรุงเทพฯ 10310', lat: 13.7571, lng: 100.5690, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 2, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.7, mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7', type: 'bike' },
-  { id: 'b2', name: 'ROBOSS ล้างมอไซค์ สาขาพระราม 4', address: 'ปตท. พระราม 4 แขวงพระโขนง เขตคลองเตย กรุงเทพฯ 10110', lat: 13.7160, lng: 100.5746, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 1, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.5, mapsUrl: 'https://maps.app.goo.gl/WhtiRPuwrRzrwgHF7', type: 'bike' },
-  { id: 'b3', name: 'ROBOSS ล้างมอไซค์ สาขาท่าพระ', address: '182/1 ซ.เทอดไท 33 แขวงดาวคะนอง เขตธนบุรี กรุงเทพฯ 10600', lat: 13.7159, lng: 100.4762, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 1, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.6, mapsUrl: 'https://maps.app.goo.gl/F5GfLG99U1SDzy28A', type: 'bike' },
-  { id: 'b4', name: 'ROBOSS ล้างมอไซค์ สาขาชลบุรี', address: 'ต.นาป่า อ.เมืองชลบุรี จ.ชลบุรี 20000', lat: 13.3046, lng: 100.9024, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 2, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.8, mapsUrl: 'https://maps.app.goo.gl/6FdX7LG31ozszmc29', type: 'bike' },
-  { id: 'b5', name: 'ROBOSS ล้างมอไซค์ สาขาภูเก็ต', address: '78/162 ต.สามกอง อ.เมืองภูเก็ต จ.ภูเก็ต 83000', lat: 7.8992, lng: 98.3761, isOpen: true, hours: '08:00-22:00', services: ['wash'], machinesFree: 1, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.5, mapsUrl: 'https://maps.app.goo.gl/oazz3WiRR5ghx8SAA', type: 'bike' },
-  { id: 'b6', name: 'ROBOSS ล้างมอไซค์ สาขาแม่สอด', address: 'ปั๊มบางจาก ต.แม่ปะ อ.แม่สอด จ.ตาก 63110', lat: 16.7511, lng: 98.5721, isOpen: true, hours: '07:00-21:00', services: ['wash'], machinesFree: 1, machinesTotal: 1, image: '/roboss_bike_icon.png', rating: 4.3, mapsUrl: 'https://maps.app.goo.gl/BbHegYXa99rbBCGC9', type: 'bike' },
+  { id: 'b1', name: 'ROBOSS ล้างมอไซค์ สาขาพระราม 9', address: '204 ซ.โรงพยาบาลพระราม 9 แขวงห้วยขวาง กรุงเทพฯ 10310', lat: 13.7571, lng: 100.5690, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 2, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.7, mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7', type: 'motorcycle' },
+  { id: 'b2', name: 'ROBOSS ล้างมอไซค์ สาขาพระราม 4', address: 'ปตท. พระราม 4 แขวงพระโขนง เขตคลองเตย กรุงเทพฯ 10110', lat: 13.7160, lng: 100.5746, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 1, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.5, mapsUrl: 'https://maps.app.goo.gl/WhtiRPuwrRzrwgHF7', type: 'motorcycle' },
+  { id: 'b3', name: 'ROBOSS ล้างมอไซค์ สาขาท่าพระ', address: '182/1 ซ.เทอดไท 33 แขวงดาวคะนอง เขตธนบุรี กรุงเทพฯ 10600', lat: 13.7159, lng: 100.4762, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 1, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.6, mapsUrl: 'https://maps.app.goo.gl/F5GfLG99U1SDzy28A', type: 'motorcycle' },
+  { id: 'b4', name: 'ROBOSS ล้างมอไซค์ สาขาชลบุรี', address: 'ต.นาป่า อ.เมืองชลบุรี จ.ชลบุรี 20000', lat: 13.3046, lng: 100.9024, isOpen: true, hours: '24 ชม.', services: ['wash'], machinesFree: 2, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.8, mapsUrl: 'https://maps.app.goo.gl/6FdX7LG31ozszmc29', type: 'motorcycle' },
+  { id: 'b5', name: 'ROBOSS ล้างมอไซค์ สาขาภูเก็ต', address: '78/162 ต.สามกอง อ.เมืองภูเก็ต จ.ภูเก็ต 83000', lat: 7.8992, lng: 98.3761, isOpen: true, hours: '08:00-22:00', services: ['wash'], machinesFree: 1, machinesTotal: 2, image: '/roboss_bike_icon.png', rating: 4.5, mapsUrl: 'https://maps.app.goo.gl/oazz3WiRR5ghx8SAA', type: 'motorcycle' },
+  { id: 'b6', name: 'ROBOSS ล้างมอไซค์ สาขาแม่สอด', address: 'ปั๊มบางจาก ต.แม่ปะ อ.แม่สอด จ.ตาก 63110', lat: 16.7511, lng: 98.5721, isOpen: true, hours: '07:00-21:00', services: ['wash'], machinesFree: 1, machinesTotal: 1, image: '/roboss_bike_icon.png', rating: 4.3, mapsUrl: 'https://maps.app.goo.gl/BbHegYXa99rbBCGC9', type: 'motorcycle' },
 ];
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -83,8 +83,8 @@ const carSvg = (s: number) => `<svg xmlns="http://www.w3.org/2000/svg" width="${
 const bikeSvg = (s: number) => `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="15" cy="5" r="1"/><path d="M12 17.5V14l-3-3 4-3 2 3h2"/></svg>`;
 
 const createBranchIcon = (isSelected: boolean, isOpen: boolean, machinesFree: number, branchType: BranchType = 'car') => {
-  const pinColor = !isOpen ? '#4B5563' : branchType === 'bike' ? '#F97316' : '#DC2626';
-  const borderColor = !isOpen ? '#374151' : branchType === 'bike' ? '#C2410C' : '#991B1B';
+  const pinColor = !isOpen ? '#4B5563' : branchType === 'motorcycle' ? '#F97316' : '#DC2626';
+  const borderColor = !isOpen ? '#374151' : branchType === 'motorcycle' ? '#C2410C' : '#991B1B';
   const border = isSelected ? '4px solid #FFFFFF' : `3px solid ${borderColor}`;
   const size = isSelected ? 42 : 34;
   const innerSize = isSelected ? 36 : 28;
@@ -92,9 +92,9 @@ const createBranchIcon = (isSelected: boolean, isOpen: boolean, machinesFree: nu
   const badge = isOpen && machinesFree > 0
     ? `<div style="position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;background:#22C55E;border-radius:8px;font-size:9px;font-weight:800;color:white;display:flex;align-items:center;justify-content:center;border:2px solid #0A0A0A;padding:0 3px;">${machinesFree}</div>`
     : '';
-  const icon = branchType === 'bike' ? bikeSvg(iconSize) : carSvg(iconSize);
+  const icon = branchType === 'motorcycle' ? bikeSvg(iconSize) : carSvg(iconSize);
   const shadow = isSelected
-    ? branchType === 'bike' ? 'filter:drop-shadow(0 4px 12px rgba(249,115,22,0.4));' : 'filter:drop-shadow(0 4px 12px rgba(220,38,38,0.4));'
+    ? branchType === 'motorcycle' ? 'filter:drop-shadow(0 4px 12px rgba(249,115,22,0.4));' : 'filter:drop-shadow(0 4px 12px rgba(220,38,38,0.4));'
     : '';
 
   return new L.DivIcon({
@@ -119,11 +119,11 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
 }
 
 // Filter chips
-type FilterType = 'all' | 'car' | 'bike' | 'open' | 'nearby' | 'available';
+type FilterType = 'all' | 'car' | 'motorcycle' | 'open' | 'nearby' | 'available';
 const filters: { key: FilterType; label: string }[] = [
   { key: 'all', label: 'ทั้งหมด' },
   { key: 'car', label: 'ล้างรถยนต์' },
-  { key: 'bike', label: 'ล้างมอไซค์' },
+  { key: 'motorcycle', label: 'ล้างมอไซค์' },
   { key: 'open', label: 'เปิดอยู่' },
   { key: 'nearby', label: 'ใกล้ 5 กม.' },
   { key: 'available', label: 'ว่างตอนนี้' },
@@ -152,12 +152,12 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
         lng: b.lng!,
         isOpen: b.isOpen,
         hours: b.hours,
-        services: b.type === 'bike'
+        services: b.type === 'motorcycle'
           ? (['wash'] as ('wash' | 'coating' | 'vacuum')[])
           : (['wash', 'coating', 'vacuum'] as ('wash' | 'coating' | 'vacuum')[]),
         machinesFree: b.machinesFree,
         machinesTotal: b.machinesTotal,
-        image: b.type === 'bike' ? '/roboss_bike_icon.png' : '/roboss_car_icon.png',
+        image: b.type === 'motorcycle' ? '/roboss_bike_icon.png' : '/roboss_car_icon.png',
         rating: 0,
         mapsUrl: b.mapsUrl,
         type: b.type,
@@ -189,7 +189,7 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
   const filteredBranches = useMemo(() => {
     switch (filter) {
       case 'car': return branchesWithDistance.filter(b => b.type === 'car');
-      case 'bike': return branchesWithDistance.filter(b => b.type === 'bike');
+      case 'motorcycle': return branchesWithDistance.filter(b => b.type === 'motorcycle');
       case 'open': return branchesWithDistance.filter(b => b.isOpen);
       case 'nearby': return branchesWithDistance.filter(b => b.distance <= 5);
       case 'available': return branchesWithDistance.filter(b => b.isOpen && b.machinesFree > 0);
@@ -267,7 +267,7 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
               onClick={() => setFilter(f.key)}
               className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-all border shadow-sm
                 ${filter === f.key
-                  ? f.key === 'bike' ? 'bg-orange-500 text-white border-orange-500' : 'bg-app-red text-white border-app-red'
+                  ? f.key === 'motorcycle' ? 'bg-orange-500 text-white border-orange-500' : 'bg-app-red text-white border-app-red'
                   : 'bg-app-dark/80 backdrop-blur-md text-gray-300 border-white/10 active:scale-95'
                 }`}
             >
@@ -351,14 +351,14 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
               >
                 <div className={`flex gap-3 p-3 rounded-2xl cursor-pointer transition-all active:scale-[0.98]
                   ${isSelected
-                    ? branch.type === 'bike'
+                    ? branch.type === 'motorcycle'
                       ? 'bg-orange-500/10 border border-orange-500/30 shadow-[0_0_20px_rgba(249,115,22,0.1)]'
                       : 'bg-app-red/10 border border-app-red/30 shadow-[0_0_20px_rgba(220,38,38,0.1)]'
                     : 'bg-app-dark/50 border border-white/5 hover:bg-white/[0.04]'
                   }`}
                 >
                   {/* Branch image */}
-                  <div className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border ${branch.type === 'bike' ? 'bg-orange-950/40 border-orange-500/10' : 'bg-app-dark border-white/5'}`}>
+                  <div className={`w-16 h-16 rounded-xl overflow-hidden shrink-0 border ${branch.type === 'motorcycle' ? 'bg-orange-950/40 border-orange-500/10' : 'bg-app-dark border-white/5'}`}>
                     <img
                       src={branch.image}
                       alt={branch.name}
@@ -369,7 +369,7 @@ export function NearbyBranches({ onBack }: NearbyBranchesProps) {
                   {/* Info */}
                   <div className="flex-1 min-w-0 flex flex-col justify-between py-0.5">
                     <div>
-                      <h3 className={`text-sm font-bold truncate ${isSelected ? (branch.type === 'bike' ? 'text-orange-400' : 'text-app-red') : 'text-white'}`}>
+                      <h3 className={`text-sm font-bold truncate ${isSelected ? (branch.type === 'motorcycle' ? 'text-orange-400' : 'text-app-red') : 'text-white'}`}>
                         {branch.name}
                       </h3>
                       <p className="text-[11px] text-gray-500 truncate flex items-center gap-1 mt-0.5">

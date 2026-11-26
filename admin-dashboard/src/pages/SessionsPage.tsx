@@ -83,7 +83,7 @@ function getQueuePriority(session: SessionRecord) {
   return 4;
 }
 
-export function SessionsPage({ branchId, realtimeBranchIds }: SessionsPageProps) {
+export function SessionsPage({ admin, branchId, realtimeBranchIds }: SessionsPageProps) {
   const [selectedStatus, setSelectedStatus] = useState<(typeof statusTabs)[number]>('active');
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -180,7 +180,7 @@ export function SessionsPage({ branchId, realtimeBranchIds }: SessionsPageProps)
   );
 
   useEffect(() => {
-    if (!selectedSession) {
+    if (!selectedSession || admin.role === 'cashier') {
       setLogs(null);
       return;
     }
@@ -202,7 +202,7 @@ export function SessionsPage({ branchId, realtimeBranchIds }: SessionsPageProps)
     return () => {
       cancelled = true;
     };
-  }, [branchId, selectedSession?.id]);
+  }, [admin.role, branchId, selectedSession?.id]);
 
   const summary = useMemo(
     () => ({

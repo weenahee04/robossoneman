@@ -1,0 +1,43 @@
+/* Hallmark · macrostructure: Workbench · tone: existing ROBOSS admin · anchor hue: red */
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R5 V3 */
+/* Hallmark · macrostructure: Workbench · genre: modern-minimal · theme: existing ROBOSS admin · nav: existing side rail · footer: none (application) */
+@import '../../../tokens.css';
+.ops-page { color:var(--admin-ops-ink); font-family:var(--admin-ops-font); font-size:var(--text-sm); line-height:1.6; max-width:1200px; display:grid; gap:var(--space-sm); }
+.ops-page h1 { font-size:var(--text-xl); font-weight:700; }
+.ops-page h2 { font-size:var(--text-md); font-weight:700; }
+.ops-page :is(h1,h2,h3,p,td) { overflow-wrap:anywhere; min-width:0; }
+.ops-page small,.ops-muted { color:var(--admin-ops-muted); }
+.ops-page small { display:block; font-size:var(--text-xs); }
+.ops-page :is(button,input,select,textarea,summary) { min-height:44px; }
+.ops-page button { width:fit-content; white-space:nowrap; border:1px solid var(--admin-ops-rule); border-radius:var(--admin-ops-radius); padding:var(--space-2xs) var(--space-xs); background:var(--admin-ops-paper); color:var(--admin-ops-ink); font-weight:700; }
+.ops-page button.ops-primary { background:var(--admin-ops-accent); color:var(--admin-ops-paper); border-color:var(--admin-ops-accent); }
+.ops-page :is(button,input,select,textarea):disabled { opacity:.5; cursor:not-allowed; }
+.ops-page button:active:not(:disabled) { opacity:.75; }
+.ops-page :is(button,input,select,textarea,summary):focus-visible { outline:3px solid var(--admin-ops-focus); outline-offset:3px; }
+.ops-page :is(input:not([type=checkbox]),select,textarea) { width:100%; min-width:0; border:1px solid var(--admin-ops-rule); border-radius:var(--admin-ops-radius); padding:var(--space-2xs) var(--space-xs); background:var(--admin-ops-paper); color:var(--admin-ops-ink); font-size:var(--text-md); }
+.ops-page textarea { resize:vertical; min-height:100px; }
+.ops-page input[type=checkbox] { min-height:24px; width:24px; accent-color:var(--admin-ops-accent); }
+.ops-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:var(--space-xs); }
+.ops-toolbar h2 { flex:1; }
+.ops-toolbar:has(.ops-search) { align-items:flex-end; }
+.ops-search { flex:1; max-width:420px; }
+.ops-field,.ops-form,.ops-form fieldset { display:grid; gap:var(--space-2xs); }
+.ops-form,.ops-form fieldset { gap:var(--space-sm); }
+.ops-field > span { font-weight:700; }
+.ops-grid { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--space-sm); }
+.ops-check { display:flex; align-items:center; gap:var(--space-xs); min-height:44px; }
+.ops-panel { padding:var(--space-sm); border:1px solid var(--admin-ops-rule); border-radius:var(--admin-ops-radius); background:var(--admin-ops-paper); color:var(--admin-ops-ink); display:grid; gap:var(--space-sm); }
+.ops-message { border:1px solid var(--admin-ops-rule); padding:var(--space-xs); background:var(--admin-ops-paper); color:var(--admin-ops-ink); }
+.ops-empty { padding:var(--space-lg) 0; color:var(--admin-ops-muted); }
+.ops-list article { padding:var(--space-sm) 0; border-bottom:1px solid var(--admin-ops-rule); }
+.ops-table { min-width:0; background:var(--admin-ops-paper); color:var(--admin-ops-ink); }
+.ops-table table { width:100%; border-collapse:collapse; font-variant-numeric:tabular-nums; }
+.ops-table thead { display:none; }
+.ops-table tr { display:block; padding:var(--space-xs); border-bottom:1px solid var(--admin-ops-rule); }
+.ops-table td { display:block; padding:var(--space-2xs); }
+.ops-table td[data-label]::before { content:attr(data-label); display:block; color:var(--admin-ops-muted); font-size:var(--text-xs); }
+.ops-prose { white-space:pre-wrap; max-width:70ch; }
+.ops-excerpt { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; margin-top:var(--space-2xs); }
+.ops-page summary { cursor:pointer; padding-block:var(--space-xs); }
+@media (min-width:60rem) { .ops-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .ops-table thead { display:table-header-group; } .ops-table tr { display:table-row; } .ops-table :is(td,th) { display:table-cell; text-align:left; padding:var(--space-sm); } .ops-table td[data-label]::before { display:none; } }
+@media (hover:hover) and (pointer:fine) { .ops-page button:hover:not(:disabled) { text-decoration:underline; } .ops-page :is(input,textarea,select):hover:not(:disabled) { background:var(--admin-ops-hover); color:var(--admin-ops-ink); } }

@@ -1,16 +1,19 @@
 import crypto from 'node:crypto';
 import { Hono } from 'hono';
+import { assistantRoutes } from './routes/assistant.js';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { adminRoutes } from './routes/admin.js';
 import { adminEngagementRoutes } from './routes/admin-engagement.js';
+import { adminOperationsRoutes } from './routes/admin-operations.js';
+import { contentRoutes } from './routes/content.js';
 import { authRoutes } from './routes/auth.js';
 import { branchRoutes } from './routes/branches.js';
 import { couponRoutes } from './routes/coupons.js';
 import { feedbackRoutes } from './routes/feedback.js';
 import { machineRoutes } from './routes/machines.js';
 import { lineOaRoutes } from './routes/line-oa.js';
-import { membershipRoutes } from './routes/memberships.js';
+import { membershipRoutes, adminMembershipRoutes } from './routes/memberships.js';
 import { notificationRoutes } from './routes/notifications.js';
 import { packageRoutes } from './routes/packages.js';
 import { paymentRoutes } from './routes/payments.js';
@@ -85,6 +88,7 @@ export function createApp() {
   });
 
   app.route('/api/auth', authRoutes);
+  app.route('/api/assistant', assistantRoutes);
   app.route('/api/users', userRoutes);
   app.route('/api/branches', branchRoutes);
   app.route('/api/packages', packageRoutes);
@@ -93,6 +97,7 @@ export function createApp() {
   app.route('/api/points', pointsRoutes);
   app.route('/api/coupons', couponRoutes);
   app.route('/api/memberships', membershipRoutes);
+  app.route('/api/admin/membership-purchases', adminMembershipRoutes);
   app.route('/api/stamps', stampRoutes);
   app.route('/api/notifications', notificationRoutes);
   app.route('/api/feedback', feedbackRoutes);
@@ -101,6 +106,8 @@ export function createApp() {
   app.route('/api/line', lineOaRoutes);
   app.route('/api/admin', adminRoutes);
   app.route('/api/admin', adminEngagementRoutes);
+  app.route('/api/admin', adminOperationsRoutes);
+  app.route('/api/content', contentRoutes);
   app.route('/api/machines', machineRoutes);
 
   app.notFound((c) => c.json({ message: 'Not Found' }, 404));

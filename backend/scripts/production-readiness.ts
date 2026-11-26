@@ -86,6 +86,23 @@ function buildCheckResults() {
     });
   }
 
+  const membershipPromptPayId = env.MEMBERSHIP_PROMPTPAY_ID?.replace(/[^0-9]/g, '') ?? '';
+  const membershipPaymentMissing =
+    ![10, 13].includes(membershipPromptPayId.length) ||
+    membershipPromptPayId === '0812345678' ||
+    !hasValue(env.MEMBERSHIP_PROMPTPAY_NAME) ||
+    isUnsafePlaceholder(env.MEMBERSHIP_PROMPTPAY_NAME);
+  results.push({
+    name: 'Membership PromptPay account',
+    status: membershipPaymentMissing ? 'needs-input' : 'ready',
+    detail: membershipPaymentMissing
+      ? 'Membership purchases still need the real HQ PromptPay ID and receiving account name.'
+      : 'Membership purchases point to a configured HQ PromptPay account.',
+    requiredInputs: membershipPaymentMissing
+      ? ['MEMBERSHIP_PROMPTPAY_ID', 'MEMBERSHIP_PROMPTPAY_NAME']
+      : undefined,
+  });
+
   if (customerAuthMode === 'clerk') {
     const missingClerkInputs = [
       !hasValue(env.CLERK_SECRET_KEY) || isUnsafePlaceholder(env.CLERK_SECRET_KEY)

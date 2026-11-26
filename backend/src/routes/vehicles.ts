@@ -33,7 +33,15 @@ vehicleRoutes.post('/', async (c) => {
   const data = createVehicleSchema.parse(body);
 
   const vehicle = await prisma.vehicle.create({
-    data: { userId, ...data },
+    data: {
+      userId,
+      brand: data.brand as string,
+      model: data.model as string,
+      plate: data.plate as string,
+      province: data.province as string,
+      color: data.color as string,
+      size: data.size as string,
+    },
   });
 
   return c.json({ data: vehicle }, 201);

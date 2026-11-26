@@ -14,6 +14,7 @@
 - `CORS_ORIGIN` includes only the intended frontend/admin origins and does not contain `localhost`, `127.0.0.1`, or `*`
 - Real payment provider URLs are configured before production payment go-live
 - `PAYMENT_PROVIDER_NAME` points to a real provider-specific adapter, not `mock_promptpay` or `generic_rest`
+- `MEMBERSHIP_PROMPTPAY_ID` and `MEMBERSHIP_PROMPTPAY_NAME` point to the verified HQ receiving account
 - `MQTT_TOPIC_PREFIX` is confirmed with the machine firmware / broker routing setup if a custom prefix is used
 - Seeded/default admin passwords are rotated
 

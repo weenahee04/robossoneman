@@ -5,5 +5,18 @@
 
 [[redirects]]
   from = "/admin"
-  to = "/admin.html"
+  to = "/admin/index.html"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/admin/"
+  to = "/admin/index.html"
+  status = 200
+  force = true
+
+# React Router fallback so customer routes such as /carwash can be opened directly.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
   status = 200

@@ -31,7 +31,8 @@ feedbackRoutes.post('/', async (c) => {
       userId,
       branchId: latestSession?.branchId ?? null,
       sessionId: latestSession?.id ?? null,
-      ...data,
+      type: data.type as string,
+      message: data.message as string,
     },
   });
 

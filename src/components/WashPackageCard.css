@@ -1,0 +1,982 @@
+/* Hallmark · component: package-slide-card · genre: modern-minimal · theme: ROBOSS copper-black
+ * states: default · hover · focus · active · disabled · loading · error · success
+ * contrast: pass (40–41) · mobile: 320 · 375 · 414 · 768
+ * pre-emit critique: P5 H5 E5 S5 R5 V5
+ */
+:root {
+  --package-card-paper: oklch(12% 0.012 45);
+  --package-card-surface: oklch(17% 0.018 45);
+  --package-card-surface-raised: oklch(21% 0.026 45);
+  --package-card-rule: oklch(32% 0.028 45);
+  --package-card-rule-strong: oklch(62% 0.13 48);
+  --package-card-ink: oklch(96% 0.012 70);
+  --package-card-muted: oklch(73% 0.025 65);
+  --package-card-subtle: oklch(60% 0.025 60);
+  --package-card-copper: oklch(67% 0.14 48);
+  --package-card-copper-deep: oklch(48% 0.14 42);
+  --package-card-copper-ink: oklch(14% 0.018 45);
+  --package-card-moto: oklch(70% 0.17 58);
+  --package-card-danger: oklch(65% 0.19 25);
+  --package-card-danger-ink: oklch(96% 0.012 25);
+  --package-card-focus: oklch(88% 0.13 85);
+  --package-card-overlay: oklch(8% 0.012 45 / 0.88);
+  --package-card-transparent: oklch(8% 0.012 45 / 0);
+  --package-card-frame-core: oklch(66% 0.15 45);
+  --package-card-frame-core-deep: oklch(35% 0.105 38);
+  --package-card-frame-shine: oklch(82% 0.13 78);
+  --package-card-frame-shine-deep: oklch(45% 0.11 66);
+  --package-card-frame-signature: oklch(91% 0.045 80);
+  --package-card-frame-signature-deep: oklch(52% 0.12 45);
+  --package-card-foil-core: oklch(68% 0.18 35 / 0.16);
+  --package-card-foil-shine: oklch(90% 0.11 88 / 0.22);
+  --package-card-foil-signature: oklch(96% 0.035 90 / 0.24);
+  --package-card-shadow: oklch(4% 0.01 45 / 0.68);
+  --package-card-frame-ink: oklch(13% 0.018 45);
+  --package-card-frame-light-ink: oklch(16% 0.02 48);
+  --package-card-space-3xs: 0.125rem;
+  --package-card-space-2xs: 0.25rem;
+  --package-card-space-xs: 0.5rem;
+  --package-card-space-sm: 0.75rem;
+  --package-card-space-md: 1rem;
+  --package-card-space-lg: 1.5rem;
+  --package-card-radius-sm: 0.625rem;
+  --package-card-radius-md: 1rem;
+  --package-card-radius-lg: 1.5rem;
+  --package-card-text-xs: 0.75rem;
+  --package-card-text-sm: 0.875rem;
+  --package-card-text-md: 1rem;
+  --package-card-text-lg: 1.25rem;
+  --package-card-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --package-card-dur-micro: 120ms;
+}
+
+.wash-package-carousel-shell {
+  display: grid;
+  min-width: 0;
+  gap: var(--package-card-space-sm);
+}
+
+.wash-package-carousel {
+  display: grid;
+  min-width: 0;
+  margin-inline: calc(var(--package-card-space-md) * -1);
+  padding-inline: var(--package-card-space-md);
+  grid-auto-flow: column;
+  grid-auto-columns: min(84%, 20rem);
+  gap: var(--package-card-space-sm);
+  overflow-x: auto;
+  overflow-y: clip;
+  overscroll-behavior-inline: contain;
+  scroll-padding-inline: var(--package-card-space-md);
+  scroll-snap-type: inline mandatory;
+  scrollbar-width: none;
+}
+
+.wash-package-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.wash-package-carousel__meter {
+  display: flex;
+  align-items: center;
+  gap: var(--package-card-space-xs);
+}
+
+.wash-package-carousel__meter-track {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: var(--package-card-space-2xs);
+}
+
+.wash-package-carousel__meter-segment {
+  height: var(--package-card-space-3xs);
+  flex: 1;
+  border-radius: var(--package-card-radius-sm);
+  background: var(--package-card-rule);
+  opacity: 0.55;
+}
+
+.wash-package-carousel__meter-segment[data-active='true'] {
+  background: var(--package-card-copper);
+  opacity: 1;
+}
+
+.wash-package-carousel__meter-text {
+  flex: none;
+  color: var(--package-card-muted);
+  font-size: var(--package-card-text-xs);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wash-package-card {
+  position: relative;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  scroll-snap-align: center;
+  grid-template-rows: 9rem minmax(0, 1fr);
+  border: 1px solid var(--package-card-rule);
+  border-radius: var(--package-card-radius-lg);
+  background: var(--package-card-surface);
+  color: var(--package-card-ink);
+  text-align: start;
+  cursor: pointer;
+  transform: translateY(0) scale(1);
+  transition: transform var(--package-card-dur-micro) var(--package-card-ease-out), opacity var(--package-card-dur-micro) var(--package-card-ease-out);
+}
+
+.wash-package-card__media {
+  position: relative;
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--package-card-paper);
+}
+
+.wash-package-card__media img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform: scale(1.01);
+}
+
+.wash-package-card__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--package-card-overlay), var(--package-card-transparent) 62%);
+}
+
+.wash-package-card__badge,
+.wash-package-card__position {
+  position: absolute;
+  inset-block-start: var(--package-card-space-sm);
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  border-radius: var(--package-card-radius-sm);
+  padding-inline: var(--package-card-space-sm);
+  font-size: var(--package-card-text-xs);
+  font-weight: 900;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wash-package-card__badge {
+  inset-inline-start: var(--package-card-space-sm);
+  background: var(--package-card-copper);
+  color: var(--package-card-copper-ink);
+}
+
+.wash-package-card--motorcycle .wash-package-card__badge {
+  background: var(--package-card-moto);
+}
+
+.wash-package-card__position {
+  inset-inline-end: var(--package-card-space-sm);
+  border: 1px solid var(--package-card-rule);
+  background: var(--package-card-paper);
+  color: var(--package-card-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.wash-package-card__content {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: var(--package-card-space-sm);
+  padding: var(--package-card-space-md);
+}
+
+.wash-package-card__heading-row {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--package-card-space-sm);
+}
+
+.wash-package-card__name {
+  min-width: 0;
+  color: var(--package-card-ink);
+  font-size: var(--package-card-text-lg);
+  font-weight: 900;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  overflow-wrap: anywhere;
+}
+
+.wash-package-card__price {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.wash-package-card__price small {
+  color: var(--package-card-subtle);
+  font-size: var(--package-card-text-xs);
+  font-weight: 700;
+}
+
+.wash-package-card__price strong {
+  color: var(--package-card-ink);
+  font-size: var(--package-card-text-lg);
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.wash-package-card__description {
+  min-height: 3em;
+  color: var(--package-card-muted);
+  font-size: var(--package-card-text-sm);
+  line-height: 1.5;
+}
+
+.wash-package-card__steps {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: var(--package-card-space-xs);
+}
+
+.wash-package-card__steps > span {
+  display: inline-flex;
+  min-height: 1.75rem;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--package-card-rule);
+  border-radius: var(--package-card-radius-sm);
+  padding-inline: var(--package-card-space-xs);
+  color: var(--package-card-muted);
+  font-size: var(--package-card-text-xs);
+  font-weight: 700;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wash-package-card__footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--package-card-space-sm);
+  padding-block-start: var(--package-card-space-2xs);
+  border-block-start: 1px solid var(--package-card-rule);
+}
+
+.wash-package-card__duration {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--package-card-subtle);
+  font-size: var(--package-card-text-xs);
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wash-package-card__choose {
+  display: inline-flex;
+  min-height: 2.75rem;
+  flex: none;
+  align-items: center;
+  gap: var(--package-card-space-xs);
+  color: var(--package-card-ink);
+  font-size: var(--package-card-text-sm);
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.wash-package-card__choose-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--package-card-copper);
+  color: var(--package-card-copper-ink);
+  font-size: var(--package-card-text-md);
+  line-height: 1;
+}
+
+.wash-package-card--motorcycle .wash-package-card__choose-icon {
+  background: var(--package-card-moto);
+}
+
+.wash-package-card__status {
+  color: var(--package-card-muted);
+  font-size: var(--package-card-text-xs);
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wash-package-card:hover,
+  .wash-package-card.is-hover {
+    transform: translateY(-2px);
+  }
+}
+
+.wash-package-card:focus-visible,
+.wash-package-card.is-focus {
+  outline: 3px solid var(--package-card-focus);
+  outline-offset: 3px;
+}
+
+.wash-package-card:active,
+.wash-package-card.is-active {
+  transform: scale(0.985);
+}
+
+.wash-package-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+.wash-package-card[data-selected='true'] {
+  border-color: var(--package-card-rule-strong);
+  background: var(--package-card-surface-raised);
+}
+
+.wash-package-card[data-state='loading'] .wash-package-card__choose-icon {
+  color: transparent;
+  animation: wash-package-loading 900ms linear infinite;
+}
+
+.wash-package-card[data-state='loading'] .wash-package-card__choose-icon::after {
+  content: '';
+  width: var(--package-card-space-md);
+  height: var(--package-card-space-md);
+  border: 2px solid var(--package-card-copper-ink);
+  border-block-start-color: var(--package-card-transparent);
+  border-radius: 50%;
+}
+
+.wash-package-card[data-state='error'] {
+  border-color: var(--package-card-danger);
+}
+
+.wash-package-card[data-state='error'] .wash-package-card__status {
+  color: var(--package-card-danger-ink);
+}
+
+.wash-package-card[data-state='success'] .wash-package-card__status {
+  color: var(--package-card-copper);
+}
+
+@keyframes wash-package-loading {
+  to { transform: rotate(1turn); }
+}
+
+@media (min-width: 40rem) {
+  .wash-package-carousel {
+    grid-auto-columns: min(58%, 21rem);
+  }
+}
+
+@media (pointer: coarse) {
+  .wash-package-card {
+    min-height: 25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wash-package-card {
+    transition-duration: 0ms;
+  }
+
+  .wash-package-card:hover,
+  .wash-package-card.is-hover,
+  .wash-package-card:active,
+  .wash-package-card.is-active {
+    transform: none;
+  }
+
+  .wash-package-card[data-state='loading'] .wash-package-card__choose-icon {
+    animation-duration: 1.5s;
+  }
+}
+
+/* Collectible-series treatment: one semantic button, one original ROBOSS frame. */
+.wash-package-carousel {
+  grid-auto-columns: min(87%, 21.5rem);
+  gap: var(--package-card-space-md);
+}
+
+.wash-package-card {
+  --package-card-frame: var(--package-card-frame-core);
+  --package-card-frame-deep: var(--package-card-frame-core-deep);
+  --package-card-foil: var(--package-card-foil-core);
+  --package-card-frame-text: var(--package-card-frame-ink);
+  isolation: isolate;
+  grid-template-rows: 2.25rem 10.5rem minmax(0, 1fr);
+  padding: var(--package-card-space-2xs);
+  border: 2px solid var(--package-card-frame);
+  border-radius: 1.375rem;
+  background: var(--package-card-paper);
+  box-shadow:
+    inset 0 0 0 2px var(--package-card-frame-deep),
+    0 0.875rem 2rem var(--package-card-shadow);
+}
+
+.wash-package-card::before {
+  position: absolute;
+  z-index: 4;
+  inset: var(--package-card-space-xs);
+  border: 1px solid var(--package-card-frame);
+  border-radius: var(--package-card-radius-md);
+  content: '';
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.wash-package-card::after {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  background: linear-gradient(125deg, var(--package-card-transparent) 42%, var(--package-card-foil) 50%, var(--package-card-transparent) 58%);
+  content: '';
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.wash-package-card[data-variant='shine'] {
+  --package-card-frame: var(--package-card-frame-shine);
+  --package-card-frame-deep: var(--package-card-frame-shine-deep);
+  --package-card-foil: var(--package-card-foil-shine);
+  --package-card-frame-text: var(--package-card-frame-light-ink);
+}
+
+.wash-package-card[data-variant='signature'] {
+  --package-card-frame: var(--package-card-frame-signature);
+  --package-card-frame-deep: var(--package-card-frame-signature-deep);
+  --package-card-foil: var(--package-card-foil-signature);
+  --package-card-frame-text: var(--package-card-frame-light-ink);
+  border-width: 3px;
+  box-shadow:
+    inset 0 0 0 2px var(--package-card-frame-deep),
+    inset 0 0 0 5px var(--package-card-paper),
+    0 0.875rem 2rem var(--package-card-shadow);
+}
+
+.wash-package-card__collector-rail,
+.wash-package-card__media,
+.wash-package-card__content {
+  position: relative;
+  z-index: 2;
+}
+
+.wash-package-card__collector-rail {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--package-card-space-xs);
+  margin-inline: var(--package-card-space-2xs);
+  border-radius: 0.75rem 0.75rem 0.25rem 0.25rem;
+  padding-inline: var(--package-card-space-sm);
+  background: var(--package-card-frame);
+  color: var(--package-card-frame-text);
+  font-size: 0.625rem;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.wash-package-card__collector-rail > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wash-package-card__collector-rail strong {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.wash-package-card__media {
+  margin-inline: var(--package-card-space-2xs);
+  border: 2px solid var(--package-card-frame-deep);
+  border-radius: 0.25rem 0.25rem 0.875rem 0.875rem;
+}
+
+.wash-package-card[data-variant='shine'] .wash-package-card__media {
+  border-color: var(--package-card-frame);
+  clip-path: polygon(0 0, calc(100% - 0.75rem) 0, 100% 0.75rem, 100% 100%, 0 100%);
+}
+
+.wash-package-card[data-variant='signature'] .wash-package-card__media {
+  border-color: var(--package-card-frame);
+  clip-path: polygon(0.75rem 0, calc(100% - 0.75rem) 0, 100% 0.75rem, 100% calc(100% - 0.75rem), calc(100% - 0.75rem) 100%, 0.75rem 100%, 0 calc(100% - 0.75rem), 0 0.75rem);
+}
+
+.wash-package-card__media img {
+  transform: scale(1.035);
+  transition: transform var(--package-card-dur-micro) var(--package-card-ease-out);
+}
+
+.wash-package-card__media-mark {
+  position: absolute;
+  inset-inline-end: var(--package-card-space-sm);
+  inset-block-end: var(--package-card-space-sm);
+  display: grid;
+  width: 2.375rem;
+  height: 2.375rem;
+  place-items: center;
+  border: 1px solid var(--package-card-frame);
+  border-radius: 50%;
+  background: var(--package-card-overlay);
+  color: var(--package-card-frame);
+  font-size: var(--package-card-text-xs);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+}
+
+.wash-package-card__badge,
+.wash-package-card__position {
+  inset-block-start: var(--package-card-space-xs);
+  min-height: 1.625rem;
+  border-radius: 0.375rem;
+}
+
+.wash-package-card__badge,
+.wash-package-card--motorcycle .wash-package-card__badge {
+  background: var(--package-card-frame);
+  color: var(--package-card-frame-text);
+}
+
+.wash-package-card__position {
+  border-color: var(--package-card-frame);
+  background: var(--package-card-overlay);
+  color: var(--package-card-ink);
+}
+
+.wash-package-card__content {
+  gap: var(--package-card-space-sm);
+  margin: var(--package-card-space-2xs);
+  border-radius: 0.875rem;
+  padding: var(--package-card-space-md);
+  background: var(--package-card-surface);
+}
+
+.wash-package-card__identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--package-card-space-xs);
+  color: var(--package-card-frame);
+  font-size: 0.625rem;
+  font-weight: 950;
+  letter-spacing: 0.16em;
+  line-height: 1;
+}
+
+.wash-package-card__marks {
+  display: inline-flex;
+  gap: var(--package-card-space-2xs);
+}
+
+.wash-package-card__marks i {
+  display: block;
+  width: 0.375rem;
+  height: 0.375rem;
+  transform: rotate(45deg);
+  border: 1px solid var(--package-card-rule);
+  background: var(--package-card-transparent);
+}
+
+.wash-package-card__marks i[data-lit='true'] {
+  border-color: var(--package-card-frame);
+  background: var(--package-card-frame);
+}
+
+.wash-package-card__name {
+  font-size: 1.125rem;
+  letter-spacing: -0.015em;
+}
+
+.wash-package-card__description {
+  min-height: 2.75em;
+}
+
+.wash-package-card__facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  border-block: 1px solid var(--package-card-rule);
+  background: var(--package-card-surface-raised);
+}
+
+.wash-package-card__facts > span {
+  display: grid;
+  min-width: 0;
+  gap: var(--package-card-space-3xs);
+  padding: var(--package-card-space-xs);
+}
+
+.wash-package-card__facts > span + span {
+  border-inline-start: 1px solid var(--package-card-rule);
+}
+
+.wash-package-card__facts small {
+  color: var(--package-card-subtle);
+  font-size: 0.625rem;
+  font-weight: 800;
+}
+
+.wash-package-card__facts strong {
+  overflow: hidden;
+  color: var(--package-card-ink);
+  font-size: var(--package-card-text-xs);
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wash-package-card__steps > span {
+  border-color: var(--package-card-frame-deep);
+  background: var(--package-card-paper);
+}
+
+.wash-package-card__footer {
+  min-height: 3.125rem;
+  margin-block-start: auto;
+  border: 0;
+  border-radius: var(--package-card-radius-sm);
+  padding-inline: var(--package-card-space-sm);
+  background: var(--package-card-frame);
+  color: var(--package-card-frame-text);
+}
+
+.wash-package-card__duration,
+.wash-package-card__choose {
+  color: var(--package-card-frame-text);
+}
+
+.wash-package-card__duration {
+  font-weight: 900;
+}
+
+.wash-package-card__choose-icon,
+.wash-package-card--motorcycle .wash-package-card__choose-icon {
+  border: 1px solid var(--package-card-frame-text);
+  background: var(--package-card-transparent);
+  color: var(--package-card-frame-text);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .wash-package-card:hover .wash-package-card__media img,
+  .wash-package-card.is-hover .wash-package-card__media img {
+    transform: scale(1.065);
+  }
+}
+
+.wash-package-card[data-selected='true'] {
+  border-color: var(--package-card-focus);
+  background: var(--package-card-paper);
+  box-shadow:
+    inset 0 0 0 2px var(--package-card-frame-deep),
+    0 0 0 2px var(--package-card-focus),
+    0 1rem 2rem var(--package-card-shadow);
+}
+
+.wash-package-card[data-selected='true'] .wash-package-card__collector-rail::before {
+  content: '✓ ';
+}
+
+.wash-package-card[data-state='error'] {
+  border-color: var(--package-card-danger);
+}
+
+.wash-package-card[data-state='loading'] .wash-package-card__choose-icon::after {
+  border-color: var(--package-card-frame-text);
+  border-block-start-color: var(--package-card-transparent);
+}
+
+@media (min-width: 40rem) {
+  .wash-package-carousel {
+    grid-auto-columns: min(54%, 21.5rem);
+  }
+}
+
+@media (max-width: 22rem) {
+  .wash-package-card__content {
+    padding-inline: var(--package-card-space-sm);
+  }
+
+  .wash-package-card__collector-rail {
+    font-size: 0.5625rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wash-package-card__media img,
+  .wash-package-card:hover .wash-package-card__media img,
+  .wash-package-card.is-hover .wash-package-card__media img {
+    transform: scale(1.035);
+    transition-duration: 0ms;
+  }
+}
+
+/* Generated card-template layout: raster frame first, live content layered above it. */
+.wash-package-card {
+  display: block;
+  aspect-ratio: 2 / 3;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background-color: var(--package-card-transparent);
+  background-image: url('/service-cards/roboss-collectible-card-template.png');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 106% 106%;
+  clip-path: polygon(9.5% 1.8%, 90.5% 1.8%, 97.5% 5.3%, 97.5% 94%, 94% 98%, 6% 98%, 2.5% 94%, 2.5% 5.3%);
+  box-shadow: 0 1rem 2rem var(--package-card-shadow);
+}
+
+.wash-package-card::before,
+.wash-package-card::after {
+  display: none;
+}
+
+.wash-package-card__collector-rail {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 2.75%;
+  inset-inline: 17%;
+  min-height: 1rem;
+  margin: 0;
+  border-radius: 0;
+  padding: 0;
+  background: var(--package-card-transparent);
+  color: var(--package-card-ink);
+  font-size: 0.5rem;
+  letter-spacing: 0.09em;
+}
+
+.wash-package-card__media,
+.wash-package-card[data-variant='shine'] .wash-package-card__media,
+.wash-package-card[data-variant='signature'] .wash-package-card__media {
+  position: absolute;
+  z-index: 1;
+  inset-block-start: 7.1%;
+  inset-inline: 13.5%;
+  width: auto;
+  height: 55.4%;
+  margin: 0;
+  border: 0;
+  border-radius: 0.25rem 0.25rem 0.625rem 0.625rem;
+  clip-path: polygon(0.5rem 0, calc(100% - 0.5rem) 0, 100% 0.5rem, 100% calc(100% - 0.5rem), calc(100% - 0.5rem) 100%, 0.5rem 100%, 0 calc(100% - 0.5rem), 0 0.5rem);
+}
+
+.wash-package-card__media img {
+  width: 100%;
+  height: 100%;
+  object-position: center;
+}
+
+.wash-package-card__shade {
+  background: linear-gradient(to top, var(--package-card-overlay), var(--package-card-transparent) 54%);
+}
+
+.wash-package-card__media-mark {
+  display: none;
+}
+
+.wash-package-card__badge,
+.wash-package-card--motorcycle .wash-package-card__badge,
+.wash-package-card__position {
+  inset-block-start: var(--package-card-space-xs);
+  min-height: 1.375rem;
+  border-radius: 0.25rem;
+  padding-inline: var(--package-card-space-xs);
+  font-size: 0.625rem;
+}
+
+.wash-package-card__badge,
+.wash-package-card--motorcycle .wash-package-card__badge {
+  background: var(--package-card-copper);
+  color: var(--package-card-copper-ink);
+}
+
+.wash-package-card__position {
+  border-color: var(--package-card-rule-strong);
+}
+
+.wash-package-card__content {
+  position: absolute;
+  z-index: 3;
+  inset-block-start: 65.3%;
+  inset-inline: 12.5%;
+  bottom: 10.6%;
+  display: flex;
+  overflow: hidden;
+  margin: 0;
+  gap: var(--package-card-space-3xs);
+  border-radius: 0;
+  padding: var(--package-card-space-xs);
+  background: var(--package-card-transparent);
+}
+
+.wash-package-card__identity {
+  min-height: 0.625rem;
+  color: var(--package-card-copper);
+  font-size: 0.5rem;
+  letter-spacing: 0.13em;
+}
+
+.wash-package-card__marks i {
+  width: 0.25rem;
+  height: 0.25rem;
+}
+
+.wash-package-card__heading-row {
+  gap: var(--package-card-space-xs);
+}
+
+.wash-package-card__name {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: var(--package-card-text-sm);
+  line-height: 1.08;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wash-package-card__price small {
+  font-size: 0.5rem;
+}
+
+.wash-package-card__price strong {
+  font-size: var(--package-card-text-sm);
+}
+
+.wash-package-card__description {
+  display: -webkit-box;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--package-card-muted);
+  font-size: 0.625rem;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.wash-package-card__facts {
+  min-height: 1.5rem;
+  margin-block-start: auto;
+  border-block-color: var(--package-card-rule);
+  background: var(--package-card-transparent);
+}
+
+.wash-package-card__facts > span {
+  gap: 0;
+  padding: var(--package-card-space-3xs) var(--package-card-space-xs);
+}
+
+.wash-package-card__facts small {
+  font-size: 0.5rem;
+}
+
+.wash-package-card__facts strong {
+  font-size: 0.5625rem;
+}
+
+.wash-package-card__steps {
+  display: none;
+}
+
+.wash-package-card__footer {
+  position: absolute;
+  z-index: 3;
+  inset-inline: 19%;
+  inset-block-end: 2.45%;
+  display: flex;
+  min-height: 0;
+  height: 5.4%;
+  justify-content: center;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  background: var(--package-card-transparent);
+  color: var(--package-card-ink);
+}
+
+.wash-package-card__duration {
+  display: none;
+}
+
+.wash-package-card__choose {
+  min-height: 0;
+  color: var(--package-card-ink);
+  font-size: var(--package-card-text-xs);
+  line-height: 1;
+}
+
+.wash-package-card__choose-icon,
+.wash-package-card--motorcycle .wash-package-card__choose-icon {
+  width: 1.375rem;
+  height: 1.375rem;
+  border-color: var(--package-card-ink);
+  background: var(--package-card-transparent);
+  color: var(--package-card-ink);
+  font-size: var(--package-card-text-xs);
+}
+
+.wash-package-card__status {
+  position: absolute;
+  z-index: 4;
+  inset-inline: 14%;
+  inset-block-end: 9.2%;
+  overflow: hidden;
+  color: var(--package-card-ink);
+  font-size: 0.5625rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wash-package-card[data-selected='true'] {
+  border: 0;
+  background-color: var(--package-card-transparent);
+  background-image: url('/service-cards/roboss-collectible-card-template.png');
+  box-shadow:
+    0 0 0 3px var(--package-card-focus),
+    0 1rem 2rem var(--package-card-shadow);
+}
+
+.wash-package-carousel {
+  grid-auto-columns: min(82%, 20rem);
+}
+
+@media (min-width: 40rem) {
+  .wash-package-carousel {
+    grid-auto-columns: min(82%, 20rem);
+  }
+}
+
+.wash-package-card:focus-visible,
+.wash-package-card.is-focus {
+  outline: 3px solid var(--package-card-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 22rem) {
+  .wash-package-card__content {
+    padding: var(--package-card-space-xs);
+  }
+
+  .wash-package-card__collector-rail {
+    font-size: 0.4375rem;
+  }
+}

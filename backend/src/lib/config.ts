@@ -97,6 +97,11 @@ function isScaffoldPaymentProvider(providerName: string) {
   return providerName === 'mock_promptpay' || providerName === 'generic_rest';
 }
 
+function isUnsafeMembershipPromptPayId(value: string | undefined) {
+  const normalized = value?.replace(/[^0-9]/g, '') ?? '';
+  return !normalized || normalized === '0812345678' || ![10, 13].includes(normalized.length);
+}
+
 function isStripeProvider(providerName: string) {
   return providerName === 'stripe';
 }
@@ -203,6 +208,22 @@ export function validateRuntimeEnv(env: RuntimeEnv) {
   }
 
   if (isProduction) {
+    if (isUnsafeMembershipPromptPayId(env.MEMBERSHIP_PROMPTPAY_ID)) {
+      issues.push({
+        level: 'error',
+        key: 'MEMBERSHIP_PROMPTPAY_ID',
+        message: 'MEMBERSHIP_PROMPTPAY_ID must be a real 10-digit phone number or 13-digit tax/national ID in production',
+      });
+    }
+
+    if (!env.MEMBERSHIP_PROMPTPAY_NAME?.trim() || isPlaceholderValue(env.MEMBERSHIP_PROMPTPAY_NAME)) {
+      issues.push({
+        level: 'error',
+        key: 'MEMBERSHIP_PROMPTPAY_NAME',
+        message: 'MEMBERSHIP_PROMPTPAY_NAME must be the real receiving account name in production',
+      });
+    }
+
     if (!env.LINE_CHANNEL_ID?.trim() || !env.LINE_CHANNEL_SECRET?.trim()) {
       issues.push({
         level: 'error',

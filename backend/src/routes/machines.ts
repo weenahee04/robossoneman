@@ -55,6 +55,7 @@ machineRoutes.post('/events', async (c) => {
     const result = await handleMachineEvent(
       {
         ...payload,
+        type: payload.type as NonNullable<typeof payload.type>,
         rawPayload: body,
       },
       'api'

@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Sidebar } from './components/Sidebar';
-import { TopBar } from './components/TopBar';
+import { DashboardSidebar as Sidebar } from './components/DashboardSidebar';
+import { DashboardHeader as TopBar } from './components/DashboardHeader';
 import { AdminUsersPage } from './pages/AdminUsersPage';
 import { BranchesPage } from './pages/BranchesPage';
 import { CashierPage } from './pages/CashierPage';
 import { CouponsPage } from './pages/CouponsPage';
 import { CustomersPage } from './pages/CustomersPage';
-import { DashboardPage } from './pages/DashboardPage';
+import { DashboardWorkbenchPage as DashboardPage } from './pages/DashboardWorkbenchPage';
+import './styles/dashboard-system.css';
 import { FeedbackInboxPage } from './pages/FeedbackInboxPage';
 import { LoginPage } from './pages/LoginPage';
 import { MachinesPage } from './pages/MachinesPage';
@@ -21,6 +22,7 @@ import { RevenuePage } from './pages/RevenuePage';
 import { RewardsPage } from './pages/RewardsPage';
 import { SessionsPage } from './pages/SessionsPage';
 import { StampManagementPage } from './pages/StampManagementPage';
+import { PointsManagementPage, AuditLogsPage, MembershipPlansPage, ContentManagementPage, RewardRedemptionsPage } from './pages/OperationsPages';
 import api, { type AdminMeta, type AdminUser, type BranchOption } from './services/api';
 
 export type PageName =
@@ -42,13 +44,23 @@ export type PageName =
   | 'sessions'
   | 'customers'
   | 'revenue'
+  | 'points'
+  | 'reward-redemptions'
+  | 'membership-plans'
+  | 'audit-logs'
+  | 'content'
   | 'feedback';
 
 export type ThemeMode = 'dark' | 'light';
 
 const ADMIN_THEME_STORAGE_KEY = 'roboss-admin-theme';
 
-const pageMeta: Record<PageName, { title: string; description: string }> = {
+export const pageMeta: Record<PageName, { title: string; description: string }> = {
+  points: { title: 'พ้อยท์ลูกค้า', description: 'ยอดคงเหลือ ประวัติ และการปรับยอดพร้อมเหตุผล' },
+  'reward-redemptions': { title: 'รายการแลกรางวัล', description: 'ตรวจสอบและบันทึกการส่งมอบสิทธิ์ที่ลูกค้าใช้พ้อยท์แลก' },
+  'membership-plans': { title: 'แผนสมาชิก', description: 'จัดการแผนขายใหม่โดยรักษาสิทธิ์ของสมาชิกเดิม' },
+  'audit-logs': { title: 'ประวัติการทำรายการ', description: 'ตรวจสอบผู้ทำรายการและข้อมูลอ้างอิงตามขอบเขตสิทธิ์' },
+  content: { title: 'เนื้อหาในแอป', description: 'คำถามที่พบบ่อยและบทความสำหรับลูกค้า' },
   dashboard: {
     title: 'ภาพรวมระบบ',
     description: 'ติดตามสถานะสาขา เครื่องล้าง รายได้ และการเติบโตในภาพรวม',
@@ -78,40 +90,40 @@ const pageMeta: Record<PageName, { title: string; description: string }> = {
     description: 'ส่งข้อความและประกาศถึงลูกค้าตามกลุ่มเป้าหมาย',
   },
   packages: {
-    title: 'แพ็กเกจ',
-    description: 'จัดการบริการ ราคา ขั้นตอนล้าง และการเปิดขายในแต่ละสาขา',
+    title: 'บริการและราคา',
+    description: 'ตั้งแพ็กเกจ ราคา และบริการที่เปิดขายในแต่ละสาขา',
   },
   cashier: {
-    title: 'แคชเชียร์',
-    description: 'รับเงินสดหรือสลิปหน้าร้าน คีย์ยอด และยืนยันเข้าระบบทันที',
+    title: 'รับชำระหน้าร้าน',
+    description: 'รับเงินสดหรือสลิป และยืนยันรายการของลูกค้า',
   },
   'payment-setup': {
     title: 'ตั้งค่าชำระเงิน',
     description: 'จัดการผู้ให้บริการชำระเงิน บัญชีรับเงิน และสถานะอนุมัติ',
   },
   payments: {
-    title: 'การชำระเงิน',
-    description: 'ตรวจสอบรายการชำระเงิน การยืนยัน และรายการที่ต้องทบทวน',
+    title: 'รายการชำระเงิน',
+    description: 'ตรวจสถานะ ยืนยัน และกระทบยอดรายการรับเงิน',
   },
   rewards: {
     title: 'ของรางวัล',
     description: 'กำหนดของรางวัลและสิทธิประโยชน์ที่ลูกค้าแลกได้',
   },
   stamps: {
-    title: 'แสตมลูกค้า',
-    description: 'ติดตามบัตรสะสมแสตม ประวัติ และการปรับสิทธิ์แบบมี audit log',
+    title: 'แสตมสะสม',
+    description: 'ดูยอดสะสม ประวัติ และปรับแสตมให้ลูกค้า',
   },
   memberships: {
-    title: 'Active Members',
-    description: 'Manage active member packages, bundles, remaining credits, Graphene usage, and payment references',
+    title: 'สมาชิกและเครดิต',
+    description: 'ดูแพ็กเกจสมาชิก เครดิตคงเหลือ และประวัติการใช้สิทธิ์',
   },
   machines: {
     title: 'เครื่องล้าง',
     description: 'ดูสถานะเครื่อง คำสั่งควบคุม และข้อมูลสุขภาพของอุปกรณ์',
   },
   sessions: {
-    title: 'หน้าจอพนักงาน',
-    description: 'คิวบริการหน้าร้านแบบเรียลไทม์ พร้อม service checklist และ history log',
+    title: 'คิวและรอบล้าง',
+    description: 'ติดตามคิว งานที่กำลังล้าง และประวัติบริการแบบเรียลไทม์',
   },
   revenue: {
     title: 'รายได้',
@@ -169,8 +181,10 @@ export function App() {
     }
 
     const nextMeta = await api.fetchMeta();
+    setTheme('light');
     setCurrentUser(nextMeta.admin);
     setMeta(nextMeta);
+    if (nextMeta.admin.role === 'cashier') setCurrentPage('cashier');
     setSelectedBranchId((current) => {
       if (current && nextMeta.branches.some((branch) => branch.id === current)) {
         return current;
@@ -207,7 +221,7 @@ export function App() {
   }, [currentUser, meta?.branches, selectedBranchId]);
 
   if (isBootstrapping) {
-    return <div className="min-h-screen bg-[linear-gradient(180deg,#fff8f7_0%,#f8fafc_100%)]" />;
+    return <div className="dash-shell" />;
   }
 
   if (!currentUser || !meta) {
@@ -224,9 +238,22 @@ export function App() {
   }
 
   const renderPage = () => {
+    if (currentUser.role === 'cashier' && !['cashier', 'sessions'].includes(currentPage)) {
+      return <CashierPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
+    }
     switch (currentPage) {
+      case 'reward-redemptions':
+        return <RewardRedemptionsPage key={selectedBranchId ?? 'all'} branchId={selectedBranchId} />;
+      case 'points':
+        return <PointsManagementPage key={selectedBranchId ?? 'all'} admin={currentUser} branchId={selectedBranchId} />;
+      case 'audit-logs':
+        return <AuditLogsPage key={selectedBranchId ?? 'all'} branchId={selectedBranchId} />;
+      case 'membership-plans':
+        return currentUser.role === 'hq_admin' ? <MembershipPlansPage /> : <p>ไม่มีสิทธิ์เข้าถึง</p>;
+      case 'content':
+        return currentUser.role === 'hq_admin' ? <ContentManagementPage /> : <p>ไม่มีสิทธิ์เข้าถึง</p>;
       case 'dashboard':
-        return <DashboardPage admin={currentUser} branchId={selectedBranchId} />;
+        return <DashboardPage admin={currentUser} branchId={selectedBranchId} onNavigate={setCurrentPage} />;
       case 'branches':
         return (
           <BranchesPage
@@ -274,12 +301,12 @@ export function App() {
       case 'feedback':
         return <FeedbackInboxPage admin={currentUser} branchId={selectedBranchId} branches={meta.branches} />;
       default:
-        return <DashboardPage admin={currentUser} branchId={selectedBranchId} />;
+        return <DashboardPage admin={currentUser} branchId={selectedBranchId} onNavigate={setCurrentPage} />;
     }
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[linear-gradient(180deg,#fff8f7_0%,#f8fafc_100%)] text-slate-900 md:flex md:h-screen md:overflow-hidden">
+    <div className="dash-shell">
       <Sidebar
         currentPage={currentPage}
         onNavigate={(page) => {
@@ -292,7 +319,7 @@ export function App() {
         onCloseMobile={() => setMobileSidebarOpen(false)}
         user={currentUser}
       />
-      <div className="flex min-w-0 flex-1 flex-col md:overflow-hidden">
+      <div className="dash-main">
         <TopBar
           theme={theme}
           user={currentUser}
@@ -310,7 +337,7 @@ export function App() {
           }}
           onToggleSidebar={() => setMobileSidebarOpen((current) => !current)}
         />
-        <main className="min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-4 sm:px-5 sm:py-5 lg:p-6">{renderPage()}</main>
+        <main className="dash-content">{renderPage()}</main>
       </div>
     </div>
   );

@@ -1,0 +1,151 @@
+/* Hallmark · pre-emit critique: P4 H4 E4 S4 R4 V3 */
+/* Hallmark · genre: modern-minimal · macrostructure: Workbench · design-system: design.md · designed-as-app
+ * ROBOSS Pitlane: action-first customer app. Existing package artwork is preserved.
+ * Motion: navigation indicator, button press, view crossfade.
+ */
+.app-shell { background: var(--color-paper); }
+.app-shell .app-container { max-width: 520px; height: 100%; max-height: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--color-paper); font-family: var(--font-body); color: var(--color-ink); }
+.app-shell .app-container::before { content: none; }
+html, body { overflow: clip; }
+.pitlane-app h1, .pitlane-app h2 { min-width: 0; overflow-wrap: anywhere; font-style: normal; }
+.pitlane-app :is(button,a,input,select,textarea):focus-visible, .pitlane-picker :is(button,input):focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+.pitlane-app button { -webkit-tap-highlight-color: transparent; }
+.pitlane-app button:disabled { opacity: .5; cursor: not-allowed; }
+.pitlane-app button:active:not(:disabled), .pitlane-picker button:active:not(:disabled) { opacity:.85; }
+.pitlane-picker button:disabled { opacity:.5; cursor:not-allowed; }
+.pitlane-home { padding: 0 0 var(--space-md); background: var(--color-paper); }
+.pitlane-header { flex-shrink: 0; background: var(--color-paper); border-bottom: 1px solid var(--color-rule); z-index: 20; }
+.pitlane-header__row { display:flex; align-items:center; justify-content:space-between; gap:var(--space-sm); padding:var(--space-xs) var(--space-sm); }
+.pitlane-logo-wrap { display:block; width:128px; height:44px; position:relative; overflow:hidden; flex-shrink:0; }
+.pitlane-logo { position:absolute; width:196px; height:110px; max-width:none; left:50%; top:50%; transform:translate(-50%,-50%); object-fit:contain; }
+.pitlane-header__account { display:flex; align-items:center; gap:var(--space-xs); }
+.pitlane-points { display:flex; position:relative; align-items:center; min-height:44px; gap:var(--space-3xs); color:var(--color-ink); }
+.pitlane-points > svg { flex-shrink:0; }
+.pitlane-points strong { font-family:var(--font-display); font-size:var(--text-md); font-variant-numeric:tabular-nums; }
+.pitlane-points > span { font-size:var(--text-xs); color:var(--color-muted); white-space:nowrap; }
+.pitlane-avatar { width:44px; height:44px; border:1px solid var(--color-rule); border-radius:var(--radius-pill); display:grid; place-items:center; position:relative; overflow:hidden; background:var(--color-paper-3); color:var(--color-copper); }
+.pitlane-avatar img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
+.pitlane-branch { display:flex; align-items:center; width:100%; text-align:left; gap:var(--space-xs); padding:var(--space-xs) var(--space-sm); border-top:1px solid var(--color-rule); color:var(--color-copper); min-height:64px; }
+.pitlane-branch > span:first-of-type { flex:1; min-width:0; display:grid; gap:var(--space-3xs); }
+.pitlane-branch strong { color:var(--color-ink); font-size:var(--text-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pitlane-branch > span > span { color:var(--color-muted); font-size:var(--text-xs); }
+.pitlane-branch__change { display:flex; align-items:center; gap:var(--space-3xs); font-size:var(--text-xs); white-space:nowrap; }
+.pitlane-hero { padding:var(--space-md) var(--space-sm) 0; }
+.pitlane-hero__intro { display:flex; align-items:flex-start; justify-content:space-between; gap:var(--space-xs); margin-bottom:var(--space-md); }
+.pitlane-hero__intro h1 { margin:0; font-size:var(--text-display); line-height:1.35; font-weight:700; letter-spacing:-.025em; }
+.pitlane-hero__intro h1 span { color:var(--color-copper); }
+.pitlane-hero__intro p { font-size:var(--text-sm); color:var(--color-muted); margin-top:var(--space-2xs); }
+.pitlane-hero__visual { position:relative; overflow:hidden; border-radius:var(--radius-card) var(--radius-card) 0 0; background:var(--color-paper-2); }
+.pitlane-hero__visual > img { display:block; width:100%; aspect-ratio:2.28; height:auto; object-fit:cover; }
+.pitlane-hero__type { position:absolute; bottom:var(--space-xs); left:var(--space-xs); padding:var(--space-3xs) var(--space-2xs); border-radius:var(--radius-pill); background:var(--color-overlay); color:var(--color-ink); font-family:var(--font-display); font-size:var(--text-xs); letter-spacing:.04em; }
+.pitlane-hero__booking { display:grid; gap:var(--space-sm); padding:var(--space-sm); background:var(--color-paper-2); border:1px solid var(--color-rule); border-top:0; border-radius:0 0 var(--radius-card) var(--radius-card); }
+.pitlane-hero__booking-copy { display:flex; align-items:center; justify-content:space-between; gap:var(--space-2xs); flex-wrap:wrap; }
+.pitlane-hero__booking-copy strong { font-size:var(--text-md); }
+.pitlane-hero__booking-copy > span { color:var(--color-muted); font-size:var(--text-xs); }
+.pitlane-primary { min-height:52px; display:flex; align-items:center; justify-content:center; gap:var(--space-xs); padding:var(--space-xs) var(--space-sm); border:1px solid var(--color-accent); border-radius:var(--radius-input); background:var(--color-accent); color:var(--color-accent-ink); font-weight:700; font-size:var(--text-md); white-space:nowrap; transition:transform var(--dur-micro) var(--ease-out); }
+.pitlane-primary:active { transform:scale(.98); }
+.pitlane-hero__note { display:flex; justify-content:center; align-items:center; gap:var(--space-2xs); color:var(--color-muted); font-size:var(--text-xs); margin:var(--space-xs) 0; }
+.pitlane-hero__note svg { flex-shrink:0; }
+.pitlane-services { padding:var(--space-md) var(--space-sm) 0; }
+.pitlane-services h2 { font-size:var(--text-lg); font-weight:700; margin-bottom:var(--space-xs); }
+.pitlane-shortcuts { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-xs); }
+.pitlane-shortcut { text-align:left; padding:var(--space-sm); display:flex; flex-direction:column; gap:var(--space-3xs); border:1px solid var(--color-rule); border-radius:var(--radius-card); background:var(--color-paper-2); color:var(--color-ink); }
+.pitlane-shortcut__top { display:flex; align-items:center; margin-bottom:var(--space-xs); color:var(--color-ink); width:100%; }
+.pitlane-shortcut strong { font-size:var(--text-sm); white-space:nowrap; }
+.pitlane-shortcut > span:last-child { font-size:var(--text-xs); color:var(--color-muted); }
+.pitlane-utilities { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:var(--space-2xs); margin-block:var(--space-md); }
+.pitlane-utilities button { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--space-xs); padding:var(--space-xs) 0; color:var(--color-muted); min-height:72px; border-radius:var(--radius-input); font-size:var(--text-xs); white-space:nowrap; }
+.pitlane-utilities svg { color:var(--color-ink); }
+.pitlane-help { display:flex; text-align:left; align-items:center; width:100%; gap:var(--space-xs); padding:var(--space-sm) 0; border-top:1px solid var(--color-rule); color:var(--color-muted); }
+.pitlane-help > span { flex:1; display:grid; gap:var(--space-3xs); }
+.pitlane-help strong { font-size:var(--text-sm); color:var(--color-ink); }
+.pitlane-help span span { font-size:var(--text-xs); }
+.pitlane-nav.bottom-nav { display:flex; flex-shrink:0; position:relative; z-index:20; background:var(--color-paper-2); border-top:1px solid var(--color-rule); border-radius:0; padding:var(--space-2xs) var(--space-2xs) max(var(--space-2xs),env(safe-area-inset-bottom)); }
+.pitlane-nav button { min-width:0; flex:1; min-height:56px; display:flex; align-items:center; flex-direction:column; gap:var(--space-2xs); font-size:11px; color:var(--color-muted); white-space:nowrap; }
+.pitlane-nav button[aria-current=page] { color:var(--color-ink); font-weight:700; }
+.pitlane-nav__icon { display:grid; width:52px; height:30px; place-items:center; position:relative; }
+.pitlane-nav__icon > :is(svg,img) { position:relative; color:var(--color-ink); opacity:.6; }
+.pitlane-nav button[aria-current=page] .pitlane-nav__icon > :is(svg,img) { opacity:1; }
+.pitlane-vehicle-icon { flex-shrink:0; filter:brightness(0) invert(1); object-fit:contain; }
+.pitlane-nav__active { position:absolute; left:18px; right:18px; bottom:-3px; height:2px; background:var(--color-ink); border:0; border-radius:var(--radius-pill); }
+.pitlane-nav__badge { position:absolute; right:0; top:0; border-radius:var(--radius-pill); background:var(--color-accent); color:var(--color-accent-ink); font-size:10px; padding:0 var(--space-3xs); }
+.pitlane-picker { color:var(--color-ink); background:var(--color-paper-2); border-color:var(--color-rule); width:calc(100% - 2rem); max-width:480px; padding:var(--space-md); max-height:85dvh; gap:var(--space-sm); z-index:100; box-shadow:none; font-family:var(--font-body); }
+.pitlane-picker__heading { display:flex; align-items:center; gap:var(--space-xs); justify-content:space-between; }
+.pitlane-picker__heading p { margin-top:var(--space-2xs); color:var(--color-muted); }
+.pitlane-icon-button { display:grid; place-items:center; min-width:44px; min-height:44px; color:var(--color-ink); border:0; border-radius:var(--radius-pill); }
+.pitlane-search { display:flex; align-items:center; gap:var(--space-2xs); padding:var(--space-xs); border:1px solid var(--color-rule); border-radius:var(--radius-input); background:var(--color-paper); color:var(--color-muted); min-height:48px; }
+.pitlane-search input { min-width:0; width:100%; background:none; color:var(--color-ink); font-size:var(--text-md); }
+.pitlane-search input::placeholder { color:var(--color-muted); }
+.pitlane-filters { display:flex; gap:var(--space-2xs); overflow-x:auto; padding-block:var(--space-3xs); }
+.pitlane-filters { scrollbar-width:none; }
+.pitlane-filters::-webkit-scrollbar { display:none; }
+.pitlane-filters button { min-height:44px; flex-shrink:0; padding:var(--space-2xs) var(--space-xs); border:1px solid var(--color-rule); border-radius:var(--radius-pill); color:var(--color-muted); font-size:var(--text-sm); white-space:nowrap; }
+.pitlane-filters button[aria-pressed=true] { background:var(--color-selected); color:var(--color-ink); border-color:var(--color-copper); }
+.pitlane-picker__list { overflow-y:auto; min-height:0; max-height:42dvh; display:flex; flex-direction:column; gap:var(--space-2xs); padding:var(--space-3xs); }
+.pitlane-picker__list { scrollbar-width:thin; scrollbar-color:var(--color-rule) var(--color-paper-2); }
+.pitlane-picker__branch { display:flex; gap:var(--space-xs); align-items:center; text-align:left; padding:var(--space-xs); border-radius:var(--radius-input); color:var(--color-ink); }
+.pitlane-picker__branch[aria-pressed=true] { background:var(--color-selected); }
+.pitlane-picker__branch > :is(svg,img) { flex-shrink:0; }
+.pitlane-picker__branch > span { min-width:0; flex:1; display:grid; gap:var(--space-3xs); }
+.pitlane-picker__branch strong { font-size:var(--text-sm); }
+.pitlane-picker__branch span span { font-size:var(--text-xs); color:var(--color-muted); }
+.pitlane-text-button { min-height:44px; display:flex; justify-content:center; align-items:center; gap:var(--space-2xs); color:var(--color-copper); font-size:var(--text-sm); }
+.pitlane-avatar { color:var(--color-ink); }
+.pitlane-header svg, .pitlane-services svg, .pitlane-hero svg, .pitlane-picker svg, .pitlane-search svg { color:var(--color-ink); stroke-width:2; flex-shrink:0; }
+.pitlane-branch-vehicle { display:grid; place-items:center; flex-shrink:0; color:var(--color-ink); }
+.pitlane-empty { padding:var(--space-lg); font-size:var(--text-sm); color:var(--color-muted); text-align:center; }
+.pitlane-route-loading { flex:1; display:flex; flex-direction:column; padding:var(--space-md); gap:var(--space-sm); }
+.pitlane-route-loading span { display:block; height:120px; background:var(--color-paper-2); border-radius:var(--radius-card); }
+.pitlane-route-loading span:first-child { height:44px; width:60%; }
+.pitlane-route-loading p { font-size:var(--text-sm); color:var(--color-muted); }
+.pitlane-app .bg-app-black { background-color:var(--color-paper); }
+.pitlane-app .bg-app-dark { background-color:var(--color-paper-2); }
+.pitlane-app :is(.text-white\/20,.text-white\/30,.text-white\/35,.text-white\/40,.text-gray-500) { color:var(--color-muted); }
+.pitlane-app > div > header h1 { font-size:var(--text-lg); }
+.pitlane-app :is(button,input[type=text],input[type=email],input[type=tel],select) { min-height:44px; }
+.pitlane-app button :is(.text-\[8px\],.text-\[9px\]) { font-size:var(--text-xs); }
+.pitlane-app [role=alert] { color:var(--color-ink); }
+.pitlane-branches { background:var(--color-paper); color:var(--color-ink); }
+.pitlane-branches__header { flex-shrink:0; background:var(--color-paper); padding:var(--space-2xs) var(--space-sm); }
+.pitlane-branches__header > div:first-child { padding:var(--space-2xs) 0 var(--space-xs); }
+.pitlane-branches__header > div:first-child > div { background:none; border:0; box-shadow:none; padding-inline:0; }
+.pitlane-branches__header > div:first-child span:first-of-type { font-size:var(--text-lg); font-weight:700; }
+.pitlane-branches__header > div:first-child span:last-child { color:var(--color-muted); font-size:var(--text-xs); white-space:nowrap; }
+.pitlane-branches__header button { min-height:44px; }
+.pitlane-branches__header .pitlane-filters button { box-shadow:none; background:var(--color-paper-2); border-color:var(--color-rule); color:var(--color-muted); }
+.pitlane-branches__header .pitlane-filters button[aria-pressed=true] { background:var(--color-selected); border-color:var(--color-copper); color:var(--color-ink); }
+.pitlane-branches__map { height:26%; min-height:160px; flex-shrink:0; isolation:isolate; }
+.pitlane-branches__map > button { width:44px; height:44px; bottom:var(--space-lg); }
+.pitlane-branches .leaflet-control-attribution { display:block!important; font-size:10px!important; max-width:100%; }
+.pitlane-branches__list { background:var(--color-paper); }
+.pitlane-branches__list-heading { display:flex; align-items:center; justify-content:space-between; padding:var(--space-sm); }
+.pitlane-branches__list-heading h2 { font-size:var(--text-md); font-weight:700; }
+.pitlane-branches__list-heading span { font-size:var(--text-xs); color:var(--color-muted); }
+.pitlane-branches__location-note { color:var(--color-muted); font-size:var(--text-xs); padding:0 var(--space-sm) var(--space-xs); }
+.pitlane-branches__results { padding-inline:var(--space-sm); }
+.pitlane-branches__results[data-has-selection=true] { padding-bottom:100px; }
+.pitlane-branch-option { display:block; width:100%; text-align:left; }
+.pitlane-branch-option > div { background:var(--color-paper-2); border:1px solid var(--color-rule); box-shadow:none; border-radius:var(--radius-card); }
+.pitlane-branch-option[aria-pressed=true] > div { background:var(--color-selected); border-color:var(--color-copper); box-shadow:none; }
+.pitlane-branch-option h3 { color:var(--color-ink)!important; }
+.pitlane-branch-option :is(p,span).text-gray-500 { color:var(--color-muted); }
+.pitlane-branch-option > div > div:first-child { width:48px; height:48px; }
+.pitlane-branches__action { position:absolute; bottom:0; left:0; right:0; z-index:20; padding:var(--space-sm); background:var(--color-paper-2); border-top:1px solid var(--color-rule); }
+.pitlane-branches__action button { min-height:52px; border-radius:var(--radius-input); font-size:var(--text-sm); white-space:nowrap; }
+@media (hover:hover) and (pointer:fine) {
+  .pitlane-shortcut:hover,.pitlane-utilities button:hover,.pitlane-picker__branch:hover { background:var(--color-paper-3); }
+  .pitlane-primary:hover { transform:translateY(-1px); }
+}
+@media (min-width:48rem) {
+  .app-shell .app-container { border-inline:1px solid var(--color-rule); }
+  .pitlane-hero { padding-top:var(--space-lg); }
+}
+@media (max-width:23rem) {
+  .pitlane-points > span { display:none; }
+  .pitlane-header__account { gap:var(--space-2xs); }
+  .pitlane-header__row { gap:var(--space-2xs); }
+}
+@media (prefers-reduced-motion:reduce) {
+  .pitlane-app *, .pitlane-app *::before, .pitlane-app *::after, .pitlane-picker * { animation-duration:.01ms!important; animation-iteration-count:1!important; transition-duration:.01ms!important; scroll-behavior:auto!important; }
+  .pitlane-primary:active, .pitlane-primary:hover { transform:none; }
+}

@@ -11,27 +11,34 @@ export function CustomersPage({ branchId }: CustomersPageProps) {
   const [search, setSearch] = useState('');
   const [customers, setCustomers] = useState<CustomerRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1), [total, setTotal] = useState(0), [loading, setLoading] = useState(true);
+  useEffect(() => { setPage(1); setExpandedลูกค้าId(null); }, [branchId]);
   const [expandedCustomerId, setExpandedลูกค้าId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true); setCustomers([]); setTotal(0); setError(null);
 
     const handle = setTimeout(async () => {
       try {
         const response = await api.fetchCustomers({
           branchId,
-          limit: 100,
+          limit: 25,
+          page,
           search: search || undefined,
         });
 
         if (!cancelled) {
           setCustomers(response.data);
+          setTotal(response.total);
           setError(null);
         }
       } catch (err: any) {
         if (!cancelled) {
           setError(err.message || 'โหลดข้อมูลลูกค้าไม่สำเร็จ');
         }
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     }, 150);
 
@@ -39,7 +46,7 @@ export function CustomersPage({ branchId }: CustomersPageProps) {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [branchId, search]);
+  }, [branchId, search, page]);
 
   const summary = useMemo(() => {
     return {
@@ -65,19 +72,19 @@ export function CustomersPage({ branchId }: CustomersPageProps) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="gradient-card rounded-2xl p-5">
           <p className="text-sm text-gray-500">ลูกค้า</p>
-          <p className="mt-2 text-3xl font-black text-white">{customers.length.toLocaleString()}</p>
+          <p className="mt-2 text-3xl font-black text-white">{total.toLocaleString()}</p>
         </div>
         <div className="gradient-card rounded-2xl p-5">
-          <p className="text-sm text-gray-500">ยอดใช้จ่ายสะสมในขอบเขต</p>
+          <p className="text-sm text-gray-500">ยอดใช้จ่ายของลูกค้าในหน้านี้</p>
           <p className="mt-2 text-3xl font-black text-white">{summary.totalSpend.toLocaleString()}</p>
           <p className="text-xs text-gray-600">บาท</p>
         </div>
         <div className="gradient-card rounded-2xl p-5">
-          <p className="text-sm text-gray-500">จำนวนครั้งล้างที่เสร็จแล้ว</p>
+          <p className="text-sm text-gray-500">จำนวนครั้งล้างของลูกค้าในหน้านี้</p>
           <p className="mt-2 text-3xl font-black text-white">{summary.totalWashes.toLocaleString()}</p>
         </div>
         <div className="gradient-card rounded-2xl p-5">
-          <p className="text-sm text-gray-500">ยอดแต้ม</p>
+          <p className="text-sm text-gray-500">ยอดแต้มของลูกค้าในหน้านี้</p>
           <p className="mt-2 text-3xl font-black text-white">{summary.totalแต้ม.toLocaleString()}</p>
         </div>
       </div>
@@ -86,10 +93,17 @@ export function CustomersPage({ branchId }: CustomersPageProps) {
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
         <input
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          aria-label="ค้นหาลูกค้า"
+          onChange={(event) => { setSearch(event.target.value); setPage(1); }}
           placeholder="ค้นหาจากชื่อ เบอร์โทร หรือ LINE user id"
           className="w-full rounded-xl border border-gray-700/50 bg-gray-800/50 py-2.5 pl-10 pr-4 text-sm text-white placeholder-gray-500 focus:border-red-500/50 focus:outline-none"
         />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <span role="status">{loading ? 'กำลังโหลดลูกค้า…' : `${total.toLocaleString()} รายการ · หน้า ${page} / ${Math.max(1, Math.ceil(total / 25))}`}</span>
+        <button className="min-h-11 rounded-lg border border-slate-300 px-4 disabled:opacity-50" disabled={loading || page <= 1} onClick={() => setPage(n => n - 1)}>ก่อนหน้า</button>
+        <button className="min-h-11 rounded-lg border border-slate-300 px-4 disabled:opacity-50" disabled={loading || page * 25 >= total} onClick={() => setPage(n => n + 1)}>ถัดไป</button>
       </div>
 
       <div className="space-y-4 lg:hidden">

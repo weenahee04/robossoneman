@@ -8,7 +8,7 @@ export interface BranchInfo {
   name: string;
   shortName: string;
   address: string;
-  type: 'car' | 'bike';
+  type: 'car' | 'motorcycle';
   isOpen: boolean;
   hours: string;
   mapsUrl?: string;
@@ -28,16 +28,16 @@ const FALLBACK_BRANCHES: BranchInfo[] = ([
   { id: 'branch_c05', name: 'ROBOSS Satun', shortName: 'Satun', address: 'Satun Thani Rd., Satun', type: 'car', isOpen: true, hours: '07:00 - 20:00', mapsUrl: 'https://maps.app.goo.gl/tQLW2vdJ1bHygoBF7', lat: 6.6238, lng: 100.0674 },
   { id: 'branch_c06', name: 'ROBOSS Nakhon Si Thammarat', shortName: 'NST', address: 'Ratchadamnoen Rd., NST', type: 'car', isOpen: true, hours: '07:00 - 21:00', mapsUrl: 'https://maps.app.goo.gl/qdMDCMGr6LfagE2N8', lat: 8.4327, lng: 99.9638 },
   { id: 'branch_c07', name: 'ROBOSS Uthai Thani', shortName: 'Uthai Thani', address: 'Si Uthai Rd., Uthai Thani', type: 'car', isOpen: true, hours: '07:00 - 20:00', mapsUrl: 'https://maps.app.goo.gl/8dn8U7UiKFwY3dST7', lat: 15.3833, lng: 100.0247 },
-  { id: 'branch_b01', name: 'ROBOSS Bike Rama 9', shortName: 'Bike Rama 9', address: 'Rama 9 Rd., Bangkok', type: 'bike', isOpen: true, hours: '06:00 - 22:00', mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7', lat: 13.7485, lng: 100.572 },
-  { id: 'branch_b02', name: 'ROBOSS Bike Rama 4', shortName: 'Bike Rama 4', address: 'Rama 4 Rd., Bangkok', type: 'bike', isOpen: true, hours: '06:00 - 22:00', mapsUrl: 'https://maps.app.goo.gl/WhtiRPuwrRzrwgHF7', lat: 13.722, lng: 100.553 },
-  { id: 'branch_b03', name: 'ROBOSS Bike Tha Phra', shortName: 'Bike Tha Phra', address: 'Tha Phra Rd., Bangkok', type: 'bike', isOpen: true, hours: '06:00 - 22:00', mapsUrl: 'https://maps.app.goo.gl/F5GfLG99U1SDzy28A', lat: 13.7265, lng: 100.479 },
-  { id: 'branch_b04', name: 'ROBOSS Bike Chonburi', shortName: 'Bike Chonburi', address: 'Sukhumvit Rd., Chonburi', type: 'bike', isOpen: true, hours: '07:00 - 21:00', mapsUrl: 'https://maps.app.goo.gl/6FdX7LG31ozszmc29', lat: 13.3615, lng: 100.985 },
-  { id: 'branch_b05', name: 'ROBOSS Bike Phuket', shortName: 'Bike Phuket', address: 'Thaweewong Rd., Phuket', type: 'bike', isOpen: true, hours: '07:00 - 21:00', mapsUrl: 'https://maps.app.goo.gl/oazz3WiRR5ghx8SAA', lat: 7.89, lng: 98.295 },
-  { id: 'branch_b06', name: 'ROBOSS Bike Mae Sot', shortName: 'Bike Mae Sot', address: 'Prasat Withi Rd., Tak', type: 'bike', isOpen: true, hours: '07:00 - 20:00', mapsUrl: 'https://maps.app.goo.gl/BbHegYXa99rbBCGC9', lat: 16.713, lng: 98.573 },
+  { id: 'branch_b01', name: 'ROBOSS Bike Rama 9', shortName: 'Bike Rama 9', address: 'Rama 9 Rd., Bangkok', type: 'motorcycle', isOpen: true, hours: '06:00 - 22:00', mapsUrl: 'https://maps.app.goo.gl/vAZEwXHVvJkPc7yJ7', lat: 13.7485, lng: 100.572 },
+  { id: 'branch_b02', name: 'ROBOSS Bike Rama 4', shortName: 'Bike Rama 4', address: 'Rama 4 Rd., Bangkok', type: 'motorcycle', isOpen: true, hours: '06:00 - 22:00', mapsUrl: 'https://maps.app.goo.gl/WhtiRPuwrRzrwgHF7', lat: 13.722, lng: 100.553 },
+  { id: 'branch_b03', name: 'ROBOSS Bike Tha Phra', shortName: 'Bike Tha Phra', address: 'Tha Phra Rd., Bangkok', type: 'motorcycle', isOpen: true, hours: '06:00 - 22:00', mapsUrl: 'https://maps.app.goo.gl/F5GfLG99U1SDzy28A', lat: 13.7265, lng: 100.479 },
+  { id: 'branch_b04', name: 'ROBOSS Bike Chonburi', shortName: 'Bike Chonburi', address: 'Sukhumvit Rd., Chonburi', type: 'motorcycle', isOpen: true, hours: '07:00 - 21:00', mapsUrl: 'https://maps.app.goo.gl/6FdX7LG31ozszmc29', lat: 13.3615, lng: 100.985 },
+  { id: 'branch_b05', name: 'ROBOSS Bike Phuket', shortName: 'Bike Phuket', address: 'Thaweewong Rd., Phuket', type: 'motorcycle', isOpen: true, hours: '07:00 - 21:00', mapsUrl: 'https://maps.app.goo.gl/oazz3WiRR5ghx8SAA', lat: 7.89, lng: 98.295 },
+  { id: 'branch_b06', name: 'ROBOSS Bike Mae Sot', shortName: 'Bike Mae Sot', address: 'Prasat Withi Rd., Tak', type: 'motorcycle', isOpen: true, hours: '07:00 - 20:00', mapsUrl: 'https://maps.app.goo.gl/BbHegYXa99rbBCGC9', lat: 16.713, lng: 98.573 },
  ] as const).map((branch) => ({
   ...branch,
-  machinesFree: branch.type === 'bike' ? 1 : 2,
-  machinesTotal: branch.type === 'bike' ? 2 : 3,
+  machinesFree: branch.type === 'motorcycle' ? 1 : 2,
+  machinesTotal: branch.type === 'motorcycle' ? 2 : 3,
 }));
 
 function apiBranchToBranchInfo(branch: Branch): BranchInfo {
@@ -46,7 +46,7 @@ function apiBranchToBranchInfo(branch: Branch): BranchInfo {
     name: branch.name,
     shortName: branch.shortName || branch.name.replace('ROBOSS ', ''),
     address: branch.address,
-    type: branch.type === 'bike' ? 'bike' : 'car',
+    type: branch.type === 'motorcycle' ? 'motorcycle' : 'car',
     isOpen: branch.isOpen,
     hours: branch.hours || '06:00 - 22:00',
     mapsUrl: branch.mapsUrl,
@@ -101,7 +101,7 @@ interface BranchContextType {
 const BranchContext = createContext<BranchContextType>({
   branch: USE_LOCAL_DEV_FALLBACK ? FALLBACK_BRANCHES[0] : EMPTY_BRANCH,
   allBranches: USE_LOCAL_DEV_FALLBACK ? FALLBACK_BRANCHES : [],
-  setBranch: () => {},
+  setBranch: () => undefined,
   isLoading: false,
 });
 
